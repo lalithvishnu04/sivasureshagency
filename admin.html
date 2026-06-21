@@ -135,7 +135,9 @@
                             <button class="filter-btn" data-status="Cancelled">Cancelled</button>
                         </div>
                     </div>
-                    <div class="toolbar-right"><input type="text" id="orderSearch" placeholder="Search order ID or customer..." class="search-input"></div>
+                    <div class="toolbar-right">
+                        <button class="btn-secondary" onclick="exportOrdersCSV()"><i class="fas fa-download"></i> Export CSV</button>
+                        <input type="text" id="orderSearch" placeholder="Search order ID or customer..." class="search-input"></div>
                 </div>
                 <div class="table-wrap">
                     <table class="data-table" id="ordersTable">
@@ -172,10 +174,10 @@
                             <tr>
                                 <th>Image</th>
                                 <th>Name</th>
-                                <th>Category</th>
+                                <th>Gender</th>
                                 <th>Price</th>
+                                <th>Badge</th>
                                 <th>Stock</th>
-                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -197,6 +199,7 @@
                     </div>
                     <div class="toolbar-right">
                         <input type="text" id="inventorySearch" placeholder="Search by product, size, color..." class="search-input" oninput="renderInventory()">
+                        <button class="btn-secondary" onclick="deduplicateInventory()" title="Remove duplicate inventory entries caused by multiple syncs"><i class="fas fa-compress-alt"></i> Fix Duplicates</button>
                         <button class="btn-secondary" onclick="reconcileInventoryFromOrders()" title="Deduct stock for all past orders that weren't processed"><i class="fas fa-calculator"></i> Reconcile Stock</button>
                         <button class="btn-primary" onclick="syncInventoryFromProducts()"><i class="fas fa-sync"></i> Sync</button>
                     </div>

@@ -408,22 +408,34 @@ function renderProducts() {
     if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search) || p.category.toLowerCase().includes(search));
 
     const tbody = document.getElementById('productsTableBody');
-    if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No products. Click "Add Product" or "Sync Products" in Inventory.</td></tr>'; return; }
+    if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">No products. Click "Add Product" or "Sync Products" in Inventory.</td></tr>'; return; }
 
-    tbody.innerHTML = filtered.map(p => `
+    // Build stock totals from allInventory
+    const stockByProduct = {};
+    for (const inv of allInventory) {
+        if (!stockByProduct[inv.productName]) stockByProduct[inv.productName] = 0;
+        stockByProduct[inv.productName] += (inv.quantity || 0);
+    }
+
+    tbody.innerHTML = filtered.map(p => {
+        const liveStock = stockByProduct[p.name] ?? (p.totalStock !== undefined ? p.totalStock : '-');
+        const stockNum = typeof liveStock === 'number' ? liveStock : 0;
+        const stockBadge = stockNum === 0 ? 'cancelled' : stockNum <= 20 ? 'processing' : 'approved';
+        const stockLabel = stockNum === 0 ? 'Out of Stock' : stockNum <= 20 ? `Low (${liveStock})` : `In Stock (${liveStock})`;
+        return `
         <tr>
             <td><img src="${p.image || ''}" alt="" class="product-thumb"></td>
-            <td><strong>${p.name}</strong></td>
-            <td>${(p.category || '').replace(/-/g, ' ')}</td>
+            <td class="td-name"><strong>${p.name}</strong><small>${(p.category || '').replace(/-/g, ' ')}</small></td>
+            <td>${p.gender ? `<span class="size-chip" style="background:#e0e7ff;color:#3730a3">${p.gender}</span>` : '-'}</td>
             <td>\u20b9${p.price}</td>
-            <td>${p.totalStock !== undefined ? p.totalStock : '-'}</td>
-            <td><span class="status-badge ${p.totalStock > 0 ? 'approved' : 'cancelled'}">${p.totalStock > 0 ? 'In Stock' : 'Out of Stock'}</span></td>
+            <td>${p.badge ? `<span class="size-chip" style="background:#fef3c7;color:#92400e">${p.badge}</span>` : '-'}</td>
+            <td><span class="status-badge ${stockBadge}">${stockLabel}</span></td>
             <td>
                 <button class="btn-icon" onclick="editProduct('${p.docId}')" title="Edit"><i class="fas fa-edit"></i></button>
                 <button class="btn-icon danger" onclick="deleteProduct('${p.docId}')" title="Delete"><i class="fas fa-trash"></i></button>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
 document.getElementById('productSearch')?.addEventListener('input', renderProducts);
@@ -520,18 +532,24 @@ async function syncInventoryFromProducts() {
                     totalStock: 100,
                     createdAt: fsServerTimestamp()
                 });
-                // Create inventory entries for each size
+                // Create inventory entries for each size — check first to avoid duplicates
                 const colors = getColorsForCategory(p.category);
                 for (const size of (p.sizes || [])) {
                     for (const color of colors) {
-                        await db.collection('inventory').add({
-                            productName: p.name,
-                            productCategory: p.category,
-                            size: size,
-                            color: color,
-                            quantity: 20,
-                            updatedAt: fsServerTimestamp()
-                        });
+                        const invCheck = await db.collection('inventory')
+                            .where('productName', '==', p.name)
+                            .where('size', '==', size)
+                            .get();
+                        if (invCheck.empty) {
+                            await db.collection('inventory').add({
+                                productName: p.name,
+                                productCategory: p.category,
+                                size: size,
+                                color: color,
+                                quantity: 20,
+                                updatedAt: fsServerTimestamp()
+                            });
+                        }
                     }
                 }
                 count++;
@@ -686,6 +704,66 @@ async function quickAdjust(docId, current, delta) {
         if (item) { item.quantity = newQty; renderInventory(); }
     } catch (err) {
         showAdminToast('Update failed: ' + err.message, 'error');
+    }
+}
+
+// ===== Export Orders as CSV =====
+function exportOrdersCSV() {
+    if (!allOrders.length) { showAdminToast('No orders to export', 'info'); return; }
+    const rows = [['Order ID','Customer','Email','Phone','Items','Total','Status','Date','Tracking','Address','City','Pincode']];
+    allOrders.forEach(o => {
+        const items = (o.items || []).map(i => `${i.name} x${i.qty} (${i.selectedSize||''})`).join('; ');
+        const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('en-IN') : '';
+        rows.push([o.orderId||o.docId, o.customerName||'', o.customerEmail||'', o.customerPhone||'', items, o.total||0, o.status||'', date, o.trackingId||'', o.address||'', o.city||'', o.pincode||'']);
+    });
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `orders_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showAdminToast('CSV downloaded!');
+}
+
+// ===== Deduplicate inventory (merge/delete extra copies per product+size+color) =====
+async function deduplicateInventory() {
+    const btn = event?.target;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...'; }
+    showAdminToast('Scanning for duplicates...', 'info');
+    try {
+        const snap = await db.collection('inventory').get();
+        const docs = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+
+        // Group by productName + size + (color or '')
+        const groups = {};
+        for (const doc of docs) {
+            const key = `${doc.productName}||${doc.size}||${doc.color || ''}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(doc);
+        }
+
+        let deleted = 0;
+        for (const group of Object.values(groups)) {
+            if (group.length <= 1) continue;
+            // Keep the doc with the LOWEST quantity (most deductions applied = most accurate)
+            group.sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
+            const toDelete = group.slice(1);
+            for (const dup of toDelete) {
+                await db.collection('inventory').doc(dup.docId).delete();
+                deleted++;
+            }
+        }
+
+        if (deleted === 0) {
+            showAdminToast('No duplicates found.', 'info');
+        } else {
+            showAdminToast(`Removed ${deleted} duplicate entries!`);
+            await loadInventory();
+        }
+    } catch (err) {
+        showAdminToast('Error: ' + err.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-compress-alt"></i> Fix Duplicates'; }
     }
 }
 
@@ -1029,3 +1107,5 @@ window.markAllRead = markAllRead;
 window.quickAdjust = quickAdjust;
 window.setInvFilter = setInvFilter;
 window.reconcileInventoryFromOrders = reconcileInventoryFromOrders;
+window.deduplicateInventory = deduplicateInventory;
+window.exportOrdersCSV = exportOrdersCSV;

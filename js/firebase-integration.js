@@ -205,3 +205,47 @@ window.saveOrderToFirebase   = saveOrderToFirebase;
 window.saveCustomerToFirebase = saveCustomerToFirebase;
 window.syncPendingOrders      = syncPendingOrders;
 
+// ===== Out-of-Stock awareness for the customer-facing frontend =====
+// Fetches inventory items with quantity == 0 and marks productsData accordingly.
+// Called once Firebase is ready; re-renders product grid with Out-of-Stock badges.
+async function loadOutOfStockData() {
+    try {
+        if (!window.fireDb) return;
+        const snap = await window.fireDb.collection('inventory').where('quantity', '==', 0).get();
+        // Build map: productName → Set of out-of-stock sizes
+        const map = {};
+        snap.docs.forEach(d => {
+            const { productName, size } = d.data();
+            if (!productName || !size) return;
+            if (!map[productName]) map[productName] = new Set();
+            map[productName].add(size);
+        });
+        window.outOfStockMap = map;
+        // Annotate productsData
+        if (window.productsData) {
+            window.productsData.forEach(p => {
+                const outSizes = map[p.name];
+                p.outOfStockSizes = outSizes ? [...outSizes] : [];
+                p.outOfStock = outSizes ? p.sizes.every(s => outSizes.has(s)) : false;
+            });
+        }
+        // Re-render product grid if visible
+        if (typeof window.renderProducts === 'function') {
+            window.renderProducts(window.currentFilter || 'all', window.displayedProducts || 12, window._currentGender, window._currentSleeve);
+        }
+        console.log('[stock] Out-of-stock map loaded:', Object.keys(map).length, 'products with 0 stock');
+    } catch (e) {
+        console.warn('[stock] Could not load out-of-stock data:', e.message);
+    }
+}
+// Auto-load when firebase is ready (DOM content loaded + Firebase init complete)
+document.addEventListener('DOMContentLoaded', () => {
+    const wait = setInterval(() => {
+        if (window._firebaseReady && window.fireDb) {
+            clearInterval(wait);
+            loadOutOfStockData();
+        }
+    }, 400);
+});
+window.loadOutOfStockData = loadOutOfStockData;
+
