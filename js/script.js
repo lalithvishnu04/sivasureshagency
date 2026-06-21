@@ -431,7 +431,7 @@ function buildProductCard(p) {
     const quickBtn = isOut
         ? `<div class="shop-card-quick"><button class="btn btn-primary btn-sm" disabled style="opacity:0.5"><i class="fas fa-ban"></i> Out of Stock</button></div>`
         : `<div class="shop-card-quick"><button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); addToCart(${p.id})"><i class="fas fa-cart-plus"></i> Add</button></div>`;
-    return `<div class="shop-card${p.badge || isOut || isLow ? ' has-badge' : ''} reveal active${isOut ? ' out-of-stock-card' : isLow ? ' low-stock-card' : ''}" data-category="${p.category}" data-id="${p.id}">`;
+    return `<div class="shop-card${p.badge || isOut || isLow ? ' has-badge' : ''} reveal active${isOut ? ' out-of-stock-card' : isLow ? ' low-stock-card' : ''}" data-category="${p.category}" data-id="${p.id}">
         ${outBadge}
         <button class="shop-card-wishlist" data-product-id="${p.id}" aria-label="Wishlist"><i class="${isWishlisted(p.id) ? 'fas' : 'far'} fa-heart"></i></button>
         <div class="shop-card-image" onclick="openProductDetail(${p.id})">

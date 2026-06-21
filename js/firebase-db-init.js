@@ -38,7 +38,7 @@ const _DB  = 'sivasureshagency';
 const _FS  = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/${_DB}/documents`;
 const _KEY = firebaseConfig.apiKey;
 
-async function _fetch(url, opts = {}) {
+async function _fetch(url, opts = {}, _retry = 3) {
     const user = _auth.currentUser;
     const h = { 'Content-Type': 'application/json' };
     if (user) { try { h['Authorization'] = 'Bearer ' + await user.getIdToken(); } catch(e) {} }
@@ -46,6 +46,12 @@ async function _fetch(url, opts = {}) {
     const res  = await fetch(`${url}${sep}key=${_KEY}`, { ...opts, headers: h });
     const text = await res.text();
     const json = text ? JSON.parse(text) : {};
+    // Auto-retry on 429 Too Many Requests with exponential backoff
+    if (res.status === 429 && _retry > 0) {
+        const delay = (4 - _retry) * 1200; // 1200ms, 2400ms, 3600ms
+        await new Promise(r => setTimeout(r, delay));
+        return _fetch(url, opts, _retry - 1);
+    }
     if (!res.ok) throw new Error(json.error?.message || `Firestore ${res.status}`);
     return json;
 }

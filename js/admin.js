@@ -7,6 +7,20 @@ let allProducts = [];
 let allInventory = [];
 let allCustomers = [];
 
+// ===== In-memory cache to avoid hammering Firestore on every navigation =====
+const _cache = {};
+const _CACHE_TTL = 90_000; // 90 seconds
+async function _cachedGet(name, queryFn) {
+    const now = Date.now();
+    if (_cache[name] && (now - _cache[name].ts) < _CACHE_TTL) return _cache[name].data;
+    const snap = await queryFn();
+    _cache[name] = { data: snap, ts: now };
+    return snap;
+}
+function _invalidateCache(...names) {
+    names.forEach(n => { if (_cache[n]) _cache[n].ts = 0; });
+}
+
 // ===== Wait for Firebase to initialize =====
 let authInitAttempts = 0;
 function initializeAuthListener() {
@@ -128,16 +142,13 @@ function toggleSidebar() {
 }
 
 // ===== Dashboard =====
-let _dashboardCache = null;
 async function loadDashboard() {
     try {
-        // Parallel fetch: orders + customers + inventory (for status-based alerts) + messages
-        const [ordersSnap, customersSnap, invSnap, messagesSnap] = await Promise.all([
-            db.collection('orders').get(),
-            db.collection('customers').get(),
-            db.collection('inventory').get(),
-            db.collection('messages').get()
-        ]);
+        // Sequential fetches to avoid Firestore 429 rate-limiting
+        const ordersSnap    = await _cachedGet('orders',    () => db.collection('orders').get());
+        const customersSnap = await _cachedGet('customers', () => db.collection('customers').get());
+        const invSnap       = await _cachedGet('inventory', () => db.collection('inventory').get());
+        const messagesSnap  = await _cachedGet('messages',  () => db.collection('messages').get());
 
         const orders = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const totalOrders = orders.length;
@@ -200,20 +211,13 @@ async function loadDashboard() {
 async function loadOrders() {
     const tbody = document.getElementById('ordersTableBody');
     try {
-        let snap;
-        try {
-            snap = await db.collection('orders').orderBy('createdAt', 'desc').get();
-        } catch (e) {
-            // Fallback: load without ordering if index missing
-            snap = await db.collection('orders').get();
-        }
+        const snap = await _cachedGet('orders', () => db.collection('orders').get());
         allOrders = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
-        // Sort client-side
         allOrders.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         renderOrders();
     } catch (err) {
         console.error('Orders error:', err);
-        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty" style="color:red">Failed to load orders. Check Firestore security rules.<br><small>' + err.message + '</small></td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty" style="color:red">Failed to load orders.<br><small>' + err.message + '</small></td></tr>';
     }
 }
 
@@ -322,6 +326,7 @@ async function saveOrderUpdate(docId) {
     const trackingId = document.getElementById('orderTracking').value.trim();
     try {
         await db.collection('orders').doc(docId).update({ status, trackingId, updatedAt: fsServerTimestamp() });
+        _invalidateCache('orders');
         showAdminToast('Order updated successfully');
         closeModal('orderModal');
         loadOrders();
@@ -338,13 +343,12 @@ async function updateOrderStatus(docId) {
 // ===== Products =====
 async function loadProducts() {
     try {
-        const snap = await db.collection('products').orderBy('name').get();
+        const snap = await _cachedGet('products', () => db.collection('products').get());
         allProducts = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
-        // Auto-seed on first run if Firestore is empty
+        allProducts.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         if (allProducts.length === 0) {
             await autoSeedProducts();
         } else {
-            // Remove duplicates: keep first doc per name, delete extras
             await deduplicateProducts();
             renderProducts();
         }
@@ -487,11 +491,13 @@ async function saveProduct(e) {
     try {
         if (docId) {
             await db.collection('products').doc(docId).update(data);
+            _invalidateCache('products');
             showAdminToast('Product updated');
         } else {
             data.createdAt = fsServerTimestamp();
             data.totalStock = 0;
             await db.collection('products').add(data);
+            _invalidateCache('products');
             showAdminToast('Product added');
         }
         closeModal('productModal');
@@ -505,6 +511,7 @@ async function deleteProduct(docId) {
     if (!confirm('Are you sure you want to delete this product?')) return;
     try {
         await db.collection('products').doc(docId).delete();
+        _invalidateCache('products');
         showAdminToast('Product deleted');
         loadProducts();
     } catch (err) {
@@ -635,8 +642,9 @@ function getLocalProductsData() {
 // ===== Inventory =====
 async function loadInventory() {
     try {
-        const snap = await db.collection('inventory').orderBy('productName').get();
+        const snap = await _cachedGet('inventory', () => db.collection('inventory').get());
         allInventory = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+        allInventory.sort((a, b) => (a.productName || '').localeCompare(b.productName || ''));
         renderInventory();
     } catch (err) {
         console.error('Inventory error:', err);
@@ -710,6 +718,7 @@ function renderInventory() {
 async function updateInventoryStatus(docId, status) {
     try {
         await db.collection('inventory').doc(docId).update({ status, updatedAt: fsServerTimestamp() });
+        _invalidateCache('inventory');
         const item = allInventory.find(i => i.docId === docId);
         if (item) { item.status = status; renderInventory(); }
         const labels = { in_stock: 'In Stock', low_stock: 'Low Stock', out_of_stock: 'Out of Stock' };
@@ -875,27 +884,9 @@ async function saveStock(e) {
 async function loadCustomers() {
     const tbody = document.getElementById('customersTableBody');
     try {
-        // Debug: log auth state
-        const user = window.getCurrentUser();
-        if (!user) {
-            console.error('[customers] Not authenticated');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty" style="color:red">Auth Error: Not authenticated. Refresh and login.</td></tr>';
-            return;
-        }
-        console.log('[customers] Authenticated as:', user.email);
-        
-        let snap;
-        try {
-            snap = await db.collection('customers').orderBy('createdAt', 'desc').get();
-        } catch (e) {
-            // Fallback: load without ordering if index missing
-            console.log('[customers] OrderBy failed, retrying:', e.message);
-            snap = await db.collection('customers').get();
-        }
+        const snap = await _cachedGet('customers', () => db.collection('customers').get());
         allCustomers = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
-        // Sort client-side
         allCustomers.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-        console.log('[customers] Loaded', allCustomers.length, 'customers');
         renderCustomers();
     } catch (err) {
         console.error('Customers error:', err);
