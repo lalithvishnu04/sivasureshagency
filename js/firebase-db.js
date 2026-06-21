@@ -13,8 +13,11 @@ import {
     serverTimestamp, increment
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import {
-    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously
+    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously, updatePassword, sendPasswordResetEmail
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import {
+    getStorage, ref, uploadBytes, getDownloadURL, deleteObject
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
 
 // ── Config ───────────────────────────────────────────────────────────
 const firebaseConfig = {
@@ -26,9 +29,10 @@ const firebaseConfig = {
     appId:             "1:1069646087757:web:986a9d840fcb77a68c3e04"
 };
 
-const app   = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const _db   = getFirestore(app, 'sivasureshagency');
-const _auth = getAuth(app);
+const app     = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const _db     = getFirestore(app, 'sivasureshagency');
+const _auth   = getAuth(app);
+const _storage = getStorage(app);
 
 // ── Snapshot wrapper (mirrors compat API) ────────────────────────────
 function wrapSnap(snap) {
@@ -86,7 +90,18 @@ window.auth = {
     onAuthStateChanged:          (cb)    => onAuthStateChanged(_auth, cb),
     signInWithEmailAndPassword:  (e, p)  => signInWithEmailAndPassword(_auth, e, p),
     signOut:                     ()      => signOut(_auth),
-    signInAnonymously:           ()      => signInAnonymously(_auth)
+    signInAnonymously:           ()      => signInAnonymously(_auth),
+    updatePassword:              (p)     => updatePassword(_auth.currentUser, p),
+    sendPasswordResetEmail:      (e)     => sendPasswordResetEmail(_auth, e),
+    currentUser:                 () => _auth.currentUser
+};
+
+// ── Global window.storage (for file uploads) ──────────────────────────
+window.storage = {
+    ref:              (path) => ref(_storage, path),
+    uploadBytes:      (r, data) => uploadBytes(r, data),
+    getDownloadURL:   (r) => getDownloadURL(r),
+    deleteObject:     (r) => deleteObject(r)
 };
 
 // ── FieldValue helpers (global shortcuts used in admin.js) ───────────
@@ -96,6 +111,9 @@ window.fsIncrement       = increment;
 // Also expose on fireDb for firebase-integration.js
 window.fireDb = window.db;
 
+// Expose current user helper
+window.getCurrentUser = () => _auth.currentUser;
+
 // Signal that module is ready
 window._firebaseReady = true;
-console.log('[firebase-db] ✓ Initialised → database: sivasureshagency');
+console.log('[firebase-db] ✓ Initialised → database: sivasureshagency, storage ready');

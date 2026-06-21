@@ -159,7 +159,7 @@ function renderOrders() {
             <td>${o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('en-IN') : 'N/A'}</td>
             <td>
                 <button class="btn-icon" onclick="viewOrder('${o.docId}')" title="View"><i class="fas fa-eye"></i></button>
-                <button class="btn-icon" onclick="updateOrderStatus('${o.docId}')" title="Update Status"><i class="fas fa-edit"></i></button>
+                <button class="btn-icon" onclick="editOrderModal('${o.docId}')" title="Edit Order"><i class="fas fa-edit"></i></button>
             </td>
         </tr>
     `).join('');
@@ -647,3 +647,77 @@ window.openStockModal = openStockModal;
 window.saveStock = saveStock;
 window.closeModal = closeModal;
 
+
+// ===== NEW: Reset Password Feature =====
+function handleResetPassword(e) {
+    e.preventDefault();
+    const current = document.getElementById('currentPassword').value;
+    const newPass = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('confirmPassword').value;
+    document.getElementById('currentPasswordError').style.display = 'none';
+    document.getElementById('newPasswordError').style.display = 'none';
+    document.getElementById('confirmPasswordError').style.display = 'none';
+    if (newPass.length < 6) {
+        document.getElementById('newPasswordError').textContent = 'Min 6 chars';
+        document.getElementById('newPasswordError').style.display = 'block';
+        return;
+    }
+    if (newPass !== confirm) {
+        document.getElementById('confirmPasswordError').textContent = 'Passwords don\u0027t match';
+        document.getElementById('confirmPasswordError').style.display = 'block';
+        return;
+    }
+    const user = window.getCurrentUser();
+    if (!user) { showAdminToast('User not found', 'error'); return; }
+    auth.signInWithEmailAndPassword(user.email, current)
+        .then(() => auth.updatePassword(newPass))
+        .then(() => {
+            showAdminToast('✓ Password updated successfully', 'success');
+            closeModal('resetPasswordModal');
+            document.getElementById('resetPasswordForm').reset();
+        })
+        .catch(err => {
+            const msg = err.message.includes('wrong') || err.message.includes('invalid') ? 'Current password is incorrect' : err.message;
+            document.getElementById('currentPasswordError').textContent = msg;
+            document.getElementById('currentPasswordError').style.display = 'block';
+        });
+}
+
+// ===== NEW: Edit Order Modal =====
+async function editOrderModal(docId) {
+    const order = allOrders.find(o => o.docId === docId);
+    if (!order) return;
+    document.getElementById('editOrderId').value = docId;
+    document.getElementById('editOrderIdDisplay').value = order.orderId || docId.slice(0, 8);
+    document.getElementById('editOrderStatus').value = order.status || 'Processing';
+    document.getElementById('editOrderAddress').value = order.address || '';
+    document.getElementById('editOrderCity').value = order.city || '';
+    document.getElementById('editOrderPincode').value = order.pincode || '';
+    document.getElementById('editOrderTracking').value = order.trackingId || '';
+    openModal('editOrderModal');
+}
+
+// ===== NEW: Save Order Modifications =====
+async function saveOrderModifications(e) {
+    e.preventDefault();
+    const docId = document.getElementById('editOrderId').value;
+    const status = document.getElementById('editOrderStatus').value;
+    const address = document.getElementById('editOrderAddress').value;
+    const city = document.getElementById('editOrderCity').value;
+    const pincode = document.getElementById('editOrderPincode').value;
+    const tracking = document.getElementById('editOrderTracking').value;
+    try {
+        const docRef = db.collection('orders').doc(docId);
+        await docRef.update({status, address, city, pincode, trackingId: tracking, updatedAt: fsServerTimestamp()});
+        showAdminToast('✓ Order updated successfully', 'success');
+        closeModal('editOrderModal');
+        loadOrders();
+    } catch (err) {
+        showAdminToast('✗ Failed to update: ' + err.message, 'error');
+    }
+}
+
+// ===== Export new functions =====
+window.handleResetPassword = handleResetPassword;
+window.editOrderModal = editOrderModal;
+window.saveOrderModifications = saveOrderModifications;
