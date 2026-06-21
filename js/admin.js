@@ -252,10 +252,49 @@ async function loadProducts() {
     try {
         const snap = await db.collection('products').orderBy('name').get();
         allProducts = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
-        renderProducts();
+        // Auto-seed on first run if Firestore is empty
+        if (allProducts.length === 0) {
+            await autoSeedProducts();
+        } else {
+            renderProducts();
+        }
     } catch (err) {
         console.error('Products error:', err);
     }
+}
+
+async function autoSeedProducts() {
+    const products = getLocalProductsData();
+    let count = 0;
+    showAdminToast('Seeding products to Firestore...', 'info');
+    for (const p of products) {
+        const existing = await db.collection('products').where('name', '==', p.name).get();
+        if (existing.empty) {
+            await db.collection('products').add({
+                name: p.name, category: p.category, price: p.price,
+                oldPrice: p.oldPrice || null, gender: p.gender || null,
+                sleeve: p.sleeve || null, sizes: p.sizes || [],
+                description: p.description || '', image: p.image || '',
+                badge: p.badge || '', totalStock: 100,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            const colors = getColorsForCategory(p.category);
+            for (const size of (p.sizes || [])) {
+                for (const color of colors) {
+                    await db.collection('inventory').add({
+                        productName: p.name, productCategory: p.category,
+                        size, color, quantity: 20,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            }
+            count++;
+        }
+    }
+    showAdminToast(`Auto-seeded ${count} products to Firestore!`);
+    const snap = await db.collection('products').orderBy('name').get();
+    allProducts = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+    renderProducts();
 }
 
 function renderProducts() {
