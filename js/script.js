@@ -159,11 +159,20 @@ let currentFilter = 'all';
 
 // ===== Wishlist =====
 function isWishlisted(id) { return wishlist.includes(id); }
+function requireAuth(action) {
+    if (currentUser) { action(); return; }
+    showToast('Please login or create an account to continue');
+    openLoginModal();
+}
 function toggleWishlist(id) {
-    const idx = wishlist.indexOf(id);
-    if (idx > -1) { wishlist.splice(idx, 1); } else { wishlist.push(id); }
-    localStorage.setItem('ssa_wishlist', JSON.stringify(wishlist));
-    updateWishlistCount();
+    requireAuth(() => {
+        const idx = wishlist.indexOf(id);
+        if (idx > -1) { wishlist.splice(idx, 1); } else { wishlist.push(id); }
+        localStorage.setItem('ssa_wishlist', JSON.stringify(wishlist));
+        updateWishlistCount();
+        // Re-render so heart icon updates
+        renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve);
+    });
 }
 function updateWishlistCount() {
     const el = document.getElementById('wishlistCount');
@@ -193,12 +202,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== Common Init (all pages) =====
 function initCommon() {
-    // Preloader — hide after short delay, don't wait for all external resources
-    const hidePreloader = () => { setTimeout(() => { const p = document.getElementById('preloader'); if (p) p.classList.add('hidden'); }, 600); };
-    if (document.readyState === 'complete') hidePreloader();
-    else window.addEventListener('load', hidePreloader);
-    // Fallback: force-hide preloader after 3 seconds regardless
-    setTimeout(() => { const p = document.getElementById('preloader'); if (p) p.classList.add('hidden'); }, 3000);
+    // Preloader — hide on DOMContentLoaded+300ms (don't wait for Firebase SDKs)
+    const hidePreloader = () => { setTimeout(() => { const p = document.getElementById('preloader'); if (p) p.classList.add('hidden'); }, 300); };
+    hidePreloader(); // DOMContentLoaded has already fired since we're inside this listener
+    // Absolute hard cap at 1.2s just in case
+    setTimeout(() => { const p = document.getElementById('preloader'); if (p) p.classList.add('hidden'); }, 1200);
 
     // Header scroll
     const header = document.getElementById('header');
@@ -463,18 +471,20 @@ function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null
 
 // ===== Cart Functions =====
 function addToCart(id) {
-    const product = productsData.find(p => p.id === id);
-    if (!product) return;
-    if (product.outOfStock) { showToast('Sorry, this product is currently out of stock!'); return; }
-    const colors = getProductColors(product);
-    const defaultColor = colors ? colors[0].name : null;
-    const existing = cart.find(item => item.id === id);
-    if (existing) existing.qty++;
-    else cart.push({ ...product, qty: 1, selectedSize: product.sizes[0], selectedColor: defaultColor });
-    saveCart(); updateCartUI(); openCart();
-    showToast(`${product.name} added to cart!`);
+    requireAuth(() => {
+        const product = productsData.find(p => p.id === id);
+        if (!product) return;
+        if (product.outOfStock) { showToast('Sorry, this product is currently out of stock!'); return; }
+        const colors = getProductColors(product);
+        const defaultColor = colors ? colors[0].name : null;
+        const existing = cart.find(item => item.id === id);
+        if (existing) existing.qty++;
+        else cart.push({ ...product, qty: 1, selectedSize: product.sizes[0], selectedColor: defaultColor });
+        saveCart(); updateCartUI(); openCart();
+        showToast(`${product.name} added to cart!`);
+    });
 }
-function buyNow(id) { addToCart(id); openCheckout(); }
+function buyNow(id) { requireAuth(() => { addToCart(id); openCheckout(); }); }
 function removeFromCart(id) { cart = cart.filter(item => item.id !== id); saveCart(); updateCartUI(); }
 function updateQty(id, delta) {
     const item = cart.find(i => i.id === id);
@@ -505,7 +515,35 @@ function openCart() { document.getElementById('cartDrawer').classList.add('open'
 function closeCart() { document.getElementById('cartDrawer').classList.remove('open'); document.getElementById('cartOverlay').classList.remove('open'); }
 
 // ===== Checkout =====
-function openCheckout() { closeCart(); document.getElementById('checkoutModal').classList.add('active'); nextStep(1); }
+function openCheckout() {
+    closeCart();
+    document.getElementById('checkoutModal').classList.add('active');
+    nextStep(1);
+    // Pre-fill contact fields from logged-in user (readonly)
+    if (currentUser) {
+        const phoneEl = document.querySelector('[name="cphone"]');
+        const emailEl = document.querySelector('[name="cemail"]');
+        const fnEl   = document.querySelector('[name="firstname"]');
+        const lnEl   = document.querySelector('[name="lastname"]');
+        if (phoneEl && currentUser.phone) { phoneEl.value = currentUser.phone; phoneEl.readOnly = true; phoneEl.style.background = '#f1f5f9'; phoneEl.style.color = '#64748b'; }
+        if (emailEl && currentUser.email) { emailEl.value = currentUser.email; emailEl.readOnly = true; emailEl.style.background = '#f1f5f9'; emailEl.style.color = '#64748b'; }
+        // Pre-fill name if available
+        const nameParts = (currentUser.name || '').split(' ');
+        if (fnEl && !fnEl.value) fnEl.value = nameParts[0] || '';
+        if (lnEl && !lnEl.value) lnEl.value = nameParts.slice(1).join(' ') || '';
+        // Pre-fill saved address if available
+        const addrs = JSON.parse(localStorage.getItem('ssa_addresses_' + currentUser.email) || '[]');
+        if (addrs.length > 0) {
+            const a = addrs[0];
+            const addrEl = document.querySelector('[name="address"]');
+            const cityEl = document.querySelector('[name="city"]');
+            const pinEl  = document.querySelector('[name="pincode"]');
+            if (addrEl && !addrEl.value) addrEl.value = a.street || '';
+            if (cityEl && !cityEl.value) cityEl.value = a.city || '';
+            if (pinEl  && !pinEl.value)  pinEl.value  = a.pincode || '';
+        }
+    }
+}
 function nextStep(step) {
     if (step === 2 && !validateShippingForm()) return;
     document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
@@ -550,18 +588,17 @@ function selectSize(btn, pid) { btn.parentElement.querySelectorAll('.pd-size-btn
 function getSelectedSize(pid) { const c = document.getElementById(`pdSizes-${pid}`); if (!c) return null; const a = c.querySelector('.pd-size-btn.active'); return a ? a.dataset.size : null; }
 function getSelectedColor(pid) { const c = document.querySelector('.pd-color-swatch.active'); return c ? c.dataset.colorName : null; }
 function addToCartFromDetail(id) {
-    const size = getSelectedSize(id); const color = getSelectedColor(id); const p = productsData.find(x => x.id === id);
-    if (!p) return;
-    // Check per-size out-of-stock
-    if (size && window.outOfStockMap?.[p.name]?.has(size)) {
-        showToast(`Size ${size} is out of stock!`); return;
-    }
-    if (p.outOfStock) { showToast('This product is currently out of stock!'); return; }
-    const existing = cart.find(i => i.id === id && i.selectedSize === size && i.selectedColor === color);
-    if (existing) existing.qty += pdQuantity; else cart.push({ ...p, qty: pdQuantity, selectedSize: size, selectedColor: color || getProductColors(p)?.[0]?.name || null });
-    saveCart(); updateCartUI(); showToast(`${p.name} (${size}${color ? ', ' + color : ''}) added!`); closeProductDetail(); pdQuantity = 1;
+    requireAuth(() => {
+        const size = getSelectedSize(id); const color = getSelectedColor(id); const p = productsData.find(x => x.id === id);
+        if (!p) return;
+        if (size && window.outOfStockMap?.[p.name]?.has(size)) { showToast(`Size ${size} is out of stock!`); return; }
+        if (p.outOfStock) { showToast('This product is currently out of stock!'); return; }
+        const existing = cart.find(i => i.id === id && i.selectedSize === size && i.selectedColor === color);
+        if (existing) existing.qty += pdQuantity; else cart.push({ ...p, qty: pdQuantity, selectedSize: size, selectedColor: color || getProductColors(p)?.[0]?.name || null });
+        saveCart(); updateCartUI(); showToast(`${p.name} (${size}${color ? ', ' + color : ''}) added!`); closeProductDetail(); pdQuantity = 1;
+    });
 }
-function buyNowFromDetail(id) { addToCartFromDetail(id); openCheckout(); }
+function buyNowFromDetail(id) { requireAuth(() => { addToCartFromDetail(id); openCheckout(); }); }
 function closeProductDetail() { document.getElementById('productDetailModal').classList.remove('active'); pdQuantity = 1; }
 
 // ===== Auth System =====
@@ -624,49 +661,165 @@ function handleRegister() {
 function closeAuthModal() { document.getElementById('authModal').classList.remove('active'); }
 async function openAccountPanel() {
     const modal = document.getElementById('authModal');
-    // Show loading state
     modal.innerHTML = `<div class="modal account-modal"><button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button><div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:24px;color:#0066cc;"></i><p>Loading your account...</p></div></div>`;
     modal.classList.add('active');
-    
-    try {
-        // Fetch latest orders from Firestore (get admin-updated status)
-        let firestoreOrders = [];
-        if (window.fireDb) {
-            try {
-                // Must sign in anonymously first — Firestore rules require request.auth != null to read
-                if (window.auth) { try { await window.auth.signInAnonymously(); } catch(e) {} }
-                const snap = await fireDb.collection('orders').where('customerEmail', '==', currentUser.email).get();
-                firestoreOrders = snap.docs.map(d => ({
-                    id: d.data().orderId,
-                    date: d.data().createdAt?.seconds ? new Date(d.data().createdAt.seconds * 1000).toISOString() : new Date().toISOString(),
-                    items: d.data().items || [],
-                    total: d.data().total || 0,
-                    payment: d.data().payment || 'COD',
-                    status: d.data().status || 'Processing'
-                }));
-                console.log('[account] Fetched', firestoreOrders.length, 'orders from Firestore');
-            } catch (e) {
-                console.warn('[account] Could not fetch from Firestore:', e.message);
-            }
-        }
-        
-        // Fall back to localStorage if Firestore fetch failed
-        const localOrders = JSON.parse(localStorage.getItem('ssa_orders_' + currentUser.email) || '[]');
-        const orders = firestoreOrders.length > 0 ? firestoreOrders : localOrders;
-        
-        // Now render
-        modal.innerHTML = `<div class="modal account-modal"><button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button><div class="account-header"><div class="account-avatar"><i class="fas fa-user-circle"></i></div><h3>${currentUser.name}</h3><p>${currentUser.email}</p></div><div class="account-tabs"><button class="account-tab active" onclick="showAccountTab('orders')"><i class="fas fa-box"></i> Orders</button><button class="account-tab" onclick="showAccountTab('profile')"><i class="fas fa-user-edit"></i> Profile</button></div><div class="account-content" id="accountOrders">${orders.length === 0 ? '<div class="empty-orders"><i class="fas fa-box-open"></i><p>No orders yet</p></div>' : orders.map(o => `<div class="order-card"><div class="order-card-header"><div><span class="order-id-label">#${o.id}</span><span class="order-date">${new Date(o.date).toLocaleDateString('en-IN')}</span></div><span class="order-status">${o.status}</span></div><div class="order-card-items">${o.items.map(i => `<div class="order-item-row"><span>${i.name} x${i.qty}</span><span>₹${i.price*i.qty}</span></div>`).join('')}</div><div class="order-card-footer"><span class="order-total">₹${o.total.toLocaleString()}</span><span class="order-payment">${o.payment}</span></div></div>`).join('')}</div><div class="account-content" id="accountProfile" style="display:none;"><div class="profile-info"><div class="profile-row"><label>Name:</label><span>${currentUser.name}</span></div><div class="profile-row"><label>Email:</label><span>${currentUser.email}</span></div><div class="profile-row"><label>Phone:</label><span>${currentUser.phone||'N/A'}</span></div></div></div><button class="btn btn-outline-dark btn-full" style="margin-top:15px;" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>`;
-    } catch (err) {
-        console.error('[account] Error:', err);
-        // Fallback to localStorage
-        const orders = JSON.parse(localStorage.getItem('ssa_orders_' + currentUser.email) || '[]');
-        modal.innerHTML = `<div class="modal account-modal"><button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button><div class="account-header"><div class="account-avatar"><i class="fas fa-user-circle"></i></div><h3>${currentUser.name}</h3><p>${currentUser.email}</p></div><div class="account-tabs"><button class="account-tab active" onclick="showAccountTab('orders')"><i class="fas fa-box"></i> Orders</button><button class="account-tab" onclick="showAccountTab('profile')"><i class="fas fa-user-edit"></i> Profile</button></div><div class="account-content" id="accountOrders">${orders.length === 0 ? '<div class="empty-orders"><i class="fas fa-box-open"></i><p>No orders yet</p></div>' : orders.map(o => `<div class="order-card"><div class="order-card-header"><div><span class="order-id-label">#${o.id}</span><span class="order-date">${new Date(o.date).toLocaleDateString('en-IN')}</span></div><span class="order-status">${o.status}</span></div><div class="order-card-items">${o.items.map(i => `<div class="order-item-row"><span>${i.name} x${i.qty}</span><span>₹${i.price*i.qty}</span></div>`).join('')}</div><div class="order-card-footer"><span class="order-total">₹${o.total.toLocaleString()}</span><span class="order-payment">${o.payment}</span></div></div>`).join('')}</div><div class="account-content" id="accountProfile" style="display:none;"><div class="profile-info"><div class="profile-row"><label>Name:</label><span>${currentUser.name}</span></div><div class="profile-row"><label>Email:</label><span>${currentUser.email}</span></div><div class="profile-row"><label>Phone:</label><span>${currentUser.phone||'N/A'}</span></div></div></div><button class="btn btn-outline-dark btn-full" style="margin-top:15px;" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>`;
+    let firestoreOrders = [];
+    if (window.fireDb) {
+        try {
+            if (window.auth) { try { await window.auth.signInAnonymously(); } catch(e) {} }
+            const snap = await fireDb.collection('orders').where('customerEmail', '==', currentUser.email).get();
+            firestoreOrders = snap.docs.map(d => ({ id: d.data().orderId, date: d.data().createdAt?.seconds ? new Date(d.data().createdAt.seconds*1000).toISOString() : new Date().toISOString(), items: d.data().items||[], total: d.data().total||0, payment: d.data().payment||'COD', status: d.data().status||'Processing' }));
+        } catch(e) { console.warn('[account]', e.message); }
     }
+    const localOrders = JSON.parse(localStorage.getItem('ssa_orders_' + currentUser.email) || '[]');
+    const orders = firestoreOrders.length > 0 ? firestoreOrders : localOrders;
+    const avatar = localStorage.getItem('ssa_avatar_' + currentUser.email) || '';
+    const avatarHtml = avatar ? `<img src="${avatar}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.15);">` : `<i class="fas fa-user-circle" style="font-size:72px;color:#0066cc;"></i>`;
+    modal.innerHTML = `<div class="modal account-modal">
+        <button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button>
+        <div class="account-header">
+            <div class="account-avatar" style="position:relative;cursor:pointer;" onclick="document.getElementById('avatarUpload').click()">
+                ${avatarHtml}
+                <span style="position:absolute;bottom:2px;right:2px;width:20px;height:20px;background:#0066cc;border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="fas fa-camera" style="font-size:9px;color:#fff;"></i></span>
+                <input type="file" id="avatarUpload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
+            </div>
+            <h3>${currentUser.name}</h3><p>${currentUser.email}</p>
+        </div>
+        <div class="account-tabs">
+            <button class="account-tab active" onclick="showAccountTab('orders')"><i class="fas fa-box"></i> Orders</button>
+            <button class="account-tab" onclick="showAccountTab('profile')"><i class="fas fa-user-edit"></i> Profile</button>
+            <button class="account-tab" onclick="showAccountTab('addresses')"><i class="fas fa-map-marker-alt"></i> Addresses</button>
+            <button class="account-tab" onclick="showAccountTab('security')"><i class="fas fa-lock"></i> Password</button>
+        </div>
+        <div class="account-content" id="accountOrders">
+            ${orders.length === 0 ? '<div class="empty-orders"><i class="fas fa-box-open"></i><p>No orders yet</p></div>' : orders.map(o => `<div class="order-card"><div class="order-card-header"><div><span class="order-id-label">#${o.id}</span><span class="order-date">${new Date(o.date).toLocaleDateString('en-IN')}</span></div><span class="order-status">${o.status}</span></div><div class="order-card-items">${o.items.map(i => `<div class="order-item-row"><span>${i.name} x${i.qty}</span><span>₹${i.price*i.qty}</span></div>`).join('')}</div><div class="order-card-footer"><span class="order-total">₹${o.total.toLocaleString()}</span><span class="order-payment">${o.payment}</span></div></div>`).join('')}
+        </div>
+        <div class="account-content" id="accountProfile" style="display:none;">
+            <div class="profile-edit-form">
+                <div class="form-group"><label>Full Name</label><input type="text" id="editName" value="${currentUser.name}" placeholder="Your name"></div>
+                <div class="form-group"><label>Phone</label><input type="tel" id="editPhone" value="${currentUser.phone||''}" placeholder="Phone number"></div>
+                <div class="form-group"><label>Email <small style="color:#94a3b8">(cannot change)</small></label><input type="email" value="${currentUser.email}" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed;"></div>
+                <button class="btn btn-gradient btn-full" onclick="saveProfileChanges()"><i class="fas fa-save"></i> Save Changes</button>
+            </div>
+        </div>
+        <div class="account-content" id="accountAddresses" style="display:none;">
+            <div id="addressList"></div>
+            <button class="btn btn-outline-dark btn-full" style="margin-top:8px" onclick="showAddAddressForm()"><i class="fas fa-plus"></i> Add New Address</button>
+            <div id="addAddressForm" style="display:none;margin-top:12px;">
+                <div class="form-group"><label>Street / Door No.</label><input type="text" id="addrStreet" placeholder="Street address"></div>
+                <div class="form-row"><div class="form-group"><label>City</label><input type="text" id="addrCity" placeholder="City"></div><div class="form-group"><label>PIN Code</label><input type="text" id="addrPin" placeholder="PIN Code"></div></div>
+                <div class="form-group"><label>State</label><input type="text" id="addrState" placeholder="State" value="Tamil Nadu"></div>
+                <div class="form-row"><button class="btn btn-gradient" onclick="saveNewAddress()"><i class="fas fa-save"></i> Save</button><button class="btn btn-outline-dark" onclick="document.getElementById('addAddressForm').style.display='none'">Cancel</button></div>
+            </div>
+        </div>
+        <div class="account-content" id="accountSecurity" style="display:none;">
+            <div class="profile-edit-form">
+                <div class="form-group"><label>Current Password</label><input type="password" id="pwdCurrent" placeholder="Current password"></div>
+                <div class="form-group"><label>New Password</label><input type="password" id="pwdNew" placeholder="New password (min 6 chars)"></div>
+                <div class="form-group"><label>Confirm New Password</label><input type="password" id="pwdConfirm" placeholder="Confirm new password"></div>
+                <p id="pwdMsg" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
+                <button class="btn btn-gradient btn-full" onclick="changePassword()"><i class="fas fa-key"></i> Update Password</button>
+            </div>
+        </div>
+        <button class="btn btn-outline-dark btn-full" style="margin-top:15px" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    </div>`;
+    renderAddressList();
 }
 function showAccountTab(tab) {
     document.querySelectorAll('.account-tab').forEach(t => t.classList.remove('active'));
-    if (tab === 'orders') { document.getElementById('accountOrders').style.display = 'block'; document.getElementById('accountProfile').style.display = 'none'; document.querySelectorAll('.account-tab')[0].classList.add('active'); }
-    else { document.getElementById('accountOrders').style.display = 'none'; document.getElementById('accountProfile').style.display = 'block'; document.querySelectorAll('.account-tab')[1].classList.add('active'); }
+    ['accountOrders','accountProfile','accountAddresses','accountSecurity'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    const map = { orders:'accountOrders', profile:'accountProfile', addresses:'accountAddresses', security:'accountSecurity' };
+    const el = document.getElementById(map[tab]); if (el) el.style.display = 'block';
+    const tabBtns = document.querySelectorAll('.account-tab');
+    const tabIdx = { orders:0, profile:1, addresses:2, security:3 };
+    if (tabBtns[tabIdx[tab]]) tabBtns[tabIdx[tab]].classList.add('active');
+}
+function handleAvatarUpload(input) {
+    const file = input.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        localStorage.setItem('ssa_avatar_' + currentUser.email, e.target.result);
+        const avatarDiv = document.querySelector('.account-avatar');
+        if (avatarDiv) { avatarDiv.querySelector('i,img')?.remove(); const img = document.createElement('img'); img.src = e.target.result; img.style.cssText = 'width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.15);'; avatarDiv.insertBefore(img, avatarDiv.firstChild); }
+        showToast('Profile picture updated!');
+    };
+    reader.readAsDataURL(file);
+}
+function saveProfileChanges() {
+    const name  = document.getElementById('editName')?.value.trim();
+    const phone = document.getElementById('editPhone')?.value.trim();
+    if (!name) { showToast('Name cannot be empty'); return; }
+    currentUser.name  = name;
+    currentUser.phone = phone;
+    localStorage.setItem('ssa_user', JSON.stringify(currentUser));
+    // Update in ssa_users list
+    const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
+    const idx = users.findIndex(u => u.email === currentUser.email);
+    if (idx > -1) {
+        const parts = name.split(' ');
+        users[idx].firstName = parts[0] || users[idx].firstName;
+        users[idx].lastName  = parts.slice(1).join(' ') || users[idx].lastName;
+        users[idx].phone     = phone;
+        localStorage.setItem('ssa_users', JSON.stringify(users));
+    }
+    updateAuthUI();
+    showToast('Profile saved!');
+}
+function renderAddressList() {
+    const el = document.getElementById('addressList'); if (!el) return;
+    const addrs = JSON.parse(localStorage.getItem('ssa_addresses_' + currentUser.email) || '[]');
+    if (addrs.length === 0) { el.innerHTML = '<p style="color:#94a3b8;font-size:0.85rem;text-align:center;padding:10px 0">No saved addresses yet</p>'; return; }
+    el.innerHTML = addrs.map((a, i) => `<div class="addr-card" style="border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:8px;position:relative;">
+        ${i===0?'<span style="font-size:0.7rem;font-weight:700;color:#0066cc;margin-bottom:4px;display:block">DEFAULT</span>':''}
+        <p style="margin:0;font-size:0.88rem;line-height:1.6">${a.street}, ${a.city} – ${a.pincode}, ${a.state||'Tamil Nadu'}</p>
+        <button onclick="deleteAddress(${i})" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:#ef4444;font-size:0.78rem;padding:2px 6px;"><i class="fas fa-trash"></i></button>
+        ${i>0?`<button onclick="setDefaultAddress(${i})" style="font-size:0.72rem;color:#0066cc;background:none;border:none;cursor:pointer;margin-top:4px;padding:0">Set as default</button>`:''}
+    </div>`).join('');
+}
+function showAddAddressForm() { document.getElementById('addAddressForm').style.display = 'block'; }
+function saveNewAddress() {
+    const street = document.getElementById('addrStreet')?.value.trim();
+    const city   = document.getElementById('addrCity')?.value.trim();
+    const pin    = document.getElementById('addrPin')?.value.trim();
+    const state  = document.getElementById('addrState')?.value.trim();
+    if (!street || !city || !pin) { showToast('Please fill street, city and PIN'); return; }
+    const addrs = JSON.parse(localStorage.getItem('ssa_addresses_' + currentUser.email) || '[]');
+    addrs.push({ street, city, pincode: pin, state: state || 'Tamil Nadu' });
+    localStorage.setItem('ssa_addresses_' + currentUser.email, JSON.stringify(addrs));
+    document.getElementById('addAddressForm').style.display = 'none';
+    renderAddressList();
+    showToast('Address saved!');
+}
+function deleteAddress(i) {
+    const addrs = JSON.parse(localStorage.getItem('ssa_addresses_' + currentUser.email) || '[]');
+    addrs.splice(i, 1);
+    localStorage.setItem('ssa_addresses_' + currentUser.email, JSON.stringify(addrs));
+    renderAddressList();
+}
+function setDefaultAddress(i) {
+    const addrs = JSON.parse(localStorage.getItem('ssa_addresses_' + currentUser.email) || '[]');
+    const [a] = addrs.splice(i, 1); addrs.unshift(a);
+    localStorage.setItem('ssa_addresses_' + currentUser.email, JSON.stringify(addrs));
+    renderAddressList();
+}
+function changePassword() {
+    const curr    = document.getElementById('pwdCurrent')?.value;
+    const newPwd  = document.getElementById('pwdNew')?.value;
+    const confirm = document.getElementById('pwdConfirm')?.value;
+    const msgEl   = document.getElementById('pwdMsg');
+    const show = (msg, ok) => { msgEl.textContent = msg; msgEl.style.color = ok ? '#10b981' : '#ef4444'; msgEl.style.display = 'block'; };
+    if (!curr || !newPwd || !confirm) { show('Please fill all fields'); return; }
+    const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
+    const idx = users.findIndex(u => u.email === currentUser.email);
+    if (idx === -1 || users[idx].password !== curr) { show('Current password is incorrect'); return; }
+    if (newPwd.length < 6) { show('New password must be at least 6 characters'); return; }
+    if (newPwd !== confirm) { show('Passwords do not match'); return; }
+    users[idx].password = newPwd;
+    localStorage.setItem('ssa_users', JSON.stringify(users));
+    show('Password updated successfully!', true);
+    document.getElementById('pwdCurrent').value = '';
+    document.getElementById('pwdNew').value = '';
+    document.getElementById('pwdConfirm').value = '';
 }
 function handleLogout() { currentUser = null; localStorage.removeItem('ssa_user'); closeAuthModal(); updateAuthUI(); showToast('Logged out'); }
 

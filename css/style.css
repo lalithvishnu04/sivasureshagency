@@ -449,12 +449,12 @@ img { max-width: 100%; height: auto; }
 .auth-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; }
 .auth-switch { text-align: center; font-size: 0.82rem; color: var(--text-muted); margin-top: 15px; }
 .auth-switch a { color: var(--primary); font-weight: 600; cursor: pointer; }
-.account-modal { max-width: 500px; padding: 30px; }
+.account-modal { max-width: 520px; padding: 30px; max-height: 88vh; overflow-y: auto; }
 .account-header { text-align: center; margin-bottom: 20px; }
-.account-avatar { width: 60px; height: 60px; border-radius: 50%; background: var(--gradient-2); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.5rem; margin: 0 auto 10px; }
-.account-tabs { display: flex; gap: 5px; margin-bottom: 20px; background: var(--bg-light); border-radius: 8px; padding: 4px; }
-.account-tab { flex: 1; padding: 10px; border: none; background: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-family: var(--font); transition: var(--transition); font-size: 0.85rem; }
-.account-tab.active { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.account-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--gradient-2); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.8rem; margin: 0 auto 10px; }
+.account-tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg-light); border-radius: 8px; padding: 4px; flex-wrap: wrap; }
+.account-tab { flex: 1; min-width: 70px; padding: 8px 6px; border: none; background: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-family: var(--font); transition: var(--transition); font-size: 0.78rem; }
+.account-tab.active { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.08); color: var(--primary); }
 .empty-orders { text-align: center; padding: 30px; color: var(--text-muted); }
 .empty-orders i { font-size: 2.5rem; opacity: 0.3; margin-bottom: 10px; }
 .order-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
@@ -469,6 +469,9 @@ img { max-width: 100%; height: auto; }
 .profile-info { display: flex; flex-direction: column; gap: 12px; }
 .profile-row { display: flex; gap: 12px; font-size: 0.88rem; }
 .profile-row label { font-weight: 600; min-width: 70px; }
+.profile-edit-form { display: flex; flex-direction: column; gap: 12px; }
+.profile-edit-form .form-group { margin: 0; }
+.profile-edit-form label { font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 4px; color: var(--text-light); }
 
 /* ===== Chatbot ===== */
 .chatbot-container { position: fixed; bottom: 20px; right: 20px; z-index: 9000; }
