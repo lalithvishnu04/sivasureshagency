@@ -177,6 +177,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (page === 'home') initHomePage();
     if (page === 'categories') initCategoriesPage();
     if (page === 'contact') initContactPage();
+    // Auto-sync any localStorage orders that failed to save during a previous session
+    if (currentUser) {
+        setTimeout(() => {
+            if (typeof syncPendingOrders === 'function')
+                syncPendingOrders(currentUser.email, currentUser.name, currentUser.phone);
+        }, 2000); // slight delay so firebase-db.js module is fully ready
+    }
 });
 
 // ===== Common Init (all pages) =====
@@ -556,7 +563,7 @@ function handleLogin() {
     if (!password) { document.getElementById('loginPasswordError').textContent = 'Required'; document.getElementById('loginPasswordError').style.display = 'block'; return; }
     const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
     const user = users.find(u => (u.email === email || u.phone === email) && u.password === password);
-    if (user) { currentUser = { name: user.firstName + ' ' + user.lastName, email: user.email, phone: user.phone }; localStorage.setItem('ssa_user', JSON.stringify(currentUser)); closeAuthModal(); updateAuthUI(); showToast(`Welcome back, ${user.firstName}!`); }
+    if (user) { currentUser = { name: user.firstName + ' ' + user.lastName, email: user.email, phone: user.phone }; localStorage.setItem('ssa_user', JSON.stringify(currentUser)); closeAuthModal(); updateAuthUI(); showToast(`Welcome back, ${user.firstName}!`); if (typeof syncPendingOrders === 'function') syncPendingOrders(currentUser.email, currentUser.name, currentUser.phone); }
     else { document.getElementById('loginPasswordError').textContent = 'Invalid credentials'; document.getElementById('loginPasswordError').style.display = 'block'; }
 }
 function handleRegister() {

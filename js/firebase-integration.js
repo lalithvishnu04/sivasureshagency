@@ -2,15 +2,27 @@
 // fireDb is set by js/firebase-db.js (module) which targets named DB "sivasureshagency"
 // fsServerTimestamp and fsIncrement are also set by firebase-db.js
 
+// ── Helper: ensure anonymous Firebase auth ───────────────────────────
+async function _ensureAuth() {
+    if (!window.auth) return;
+    try { await window.auth.signInAnonymously(); } catch (e) { /* already signed in or disabled */ }
+}
+
+// ── Helper: mark an order as synced in localStorage ─────────────────
+function _markSynced(orderId, userEmail) {
+    const key = 'ssa_orders_' + userEmail;
+    try {
+        const orders = JSON.parse(localStorage.getItem(key) || '[]');
+        const idx = orders.findIndex(o => o.id === orderId);
+        if (idx !== -1) { orders[idx]._synced = true; localStorage.setItem(key, JSON.stringify(orders)); }
+    } catch (e) {}
+}
+
 // ===== Save Order to Firestore =====
 async function saveOrderToFirebase(order, shippingDetails) {
     try {
         if (!window.fireDb) throw new Error('Firebase not initialised');
-
-        // Ensure the user is authenticated (anonymously) so Firestore allows the write
-        if (window.auth && typeof window.auth.signInAnonymously === 'function') {
-            try { await window.auth.signInAnonymously(); } catch (e) { /* may already be signed in */ }
-        }
+        await _ensureAuth();
 
         await fireDb.collection('orders').add({
             orderId: order.id,
@@ -28,6 +40,9 @@ async function saveOrderToFirebase(order, shippingDetails) {
             createdAt: fsServerTimestamp(),
             updatedAt: fsServerTimestamp()
         });
+
+        // Mark as synced in localStorage so syncPendingOrders skips it
+        _markSynced(order.id, shippingDetails.email);
 
         // Update or create customer record
         const customerRef = fireDb.collection('customers');
@@ -51,16 +66,65 @@ async function saveOrderToFirebase(order, shippingDetails) {
         }
     } catch (err) {
         console.error('Firebase order save error:', err);
-        // Show a non-blocking warning so the user knows the order may not appear in admin
-        if (err.code === 'permission-denied' || err.message.includes('permission')) {
-            setTimeout(() => alert('Your order was placed but could not be synced to the server.\nPlease contact us to confirm your order: ' + (order.id || '')), 500);
+        // Will be retried automatically by syncPendingOrders on next page load
+    }
+}
+
+// ===== Auto-sync: push any unsynced localStorage orders to Firestore =====
+async function syncPendingOrders(userEmail, userName, userPhone) {
+    if (!window.fireDb || !userEmail) return;
+    const key = 'ssa_orders_' + userEmail;
+    let orders;
+    try { orders = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { return; }
+    const pending = orders.filter(o => !o._synced);
+    if (!pending.length) return;
+
+    await _ensureAuth();
+
+    let changed = false;
+    for (const order of pending) {
+        try {
+            // Avoid duplicates: check if already in Firestore
+            const existing = await fireDb.collection('orders').where('orderId', '==', order.id).get();
+            if (!existing.empty) {
+                order._synced = true; changed = true; continue;
+            }
+            // Push to Firestore
+            await fireDb.collection('orders').add({
+                orderId:       order.id,
+                customerName:  userName  || '',
+                customerEmail: userEmail,
+                customerPhone: userPhone || '',
+                address: '', city: '', pincode: '',
+                items:   order.items  || [],
+                total:   order.total  || 0,
+                payment: order.payment || 'COD',
+                status:  order.status  || 'Processing',
+                trackingId: '',
+                createdAt: fsServerTimestamp(),
+                updatedAt: fsServerTimestamp()
+            });
+            order._synced = true; changed = true;
+        } catch (e) {
+            console.warn('Sync failed for order', order.id, e.message);
+            // Will retry on next page load
         }
+    }
+    if (changed) {
+        // Write back with _synced flags
+        const all = JSON.parse(localStorage.getItem(key) || '[]');
+        for (const p of pending) {
+            const idx = all.findIndex(o => o.id === p.id);
+            if (idx !== -1) all[idx]._synced = p._synced;
+        }
+        localStorage.setItem(key, JSON.stringify(all));
     }
 }
 
 // ===== Save Customer Registration to Firestore =====
 async function saveCustomerToFirebase(customerData) {
     try {
+        await _ensureAuth();
         const existing = await fireDb.collection('customers').where('email', '==', customerData.email).get();
         if (existing.empty) {
             await fireDb.collection('customers').add({
@@ -78,5 +142,7 @@ async function saveCustomerToFirebase(customerData) {
 }
 
 // Expose to global scope
-window.saveOrderToFirebase = saveOrderToFirebase;
+window.saveOrderToFirebase   = saveOrderToFirebase;
 window.saveCustomerToFirebase = saveCustomerToFirebase;
+window.syncPendingOrders      = syncPendingOrders;
+
