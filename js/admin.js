@@ -689,6 +689,55 @@ async function quickAdjust(docId, current, delta) {
     }
 }
 
+// ===== Reconcile inventory from all unprocessed orders =====
+async function reconcileInventoryFromOrders() {
+    const btn = event?.target;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Working...'; }
+    showAdminToast('Reading all orders...', 'info');
+    try {
+        const snap = await db.collection('orders').get();
+        const pending = snap.docs.filter(d => {
+            const data = d.data();
+            return !data.inventoryDeducted && data.status !== 'Cancelled';
+        });
+        if (!pending.length) {
+            showAdminToast('All orders already reconciled ✓', 'info');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-calculator"></i> Reconcile Stock'; }
+            return;
+        }
+        let processed = 0;
+        for (const doc of pending) {
+            const order = doc.data();
+            for (const item of (order.items || [])) {
+                if (!item.name || !item.selectedSize) continue;
+                const invSnap = await db.collection('inventory')
+                    .where('productName', '==', item.name)
+                    .where('size', '==', item.selectedSize)
+                    .get();
+                if (invSnap.empty) continue;
+                let invDoc = invSnap.docs[0];
+                if (item.selectedColor && invSnap.docs.length > 1) {
+                    const m = invSnap.docs.find(d => (d.data().color || '').toLowerCase() === item.selectedColor.toLowerCase());
+                    if (m) invDoc = m;
+                }
+                const cur = invDoc.data().quantity || 0;
+                await db.collection('inventory').doc(invDoc.id).update({
+                    quantity: Math.max(0, cur - (item.qty || 1)),
+                    updatedAt: fsServerTimestamp()
+                });
+            }
+            await db.collection('orders').doc(doc.id).update({ inventoryDeducted: true });
+            processed++;
+        }
+        showAdminToast(`Reconciled ${processed} order(s). Inventory updated!`);
+        await loadInventory();
+    } catch (err) {
+        showAdminToast('Error: ' + err.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-calculator"></i> Reconcile Stock'; }
+    }
+}
+
 function openStockModal(docId, name, qty) {
     document.getElementById('stockDocId').value = docId;
     document.getElementById('stockProductName').textContent = name;
@@ -979,3 +1028,4 @@ window.toggleMessage = toggleMessage;
 window.markAllRead = markAllRead;
 window.quickAdjust = quickAdjust;
 window.setInvFilter = setInvFilter;
+window.reconcileInventoryFromOrders = reconcileInventoryFromOrders;

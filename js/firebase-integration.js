@@ -37,6 +37,7 @@ async function saveOrderToFirebase(order, shippingDetails) {
             payment: order.payment,
             status: 'Processing',
             trackingId: '',
+            inventoryDeducted: false,
             createdAt: fsServerTimestamp(),
             updatedAt: fsServerTimestamp()
         });
@@ -46,6 +47,13 @@ async function saveOrderToFirebase(order, shippingDetails) {
 
         // Deduct inventory for each ordered item
         await deductInventoryForOrder(order.items);
+
+        // Mark the order as inventory-deducted so the admin reconcile tool skips it
+        // (find by orderId since we don't have the docId from add())
+        try {
+            const snap = await fireDb.collection('orders').where('orderId', '==', order.id).get();
+            if (!snap.empty) await fireDb.collection('orders').doc(snap.docs[0].id).update({ inventoryDeducted: true });
+        } catch(e) { /* non-critical */ }
 
         // Upsert customer record using email as doc ID (no read needed)
         const customerDocId = shippingDetails.email.replace(/[^a-zA-Z0-9]/g, '_');
@@ -137,9 +145,16 @@ async function syncPendingOrders(userEmail, userName, userPhone) {
                 payment: order.payment || 'COD',
                 status:  order.status  || 'Processing',
                 trackingId: '',
+                inventoryDeducted: false,
                 createdAt: fsServerTimestamp(),
                 updatedAt: fsServerTimestamp()
             });
+            // Deduct inventory for synced offline order
+            await deductInventoryForOrder(order.items || []);
+            try {
+                const snap = await fireDb.collection('orders').where('orderId', '==', order.id).get();
+                if (!snap.empty) await fireDb.collection('orders').doc(snap.docs[0].id).update({ inventoryDeducted: true });
+            } catch(e) { /* non-critical */ }
             console.log(`[sync] ✓ Order ${order.id} synced`);
             order._synced = true; changed = true; synced++;
         } catch (e) {

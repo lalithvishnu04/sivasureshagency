@@ -197,6 +197,7 @@
                     </div>
                     <div class="toolbar-right">
                         <input type="text" id="inventorySearch" placeholder="Search by product, size, color..." class="search-input" oninput="renderInventory()">
+                        <button class="btn-secondary" onclick="reconcileInventoryFromOrders()" title="Deduct stock for all past orders that weren't processed"><i class="fas fa-calculator"></i> Reconcile Stock</button>
                         <button class="btn-primary" onclick="syncInventoryFromProducts()"><i class="fas fa-sync"></i> Sync</button>
                     </div>
                 </div>
