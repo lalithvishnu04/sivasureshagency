@@ -1,9 +1,11 @@
 /**
- * Firebase initialization using compat SDK
- * Loads Firebase globally and sets window.db, window.auth, etc.
+ * Firebase initialization
+ * Auth/Storage use compat SDK; Firestore uses modular SDK to support named database "sivasureshagency"
  */
 
-// Initialize Firebase config
+console.log('[firebase-db-init] Starting Firebase initialization...');
+
+// Initialize Firebase config (compat SDK already loaded via HTML script tags)
 const firebaseConfig = {
     apiKey: "AIzaSyD3H7U7WwkRWx6hvsQxTGkmGO2Uq9xd4n4",
     authDomain: "siva-suresh-agency.firebaseapp.com",
@@ -13,49 +15,12 @@ const firebaseConfig = {
     appId: "1:1069646087757:web:986a9d840fcb77a68c3e04"
 };
 
-console.log('[firebase-db-init] Starting Firebase initialization...');
-
-// Initialize Firebase (compat SDK)
 firebase.initializeApp(firebaseConfig);
 console.log('[firebase-db-init] Firebase app initialized');
 
-// Get references - targeting named database "sivasureshagency"
-const _db = firebase.firestore();
-_db.settings({ experimentalAutoDetectLongPolling: true });
-
 const _auth = firebase.auth();
 const _storage = firebase.storage();
-
-console.log('[firebase-db-init] Got references - db, auth, storage');
-
-// Wrapper to mimic modular SDK behavior
-window.db = {
-    collection: (name) => {
-        const ref = _db.collection(name);
-        return {
-            get: () => ref.get(),
-            add: (data) => ref.add(data),
-            where: (f, op, v) => ({
-                get: () => ref.where(f, op, v).get(),
-                orderBy: (f2, dir) => ({
-                    get: () => ref.where(f, op, v).orderBy(f2, dir).get()
-                })
-            }),
-            orderBy: (f, dir) => ({
-                get: () => ref.orderBy(f, dir || 'asc').get(),
-                where: (f2, op2, v2) => ({
-                    get: () => ref.orderBy(f, dir).where(f2, op2, v2).get()
-                })
-            }),
-            doc: (id) => ({
-                get: () => ref.doc(id).get(),
-                set: (data, opts) => ref.doc(id).set(data, opts),
-                update: (data) => ref.doc(id).update(data),
-                delete: () => ref.doc(id).delete()
-            })
-        };
-    }
-};
+console.log('[firebase-db-init] Got auth, storage');
 
 window.auth = {
     onAuthStateChanged: (cb) => _auth.onAuthStateChanged(cb),
@@ -74,17 +39,38 @@ window.storage = {
     deleteObject: (r) => r.delete()
 };
 
-window.fsServerTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();
-window.fsIncrement = (n) => firebase.firestore.FieldValue.increment(n);
-
-// Also expose on fireDb for firebase-integration.js
-window.fireDb = window.db;
-
-// Helper
 window.getCurrentUser = () => _auth.currentUser;
 
-// Signal ready
-window._firebaseReady = true;
-console.log('[firebase-db-init] ✓ Firebase initialized successfully');
-console.log('[firebase-db-init] window.auth:', typeof window.auth);
-console.log('[firebase-db-init] window.db:', typeof window.db);
+// Firestore via modular SDK to target named database "sivasureshagency"
+// Loaded inline using dynamic import
+(async () => {
+    try {
+        const { initializeApp, getApps, getApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+        const { getFirestore, collection, getDocs, addDoc, doc, getDoc, setDoc, updateDoc, deleteDoc, query, orderBy, where, serverTimestamp, increment } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+
+        const _app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+        const _db = getFirestore(_app, 'sivasureshagency');
+
+        // Expose Firestore with compat-like chainable API
+        class ColRef {
+            constructor(name) { this._col = collection(_db, name); this._name = name; this._constraints = []; }
+            _clone(extra) { const c = new ColRef(this._name); c._constraints = [...this._constraints, extra]; return c; }
+            where(f, op, v) { return this._clone(where(f, op, v)); }
+            orderBy(f, dir) { return this._clone(orderBy(f, dir || 'asc')); }
+            async get() { const q = this._constraints.length ? query(this._col, ...this._constraints) : this._col; const snap = await getDocs(q); return { docs: snap.docs.map(d => ({ id: d.id, data: () => d.data(), exists: d.exists() })), size: snap.size, empty: snap.empty }; }
+            async add(data) { return addDoc(this._col, data); }
+            doc(id) { return { get: async () => { const d = await getDoc(doc(_db, this._name, id)); return { id: d.id, data: () => d.data(), exists: d.exists() }; }, set: (data, opts) => setDoc(doc(_db, this._name, id), data, opts || {}), update: (data) => updateDoc(doc(_db, this._name, id), data), delete: () => deleteDoc(doc(_db, this._name, id)) }; }
+        }
+
+        window.db = { collection: (name) => new ColRef(name) };
+        window.fireDb = window.db;
+        window.fsServerTimestamp = serverTimestamp;
+        window.fsIncrement = increment;
+        window._firebaseReady = true;
+
+        console.log('[firebase-db-init] Firestore connected to named database: sivasureshagency');
+        console.log('[firebase-db-init] window.auth:', typeof window.auth, '| window.db:', typeof window.db);
+    } catch (err) {
+        console.error('[firebase-db-init] Firestore init failed:', err);
+    }
+})();

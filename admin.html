@@ -64,10 +64,10 @@
                 <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
                 <h2 id="pageTitle">Dashboard</h2>
                 <div class="topbar-right">
-                    <button class=\"btn-icon\" onclick=\"openModal('resetPasswordModal')\" title=\"Reset Password\"><i class=\"fas fa-key\"></i></button>
-                    <span id=\"adminName\">Admin</span>
-                    <a href=\"index.html\" target=\"_blank\" class=\"btn-sm\"><i class=\"fas fa-external-link-alt\"></i> View Site</a>
-                    <button class=\"btn-icon\" onclick=\"handleAdminLogout()\" title=\"Logout\"><i class=\"fas fa-sign-out-alt\"></i></button>
+                    <button class="btn-icon" onclick="openModal('resetPasswordModal')" title="Reset Password"><i class="fas fa-key"></i></button>
+                    <span id="adminName">Admin</span>
+                    <a href="index.html" target="_blank" class="btn-sm"><i class="fas fa-external-link-alt"></i> View Site</a>
+                    <button class="btn-icon" onclick="handleAdminLogout()" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
                 </div>
             </header>
 
@@ -293,89 +293,89 @@
     </div>
 
     <!-- Reset Password Modal -->
-    <div class=\"modal-overlay\" id=\"resetPasswordModal\">
-        <div class=\"modal modal-sm\">
-            <div class=\"modal-header\">
-                <h3><i class=\"fas fa-key\"></i> Reset Password</h3>
-                <button onclick=\"closeModal('resetPasswordModal')\"><i class=\"fas fa-times\"></i></button>
+    <div class="modal-overlay" id="resetPasswordModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3><i class="fas fa-key"></i> Reset Password</h3>
+                <button onclick="closeModal('resetPasswordModal')"><i class="fas fa-times"></i></button>
             </div>
-            <div class=\"modal-body\">
-                <form id=\"resetPasswordForm\" onsubmit=\"handleResetPassword(event)\">
-                    <div class=\"form-group\">
+            <div class="modal-body">
+                <form id="resetPasswordForm" onsubmit="handleResetPassword(event)">
+                    <div class="form-group">
                         <label>Current Password *</label>
-                        <input type=\"password\" id=\"currentPassword\" required>
-                        <p class=\"field-error\" id=\"currentPasswordError\" style=\"display:none;\"></p>
+                        <input type="password" id="currentPassword" required>
+                        <p class="field-error" id="currentPasswordError" style="display:none;"></p>
                     </div>
-                    <div class=\"form-group\">
+                    <div class="form-group">
                         <label>New Password *</label>
-                        <input type=\"password\" id=\"newPassword\" placeholder=\"Min 6 chars\" required>
-                        <p class=\"field-error\" id=\"newPasswordError\" style=\"display:none;\"></p>
+                        <input type="password" id="newPassword" placeholder="Min 6 chars" required>
+                        <p class="field-error" id="newPasswordError" style="display:none;"></p>
                     </div>
-                    <div class=\"form-group\">
+                    <div class="form-group">
                         <label>Confirm New Password *</label>
-                        <input type=\"password\" id=\"confirmPassword\" required>
-                        <p class=\"field-error\" id=\"confirmPasswordError\" style=\"display:none;\"></p>
+                        <input type="password" id="confirmPassword" required>
+                        <p class="field-error" id="confirmPasswordError" style="display:none;"></p>
                     </div>
-                    <button type=\"submit\" class=\"btn-primary btn-full\"><i class=\"fas fa-lock\"></i> Change Password</button>
+                    <button type="submit" class="btn-primary btn-full"><i class="fas fa-lock"></i> Change Password</button>
                 </form>
             </div>
         </div>
     </div>
 
     <!-- Edit Order Modal (Address & Status) -->
-    <div class=\"modal-overlay\" id=\"editOrderModal\">
-        <div class=\"modal\">
-            <div class=\"modal-header\">
-                <h3><i class=\"fas fa-edit\"></i> Modify Order</h3>
-                <button onclick=\"closeModal('editOrderModal')\"><i class=\"fas fa-times\"></i></button>
+    <div class="modal-overlay" id="editOrderModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Modify Order</h3>
+                <button onclick="closeModal('editOrderModal')"><i class="fas fa-times"></i></button>
             </div>
-            <div class=\"modal-body\">
-                <form id=\"editOrderForm\" onsubmit=\"saveOrderModifications(event)\">
-                    <input type=\"hidden\" id=\"editOrderId\">
-                    <div class=\"form-row\">
-                        <div class=\"form-group\">
+            <div class="modal-body">
+                <form id="editOrderForm" onsubmit="saveOrderModifications(event)">
+                    <input type="hidden" id="editOrderId">
+                    <div class="form-row">
+                        <div class="form-group">
                             <label>Order ID</label>
-                            <input type=\"text\" id=\"editOrderIdDisplay\" readonly>
+                            <input type="text" id="editOrderIdDisplay" readonly>
                         </div>
-                        <div class=\"form-group\">
+                        <div class="form-group">
                             <label>Status *</label>
-                            <select id=\"editOrderStatus\" required>
-                                <option value=\"Processing\">Processing</option>
-                                <option value=\"Approved\">Approved</option>
-                                <option value=\"Shipped\">Shipped</option>
-                                <option value=\"Delivered\">Delivered</option>
-                                <option value=\"Cancelled\">Cancelled</option>
+                            <select id="editOrderStatus" required>
+                                <option value="Processing">Processing</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Shipped">Shipped</option>
+                                <option value="Delivered">Delivered</option>
+                                <option value="Cancelled">Cancelled</option>
                             </select>
                         </div>
                     </div>
-                    <div class=\"form-row\">
-                        <div class=\"form-group\" style=\"flex:2;\">
+                    <div class="form-row">
+                        <div class="form-group" style="flex:2;">
                             <label>Shipping Address</label>
-                            <textarea id=\"editOrderAddress\" rows=\"3\" placeholder=\"Full address...\"></textarea>
+                            <textarea id="editOrderAddress" rows="3" placeholder="Full address..."></textarea>
                         </div>
-                        <div class=\"form-group\">
+                        <div class="form-group">
                             <label>City</label>
-                            <input type=\"text\" id=\"editOrderCity\">
+                            <input type="text" id="editOrderCity">
                         </div>
                     </div>
-                    <div class=\"form-row\">
-                        <div class=\"form-group\">
+                    <div class="form-row">
+                        <div class="form-group">
                             <label>Pincode</label>
-                            <input type=\"text\" id=\"editOrderPincode\">
+                            <input type="text" id="editOrderPincode">
                         </div>
-                        <div class=\"form-group\">
+                        <div class="form-group">
                             <label>Tracking ID</label>
-                            <input type=\"text\" id=\"editOrderTracking\" placeholder=\"e.g., SSA123456\">
+                            <input type="text" id="editOrderTracking" placeholder="e.g., SSA123456">
                         </div>
                     </div>
-                    <button type=\"submit\" class=\"btn-primary btn-full\"><i class=\"fas fa-save\"></i> Save Changes</button>
+                    <button type="submit" class="btn-primary btn-full"><i class="fas fa-save"></i> Save Changes</button>
                 </form>
             </div>
         </div>
     </div>
 
     <!-- Toast -->
-    <div id=\"adminToast\" class=\"admin-toast\"></div>
+    <div id="adminToast" class="admin-toast"></div>
 
     <!-- Debug logging -->
     <script>

@@ -34,14 +34,21 @@ function initializeAuthListener() {
     }
     console.log('[admin.js] Firebase auth ready, setting up listener');
     auth.onAuthStateChanged(user => {
-        if (user) {
-            console.log('[admin.js] User logged in:', user.email);
+        // Only treat as admin if user has an email (not anonymous)
+        if (user && user.email) {
+            console.log('[admin.js] Admin logged in:', user.email);
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'flex';
             document.getElementById('adminName').textContent = user.email.split('@')[0];
             loadDashboard();
         } else {
-            console.log('[admin.js] No user logged in');
+            // No user, or anonymous user - show login screen
+            if (user && !user.email) {
+                console.log('[admin.js] Anonymous user detected - signing out and showing login');
+                auth.signOut();
+            } else {
+                console.log('[admin.js] No admin session');
+            }
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('adminPanel').style.display = 'none';
         }
