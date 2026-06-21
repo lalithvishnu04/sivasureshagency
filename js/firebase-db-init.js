@@ -1,10 +1,10 @@
-console.log('[firebase-db-init] Starting Firebase initialization...');
+﻿console.log('[firebase-db-init] Starting Firebase initialization...');
 
-// NOTE: Switched from named database ("sivasureshagency") to DEFAULT database.
-// Reason: Spark plan only supports 1 database. Named databases cannot have custom
-// security rules on Spark — all requests get "Missing or insufficient permissions".
-// The compat SDK (firebase.firestore()) always uses the default database, which
-// works correctly with Firestore security rules on any plan.
+// NOTE: Uses Firestore REST API directly to access the named database
+// "sivasureshagency". This bypasses the SDK compat+modular split that caused
+// auth tokens not to be shared (separate app instances), making all Firestore
+// requests unauthenticated and failing security rules.
+// Auth uses compat SDK; all Firestore ops use fetch() with explicit Bearer token.
 
 const firebaseConfig = {
     apiKey: "AIzaSyD3H7U7WwkRWx6hvsQxTGkmGO2Uq9xd4n4",
@@ -16,10 +16,8 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-
-const _auth = firebase.auth();
-const _storage = firebase.storage();
-const _db = firebase.firestore(); // default database — rules apply correctly
+const _auth  = firebase.auth();
+const _store = firebase.storage();
 
 window.auth = {
     onAuthStateChanged: (cb) => _auth.onAuthStateChanged(cb),
@@ -30,22 +28,163 @@ window.auth = {
     sendPasswordResetEmail: (e) => _auth.sendPasswordResetEmail(e),
     currentUser: () => _auth.currentUser
 };
-
 window.storage = {
-    ref: (path) => _storage.ref(path),
+    ref: (path) => _store.ref(path),
     uploadBytes: (r, data) => r.put(data),
     getDownloadURL: (r) => r.getDownloadURL(),
     deleteObject: (r) => r.delete()
 };
-
 window.getCurrentUser = () => _auth.currentUser;
 
-// Expose compat Firestore directly — it already has the chainable API
-// that admin.js and firebase-integration.js use (collection().where().get() etc.)
-window.db = _db;
-window.fireDb = _db;
-window.fsServerTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();
-window.fsIncrement = (n) => firebase.firestore.FieldValue.increment(n);
+// Firestore REST API wrapper for named database "sivasureshagency"
+const _FS  = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/sivasureshagency/documents`;
+const _OPS = { '==': 'EQUAL', '<': 'LESS_THAN', '<=': 'LESS_THAN_OR_EQUAL', '>': 'GREATER_THAN', '>=': 'GREATER_THAN_OR_EQUAL', '!=': 'NOT_EQUAL', 'array-contains': 'ARRAY_CONTAINS' };
+
+async function _headers() {
+    const h = { 'Content-Type': 'application/json' };
+    const user = _auth.currentUser;
+    if (user) { try { h['Authorization'] = 'Bearer ' + await user.getIdToken(); } catch(e) {} }
+    return h;
+}
+
+async function _fetch(url, opts = {}) {
+    const res = await fetch(url, { ...opts, headers: await _headers() });
+    const text = await res.text();
+    const json = text ? JSON.parse(text) : {};
+    if (!res.ok) throw new Error(json.error?.message || `Firestore error ${res.status}`);
+    return json;
+}
+
+function _fromV(v) {
+    if (!v) return null;
+    if ('stringValue'    in v) return v.stringValue;
+    if ('integerValue'   in v) return Number(v.integerValue);
+    if ('doubleValue'    in v) return v.doubleValue;
+    if ('booleanValue'   in v) return v.booleanValue;
+    if ('nullValue'      in v) return null;
+    if ('timestampValue' in v) { const d = new Date(v.timestampValue); return { seconds: Math.floor(d/1000), toDate: () => d }; }
+    if ('arrayValue'     in v) return (v.arrayValue.values || []).map(_fromV);
+    if ('mapValue'       in v) return _fromFields(v.mapValue.fields || {});
+    return null;
+}
+function _fromFields(f) { return Object.fromEntries(Object.entries(f).map(([k,v]) => [k, _fromV(v)])); }
+
+function _toV(v) {
+    if (v === null || v === undefined) return { nullValue: null };
+    if (v instanceof Date)     return { timestampValue: v.toISOString() };
+    if (typeof v === 'string') return { stringValue: v };
+    if (typeof v === 'boolean') return { booleanValue: v };
+    if (typeof v === 'number') {
+        if (!isFinite(v) || isNaN(v)) return { nullValue: null };
+        return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+    }
+    if (Array.isArray(v)) return { arrayValue: { values: v.map(_toV) } };
+    if (typeof v === 'object') return { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k,x]) => [k, _toV(x)])) } };
+    return { nullValue: null };
+}
+
+function _buildWrite(obj) {
+    const fields = {}, transforms = [];
+    for (const [k, v] of Object.entries(obj)) {
+        if (v && v._fsOp === 'serverTime')
+            transforms.push({ fieldPath: k, setToServerValue: 'REQUEST_TIME' });
+        else if (v && v._fsOp === 'increment')
+            transforms.push({ fieldPath: k, increment: { integerValue: String(v._n) } });
+        else
+            fields[k] = _toV(v);
+    }
+    return { fields, transforms };
+}
+
+function _parseDoc(raw) {
+    if (!raw?.name) return null;
+    return { id: raw.name.split('/').pop(), data: () => _fromFields(raw.fields || {}), exists: true };
+}
+
+function _autoId() {
+    const C = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return Array.from({ length: 20 }, () => C[Math.floor(Math.random() * C.length)]).join('');
+}
+
+class ColRef {
+    constructor(name) { this._name = name; this._wheres = []; this._order = null; }
+    _clone() { const c = new ColRef(this._name); c._wheres = [...this._wheres]; c._order = this._order; return c; }
+    where(f, op, v) { const c = this._clone(); c._wheres.push({ f, op, v }); return c; }
+    orderBy(f, dir) { const c = this._clone(); c._order = { f, dir: dir === 'desc' ? 'DESCENDING' : 'ASCENDING' }; return c; }
+
+    async get() {
+        if (this._wheres.length || this._order) {
+            const q = { from: [{ collectionId: this._name }] };
+            if (this._wheres.length === 1) {
+                const w = this._wheres[0];
+                q.where = { fieldFilter: { field: { fieldPath: w.f }, op: _OPS[w.op] || 'EQUAL', value: _toV(w.v) } };
+            } else if (this._wheres.length > 1) {
+                q.where = { compositeFilter: { op: 'AND', filters: this._wheres.map(w => ({ fieldFilter: { field: { fieldPath: w.f }, op: _OPS[w.op] || 'EQUAL', value: _toV(w.v) } })) } };
+            }
+            if (this._order) q.orderBy = [{ field: { fieldPath: this._order.f }, direction: this._order.dir }];
+            const res = await _fetch(`${_FS}:runQuery`, { method: 'POST', body: JSON.stringify({ structuredQuery: q }) });
+            const docs = (Array.isArray(res) ? res : []).filter(r => r.document).map(r => _parseDoc(r.document)).filter(Boolean);
+            return { docs, size: docs.length, empty: !docs.length };
+        }
+        const res = await _fetch(`${_FS}/${this._name}`);
+        const docs = (res.documents || []).map(_parseDoc).filter(Boolean);
+        return { docs, size: docs.length, empty: !docs.length };
+    }
+
+    doc(id) { return new DocRef(this._name, id); }
+
+    async add(obj) {
+        const id = _autoId();
+        const { fields, transforms } = _buildWrite(obj);
+        const docPath = `projects/${firebaseConfig.projectId}/databases/sivasureshagency/documents/${this._name}/${id}`;
+        const write = { update: { name: docPath, fields } };
+        if (transforms.length) write.updateTransforms = transforms;
+        await _fetch(`${_FS}:commit`, { method: 'POST', body: JSON.stringify({ writes: [write] }) });
+        return { id };
+    }
+}
+
+class DocRef {
+    constructor(col, id) { this._col = col; this._id = id; }
+    get _docPath() { return `projects/${firebaseConfig.projectId}/databases/sivasureshagency/documents/${this._col}/${this._id}`; }
+
+    async get() {
+        try {
+            const res = await _fetch(`${_FS}/${this._col}/${this._id}`);
+            return _parseDoc(res) || { id: this._id, data: () => ({}), exists: false };
+        } catch { return { id: this._id, data: () => ({}), exists: false }; }
+    }
+
+    async set(obj, opts) {
+        const { fields, transforms } = _buildWrite(obj);
+        const write = { update: { name: this._docPath, fields } };
+        if (opts?.merge) write.updateMask = { fieldPaths: Object.keys(fields) };
+        if (transforms.length) write.updateTransforms = transforms;
+        await _fetch(`${_FS}:commit`, { method: 'POST', body: JSON.stringify({ writes: [write] }) });
+    }
+
+    async update(obj) {
+        const { fields, transforms } = _buildWrite(obj);
+        const writes = [];
+        if (Object.keys(fields).length) {
+            writes.push({
+                update: { name: this._docPath, fields },
+                updateMask: { fieldPaths: Object.keys(fields) },
+                ...(transforms.length ? { updateTransforms: transforms } : {})
+            });
+        } else if (transforms.length) {
+            writes.push({ transform: { document: this._docPath, fieldTransforms: transforms } });
+        }
+        if (writes.length) await _fetch(`${_FS}:commit`, { method: 'POST', body: JSON.stringify({ writes }) });
+    }
+
+    async delete() { await _fetch(`${_FS}/${this._col}/${this._id}`, { method: 'DELETE' }); }
+}
+
+window.db = { collection: (name) => new ColRef(name) };
+window.fireDb = window.db;
+window.fsServerTimestamp = () => ({ _fsOp: 'serverTime' });
+window.fsIncrement = (n) => ({ _fsOp: 'increment', _n: n });
 window._firebaseReady = true;
 
 console.log('[firebase-db-init] ✓ Ready');
