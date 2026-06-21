@@ -1,4 +1,10 @@
 {
+  "firestore": [
+    {
+      "database": "sivasureshagency",
+      "rules": "firestore.rules"
+    }
+  ],
   "emulators": {
     "firestore": {
       "host": "localhost",

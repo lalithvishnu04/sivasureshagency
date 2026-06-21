@@ -8,3 +8,12 @@ Thumbs.db
 tools/admin_credentials.txt
 tools/serviceAccountKey.json
 emulator_export/
+
+# Service account private keys — never commit these
+*-firebase-adminsdk-*.json
+*-service-account*.json
+service-account.json
+serviceAccountKey.json
+
+# Large binaries
+firebase.exe
