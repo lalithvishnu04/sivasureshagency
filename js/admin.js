@@ -1030,31 +1030,54 @@ async function saveOrderModifications(e) {
 }
 
 // ===== Product Image Upload =====
-async function handleProductImageUpload(event) {
+// Converts the selected image to a compressed JPEG data-URL client-side.
+// No Firebase Storage upload — data URL stored directly in Firestore.
+function handleProductImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
-    const preview = document.getElementById('pImagePreview');
-    // Show local preview immediately
-    const reader = new FileReader();
-    reader.onload = e => { preview.src = e.target.result; preview.classList.add('show'); };
-    reader.readAsDataURL(file);
 
-    // Upload to Firebase Storage
+    const MAX_W = 900, MAX_H = 900, QUALITY = 0.82;
     const btn = document.querySelector('#productForm button[type=submit]');
     const origText = btn?.innerHTML || '';
-    if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-    try {
-        const path = 'products/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const ref = window.storage.ref(path);
-        await window.storage.uploadBytes(ref, file);
-        const url = await window.storage.getDownloadURL(ref);
-        document.getElementById('pImage').value = url;
-        showAdminToast('Image uploaded successfully');
-    } catch (err) {
-        showAdminToast('Image upload failed: ' + err.message, 'error');
-    } finally {
-        if (btn) btn.innerHTML = origText;
-    }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...'; }
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+            // Resize keeping aspect ratio
+            let w = img.width, h = img.height;
+            if (w > MAX_W || h > MAX_H) {
+                const ratio = Math.min(MAX_W / w, MAX_H / h);
+                w = Math.round(w * ratio);
+                h = Math.round(h * ratio);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+
+            // Show preview
+            const preview = document.getElementById('pImagePreview');
+            if (preview) { preview.src = dataUrl; preview.classList.add('show'); }
+
+            // Store data URL as the image value (saved to Firestore with the product)
+            document.getElementById('pImage').value = dataUrl;
+
+            if (btn) { btn.disabled = false; btn.innerHTML = origText; }
+            showAdminToast('Image ready — click Save to store it.');
+        };
+        img.onerror = () => {
+            showAdminToast('Could not read image file', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = origText; }
+        };
+        img.src = e.target.result;
+    };
+    reader.onerror = () => {
+        showAdminToast('Failed to read file', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = origText; }
+    };
+    reader.readAsDataURL(file);
 }
 
 // ===== Messages =====
