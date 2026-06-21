@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 .DS_Store
 Thumbs.db
+
+tools/admin_credentials.txt
+tools/serviceAccountKey.json
+emulator_export/
