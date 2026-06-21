@@ -7,21 +7,33 @@ let allProducts = [];
 let allInventory = [];
 let allCustomers = [];
 
-// ===== Auth =====
-auth.onAuthStateChanged(user => {
-    if (user) {
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('adminPanel').style.display = 'flex';
-        document.getElementById('adminName').textContent = user.email.split('@')[0];
-        loadDashboard();
-    } else {
-        document.getElementById('loginScreen').style.display = 'flex';
-        document.getElementById('adminPanel').style.display = 'none';
+// ===== Wait for Firebase to initialize =====
+function initializeAuthListener() {
+    if (typeof auth === 'undefined' || !auth) {
+        setTimeout(initializeAuthListener, 50);
+        return;
     }
-});
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'flex';
+            document.getElementById('adminName').textContent = user.email.split('@')[0];
+            loadDashboard();
+        } else {
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('adminPanel').style.display = 'none';
+        }
+    });
+}
+// Start listening for auth changes
+initializeAuthListener();
 
 function handleAdminLogin(e) {
     e.preventDefault();
+    if (typeof auth === 'undefined' || !auth) {
+        alert('Firebase is still loading. Please wait and try again.');
+        return;
+    }
     const email = document.getElementById('adminEmail').value.trim();
     const password = document.getElementById('adminPassword').value;
     const btn = document.getElementById('loginBtn');
