@@ -117,3 +117,5 @@ window.getCurrentUser = () => _auth.currentUser;
 // Signal that module is ready
 window._firebaseReady = true;
 console.log('[firebase-db] ✓ Initialised → database: sivasureshagency, storage ready');
+console.log('[firebase-db] window.auth:', typeof window.auth);
+console.log('[firebase-db] window.db:', typeof window.db);

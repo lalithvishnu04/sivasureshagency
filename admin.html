@@ -377,8 +377,30 @@
     <!-- Toast -->
     <div id=\"adminToast\" class=\"admin-toast\"></div>
 
-    <!-- Firebase: modular SDK handles named DB \"sivasureshagency\" -->
-    <script type=\"module\" src=\"js/firebase-db.js\"></script>
+    <!-- Debug logging -->
+    <script>
+        window.addEventListener('error', (e) => {
+            console.error('[window.error]', e.message, e.filename, e.lineno);
+        });
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('[unhandledrejection]', e.reason);
+        });
+    </script>
+
+    <!-- Firebase: modular SDK handles named DB "sivasureshagency" -->
+    <script type="module" src="js/firebase-db.js" onerror="console.error('Firebase module failed to load')"></script>
+    
+    <!-- Verify Firebase initialization -->
+    <script>
+        setTimeout(() => {
+            console.log('[admin.html] Checking Firebase:', {
+                ready: typeof window._firebaseReady,
+                auth: typeof window.auth,
+                db: typeof window.db
+            });
+        }, 500);
+    </script>
+    
     <script defer src="js/admin.js"></script>
 </body>
 </html>

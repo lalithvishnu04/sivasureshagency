@@ -1,4 +1,9 @@
 ﻿// db, auth, fsServerTimestamp, fsIncrement are set by js/firebase-db.js (module)
+console.log('[admin.js] Loading... Checking for Firebase globals:', {
+    _ready: typeof window._firebaseReady,
+    auth: typeof window.auth,
+    db: typeof window.db
+});
 
 // ===== State =====
 let currentOrderFilter = 'all';
@@ -11,6 +16,12 @@ let allCustomers = [];
 let authInitAttempts = 0;
 function initializeAuthListener() {
     authInitAttempts++;
+    console.log(`[admin.js] Init attempt ${authInitAttempts}:`, {
+        _ready: typeof window._firebaseReady,
+        auth: typeof window.auth,
+        db: typeof window.db
+    });
+    
     if (typeof auth === 'undefined' || !auth || !window._firebaseReady) {
         if (authInitAttempts > 100) {
             console.error('[admin.js] Firebase auth failed to initialize after 5 seconds');
