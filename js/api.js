@@ -1,13 +1,13 @@
 // ============================================================
 //  SSA API Client  —  js/api.js
 //
-//  ⚙️  TO ACTIVATE: after deploying backend/server.js to
-//      Render or Railway, paste your URL below:
+//  ⚙️  TO ACTIVATE: after running  firebase deploy --only functions
+//      paste your Firebase Function URL below:
 //
-//      const SSA_API_BASE = 'https://ssa-api.onrender.com';
+//      const SSA_API_BASE = 'https://us-central1-siva-suresh-agency.cloudfunctions.net/ssa';
 //
-//  Leave as '' to keep using direct Firestore (current behavior).
-//  The frontend falls back gracefully when API_BASE is empty.
+//  Leave as '' to keep using direct Firestore (current fallback behavior).
+//  The frontend falls back gracefully when SSA_API_BASE is empty.
 // ============================================================
 
 const SSA_API_BASE = ''; // ← paste your Render/Railway URL here after deploying
