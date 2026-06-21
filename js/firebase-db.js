@@ -13,7 +13,7 @@ import {
     serverTimestamp, increment
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import {
-    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 // ── Config ───────────────────────────────────────────────────────────
@@ -84,7 +84,8 @@ window.db = { collection: (name) => new CR(name) };
 window.auth = {
     onAuthStateChanged:          (cb)    => onAuthStateChanged(_auth, cb),
     signInWithEmailAndPassword:  (e, p)  => signInWithEmailAndPassword(_auth, e, p),
-    signOut:                     ()      => signOut(_auth)
+    signOut:                     ()      => signOut(_auth),
+    signInAnonymously:           ()      => signInAnonymously(_auth)
 };
 
 // ── FieldValue helpers (global shortcuts used in admin.js) ───────────

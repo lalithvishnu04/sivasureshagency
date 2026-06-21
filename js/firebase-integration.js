@@ -6,6 +6,12 @@
 async function saveOrderToFirebase(order, shippingDetails) {
     try {
         if (!window.fireDb) throw new Error('Firebase not initialised');
+
+        // Ensure the user is authenticated (anonymously) so Firestore allows the write
+        if (window.auth && typeof window.auth.signInAnonymously === 'function') {
+            try { await window.auth.signInAnonymously(); } catch (e) { /* may already be signed in */ }
+        }
+
         await fireDb.collection('orders').add({
             orderId: order.id,
             customerName: shippingDetails.firstname + ' ' + shippingDetails.lastname,

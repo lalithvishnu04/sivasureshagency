@@ -81,7 +81,7 @@ async function loadDashboard() {
 
         document.getElementById('statTotalOrders').textContent = totalOrders;
         document.getElementById('statPending').textContent = pending;
-        document.getElementById('statRevenue').textContent = '\\u20b9' + revenue.toLocaleString();
+        document.getElementById('statRevenue').textContent = '\u20b9' + revenue.toLocaleString();
         document.getElementById('statCustomers').textContent = customers;
 
         // Recent orders
@@ -93,7 +93,7 @@ async function loadDashboard() {
                     <span>${o.customerName || 'Guest'}</span>
                 </div>
                 <div class="list-item-right">
-                    <span class="amount">\\u20b9${(o.total || 0).toLocaleString()}</span>
+                    <span class="amount">\u20b9${(o.total || 0).toLocaleString()}</span>
                     <span class="status-badge ${(o.status || '').toLowerCase()}">${o.status}</span>
                 </div>
             </div>
@@ -154,7 +154,7 @@ function renderOrders() {
             <td><strong>#${o.orderId || o.docId.slice(0, 8)}</strong></td>
             <td>${o.customerName || 'Guest'}<br><small>${o.customerEmail || ''}</small></td>
             <td>${(o.items || []).length} item(s)</td>
-            <td><strong>\\u20b9${(o.total || 0).toLocaleString()}</strong></td>
+            <td><strong>\u20b9${(o.total || 0).toLocaleString()}</strong></td>
             <td><span class="status-badge ${(o.status || '').toLowerCase()}">${o.status}</span></td>
             <td>${o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('en-IN') : 'N/A'}</td>
             <td>
@@ -201,13 +201,13 @@ async function viewOrder(docId) {
                 <h5><i class="fas fa-box"></i> Items</h5>
                 <table class="od-items">
                     <tr><th>Product</th><th>Size</th><th>Color</th><th>Qty</th><th>Price</th></tr>
-                    ${(o.items || []).map(i => `<tr><td>${i.name}</td><td>${i.selectedSize || '-'}</td><td>${i.selectedColor || '-'}</td><td>${i.qty}</td><td>\\u20b9${i.price * i.qty}</td></tr>`).join('')}
+                    ${(o.items || []).map(i => `<tr><td>${i.name}</td><td>${i.selectedSize || '-'}</td><td>${i.selectedColor || '-'}</td><td>${i.qty}</td><td>\u20b9${i.price * i.qty}</td></tr>`).join('')}
                 </table>
             </div>
             <div class="od-section">
                 <h5><i class="fas fa-rupee-sign"></i> Payment</h5>
                 <p>Method: <strong>${o.payment || 'COD'}</strong></p>
-                <p>Total: <strong>\\u20b9${(o.total || 0).toLocaleString()}</strong></p>
+                <p>Total: <strong>\u20b9${(o.total || 0).toLocaleString()}</strong></p>
             </div>
             ${o.trackingId ? `<div class="od-section"><h5><i class="fas fa-truck"></i> Tracking</h5><p>${o.trackingId}</p></div>` : ''}
             <div class="od-actions">
@@ -330,7 +330,7 @@ function renderProducts() {
             <td><img src="${p.image || ''}" alt="" class="product-thumb"></td>
             <td><strong>${p.name}</strong></td>
             <td>${(p.category || '').replace(/-/g, ' ')}</td>
-            <td>\\u20b9${p.price}</td>
+            <td>\u20b9${p.price}</td>
             <td>${p.totalStock !== undefined ? p.totalStock : '-'}</td>
             <td><span class="status-badge ${p.totalStock > 0 ? 'approved' : 'cancelled'}">${p.totalStock > 0 ? 'In Stock' : 'Out of Stock'}</span></td>
             <td>
@@ -596,7 +596,7 @@ function renderCustomers() {
             <td>${c.email || ''}</td>
             <td>${c.phone || ''}</td>
             <td>${c.orderCount || 0}</td>
-            <td>\\u20b9${(c.totalSpent || 0).toLocaleString()}</td>
+            <td>\u20b9${(c.totalSpent || 0).toLocaleString()}</td>
             <td>${c.createdAt ? new Date(c.createdAt.seconds * 1000).toLocaleDateString('en-IN') : 'N/A'}</td>
         </tr>
     `).join('');
