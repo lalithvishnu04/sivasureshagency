@@ -1,22 +1,6 @@
 // ===== Firebase Integration for Customer Site =====
-// This file connects the customer-facing site to Firebase Firestore
-// Orders and registrations are saved to the cloud database
-
-const firebaseConfig = {
-    apiKey: "AIzaSyD3H7U7WwkRWx6hvsQxTGkmGO2Uq9xd4n4",
-    authDomain: "siva-suresh-agency.firebaseapp.com",
-    projectId: "siva-suresh-agency",
-    storageBucket: "siva-suresh-agency.firebasestorage.app",
-    messagingSenderId: "1069646087757",
-    appId: "1:1069646087757:web:986a9d840fcb77a68c3e04",
-    measurementId: "G-D4RC21D55T"
-};
-
-// Initialize Firebase (only if not already initialized by admin)
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-const fireDb = firebase.firestore();
+// fireDb is set by js/firebase-db.js (module) which targets named DB "sivasureshagency"
+// fsServerTimestamp and fsIncrement are also set by firebase-db.js
 
 // ===== Save Order to Firestore =====
 async function saveOrderToFirebase(order, shippingDetails) {
@@ -34,8 +18,8 @@ async function saveOrderToFirebase(order, shippingDetails) {
             payment: order.payment,
             status: 'Processing',
             trackingId: '',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: fsServerTimestamp(),
+            updatedAt: fsServerTimestamp()
         });
 
         // Update or create customer record
@@ -48,13 +32,13 @@ async function saveOrderToFirebase(order, shippingDetails) {
                 phone: shippingDetails.phone,
                 orderCount: 1,
                 totalSpent: order.total,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                createdAt: fsServerTimestamp()
             });
         } else {
             const doc = existingCustomer.docs[0];
             await doc.ref.update({
-                orderCount: firebase.firestore.FieldValue.increment(1),
-                totalSpent: firebase.firestore.FieldValue.increment(order.total),
+                orderCount: fsIncrement(1),
+                totalSpent: fsIncrement(order.total),
                 phone: shippingDetails.phone
             });
         }
@@ -74,7 +58,7 @@ async function saveCustomerToFirebase(customerData) {
                 phone: customerData.phone,
                 orderCount: 0,
                 totalSpent: 0,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                createdAt: fsServerTimestamp()
             });
         }
     } catch (err) {

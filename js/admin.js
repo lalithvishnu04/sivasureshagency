@@ -1,17 +1,4 @@
-// ===== Firebase Config =====
-const firebaseConfig = {
-    apiKey: "AIzaSyD3H7U7WwkRWx6hvsQxTGkmGO2Uq9xd4n4",
-    authDomain: "siva-suresh-agency.firebaseapp.com",
-    projectId: "siva-suresh-agency",
-    storageBucket: "siva-suresh-agency.firebasestorage.app",
-    messagingSenderId: "1069646087757",
-    appId: "1:1069646087757:web:986a9d840fcb77a68c3e04",
-    measurementId: "G-D4RC21D55T"
-};
-
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+﻿// db, auth, fsServerTimestamp, fsIncrement are set by js/firebase-db.js (module)
 
 // ===== State =====
 let currentOrderFilter = 'all';
@@ -94,7 +81,7 @@ async function loadDashboard() {
 
         document.getElementById('statTotalOrders').textContent = totalOrders;
         document.getElementById('statPending').textContent = pending;
-        document.getElementById('statRevenue').textContent = '₹' + revenue.toLocaleString();
+        document.getElementById('statRevenue').textContent = 'â‚¹' + revenue.toLocaleString();
         document.getElementById('statCustomers').textContent = customers;
 
         // Recent orders
@@ -106,7 +93,7 @@ async function loadDashboard() {
                     <span>${o.customerName || 'Guest'}</span>
                 </div>
                 <div class="list-item-right">
-                    <span class="amount">₹${(o.total || 0).toLocaleString()}</span>
+                    <span class="amount">â‚¹${(o.total || 0).toLocaleString()}</span>
                     <span class="status-badge ${(o.status || '').toLowerCase()}">${o.status}</span>
                 </div>
             </div>
@@ -157,7 +144,7 @@ function renderOrders() {
             <td><strong>#${o.orderId || o.docId.slice(0, 8)}</strong></td>
             <td>${o.customerName || 'Guest'}<br><small>${o.customerEmail || ''}</small></td>
             <td>${(o.items || []).length} item(s)</td>
-            <td><strong>₹${(o.total || 0).toLocaleString()}</strong></td>
+            <td><strong>â‚¹${(o.total || 0).toLocaleString()}</strong></td>
             <td><span class="status-badge ${(o.status || '').toLowerCase()}">${o.status}</span></td>
             <td>${o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('en-IN') : 'N/A'}</td>
             <td>
@@ -204,13 +191,13 @@ async function viewOrder(docId) {
                 <h5><i class="fas fa-box"></i> Items</h5>
                 <table class="od-items">
                     <tr><th>Product</th><th>Size</th><th>Color</th><th>Qty</th><th>Price</th></tr>
-                    ${(o.items || []).map(i => `<tr><td>${i.name}</td><td>${i.selectedSize || '-'}</td><td>${i.selectedColor || '-'}</td><td>${i.qty}</td><td>₹${i.price * i.qty}</td></tr>`).join('')}
+                    ${(o.items || []).map(i => `<tr><td>${i.name}</td><td>${i.selectedSize || '-'}</td><td>${i.selectedColor || '-'}</td><td>${i.qty}</td><td>â‚¹${i.price * i.qty}</td></tr>`).join('')}
                 </table>
             </div>
             <div class="od-section">
                 <h5><i class="fas fa-rupee-sign"></i> Payment</h5>
                 <p>Method: <strong>${o.payment || 'COD'}</strong></p>
-                <p>Total: <strong>₹${(o.total || 0).toLocaleString()}</strong></p>
+                <p>Total: <strong>â‚¹${(o.total || 0).toLocaleString()}</strong></p>
             </div>
             ${o.trackingId ? `<div class="od-section"><h5><i class="fas fa-truck"></i> Tracking</h5><p>${o.trackingId}</p></div>` : ''}
             <div class="od-actions">
@@ -233,7 +220,7 @@ async function saveOrderUpdate(docId) {
     const status = document.getElementById('orderStatusSelect').value;
     const trackingId = document.getElementById('orderTracking').value.trim();
     try {
-        await db.collection('orders').doc(docId).update({ status, trackingId, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        await db.collection('orders').doc(docId).update({ status, trackingId, updatedAt: fsServerTimestamp() });
         showAdminToast('Order updated successfully');
         closeModal('orderModal');
         loadOrders();
@@ -276,7 +263,7 @@ async function autoSeedProducts() {
                 sleeve: p.sleeve || null, sizes: p.sizes || [],
                 description: p.description || '', image: p.image || '',
                 badge: p.badge || '', totalStock: 100,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                createdAt: fsServerTimestamp()
             });
             const colors = getColorsForCategory(p.category);
             for (const size of (p.sizes || [])) {
@@ -284,7 +271,7 @@ async function autoSeedProducts() {
                     await db.collection('inventory').add({
                         productName: p.name, productCategory: p.category,
                         size, color, quantity: 20,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        updatedAt: fsServerTimestamp()
                     });
                 }
             }
@@ -310,7 +297,7 @@ function renderProducts() {
             <td><img src="${p.image || ''}" alt="" class="product-thumb"></td>
             <td><strong>${p.name}</strong></td>
             <td>${(p.category || '').replace(/-/g, ' ')}</td>
-            <td>₹${p.price}</td>
+            <td>â‚¹${p.price}</td>
             <td>${p.totalStock !== undefined ? p.totalStock : '-'}</td>
             <td><span class="status-badge ${p.totalStock > 0 ? 'approved' : 'cancelled'}">${p.totalStock > 0 ? 'In Stock' : 'Out of Stock'}</span></td>
             <td>
@@ -358,7 +345,7 @@ async function saveProduct(e) {
         description: document.getElementById('pDescription').value.trim(),
         image: document.getElementById('pImage').value.trim(),
         badge: document.getElementById('pBadge').value.trim(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        updatedAt: fsServerTimestamp()
     };
 
     try {
@@ -366,7 +353,7 @@ async function saveProduct(e) {
             await db.collection('products').doc(docId).update(data);
             showAdminToast('Product updated');
         } else {
-            data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            data.createdAt = fsServerTimestamp();
             data.totalStock = 0;
             await db.collection('products').add(data);
             showAdminToast('Product added');
@@ -413,7 +400,7 @@ async function syncInventoryFromProducts() {
                     image: p.image || '',
                     badge: p.badge || '',
                     totalStock: 100,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    createdAt: fsServerTimestamp()
                 });
                 // Create inventory entries for each size
                 const colors = getColorsForCategory(p.category);
@@ -425,7 +412,7 @@ async function syncInventoryFromProducts() {
                             size: size,
                             color: color,
                             quantity: 20,
-                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            updatedAt: fsServerTimestamp()
                         });
                     }
                 }
@@ -438,7 +425,7 @@ async function syncInventoryFromProducts() {
     } catch (err) {
         console.error('Sync error:', err);
         const msg = err.code === 'permission-denied'
-            ? 'Permission denied — publish Firestore rules in Firebase Console (Firestore > Security tab) then retry.'
+            ? 'Permission denied â€” publish Firestore rules in Firebase Console (Firestore > Security tab) then retry.'
             : 'Sync failed: ' + err.message;
         showAdminToast(msg, 'error');
         // Show inline alert so user cannot miss it
@@ -542,7 +529,7 @@ async function saveStock(e) {
     const docId = document.getElementById('stockDocId').value;
     const qty = parseInt(document.getElementById('stockQty').value);
     try {
-        await db.collection('inventory').doc(docId).update({ quantity: qty, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        await db.collection('inventory').doc(docId).update({ quantity: qty, updatedAt: fsServerTimestamp() });
         showAdminToast('Stock updated');
         closeModal('stockModal');
         loadInventory();
@@ -576,7 +563,7 @@ function renderCustomers() {
             <td>${c.email || ''}</td>
             <td>${c.phone || ''}</td>
             <td>${c.orderCount || 0}</td>
-            <td>₹${(c.totalSpent || 0).toLocaleString()}</td>
+            <td>â‚¹${(c.totalSpent || 0).toLocaleString()}</td>
             <td>${c.createdAt ? new Date(c.createdAt.seconds * 1000).toLocaleDateString('en-IN') : 'N/A'}</td>
         </tr>
     `).join('');
@@ -616,3 +603,4 @@ window.syncInventoryFromProducts = syncInventoryFromProducts;
 window.openStockModal = openStockModal;
 window.saveStock = saveStock;
 window.closeModal = closeModal;
+
