@@ -42,7 +42,7 @@
         <nav class="navbar">
             <div class="container">
                 <a href="index.html" class="logo">
-                    <div class="logo-icon"><img src="images/Images/SSA Logo.png" alt="SSA Logo" width="44" height="48"></div>
+                    <div class="logo-icon"><picture><source type="image/webp" srcset="images/Images/SSA%20Logo-480.webp 480w, images/Images/SSA%20Logo-800.webp 800w" sizes="44px"><source srcset="images/Images/SSA%20Logo-480.png 480w, images/Images/SSA%20Logo-800.png 800w" sizes="44px"><img src="images/Images/SSA Logo.png" alt="SSA Logo" width="44" height="48"></picture></div>
                     <div class="logo-text-wrap">
                         <span class="logo-text">Siva Suresh</span>
                         <span class="logo-sub">Agency</span>
@@ -107,7 +107,7 @@
                     </button>
                     <a href="categories.html" class="btn btn-gradient nav-cta">Shop Now</a>
                 </div>
-                <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+                <button class="hamburger" id="hamburger" aria-expanded="false" aria-controls="navLinks" aria-label="Toggle menu">
                     <span></span><span></span><span></span>
                 </button>
             </div>
@@ -361,7 +361,7 @@
             <div class="footer-grid">
                 <div class="footer-about">
                     <a href="index.html" class="logo">
-                        <div class="logo-icon"><img src="images/Images/SSA Logo.png" alt="SSA Logo" width="44" height="48"></div>
+                        <div class="logo-icon"><picture><source type="image/webp" srcset="images/Images/SSA%20Logo-480.webp 480w, images/Images/SSA%20Logo-800.webp 800w" sizes="44px"><source srcset="images/Images/SSA%20Logo-480.png 480w, images/Images/SSA%20Logo-800.png 800w" sizes="44px"><img src="images/Images/SSA Logo.png" alt="SSA Logo" width="44" height="48"></picture></div>
                         <div class="logo-text-wrap"><span class="logo-text">Siva Suresh</span><span class="logo-sub">Agency</span></div>
                     </a>
                     <p>Leading manufacturers and suppliers of premium hospital linen, medical uniforms, and hotel textiles since 2010.</p>
@@ -482,6 +482,9 @@
     <!-- WhatsApp Float -->
     <a href="https://wa.me/919366640050" class="whatsapp-float" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i></a>
 
-    <script src="js/script.js"></script>
+    <!-- Accessibility: ARIA live region for toasts -->
+    <div id="ariaToast" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+
+    <script src="js/script.js" defer></script>
 </body>
 </html>
