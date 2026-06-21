@@ -8,18 +8,29 @@ let allInventory = [];
 let allCustomers = [];
 
 // ===== Wait for Firebase to initialize =====
+let authInitAttempts = 0;
 function initializeAuthListener() {
-    if (typeof auth === 'undefined' || !auth) {
+    authInitAttempts++;
+    if (typeof auth === 'undefined' || !auth || !window._firebaseReady) {
+        if (authInitAttempts > 100) {
+            console.error('[admin.js] Firebase auth failed to initialize after 5 seconds');
+            const loginErr = document.getElementById('loginError');
+            if (loginErr) loginErr.textContent = 'Firebase initialization failed. Please refresh the page.';
+            return;
+        }
         setTimeout(initializeAuthListener, 50);
         return;
     }
+    console.log('[admin.js] Firebase auth ready, setting up listener');
     auth.onAuthStateChanged(user => {
         if (user) {
+            console.log('[admin.js] User logged in:', user.email);
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'flex';
             document.getElementById('adminName').textContent = user.email.split('@')[0];
             loadDashboard();
         } else {
+            console.log('[admin.js] No user logged in');
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('adminPanel').style.display = 'none';
         }
@@ -30,8 +41,8 @@ initializeAuthListener();
 
 function handleAdminLogin(e) {
     e.preventDefault();
-    if (typeof auth === 'undefined' || !auth) {
-        alert('Firebase is still loading. Please wait and try again.');
+    if (typeof auth === 'undefined' || !auth || !window._firebaseReady) {
+        alert('Firebase is still loading. Please wait a moment and try again.');
         return;
     }
     const email = document.getElementById('adminEmail').value.trim();
