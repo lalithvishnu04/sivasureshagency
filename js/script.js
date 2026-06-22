@@ -264,6 +264,23 @@ function initCommon() {
     const pdModal = document.getElementById('productDetailModal');
     if (pdModal) pdModal.addEventListener('click', (e) => { if (e.target === e.currentTarget) closeProductDetail(); });
 
+    // Mobile bottom nav auth button
+    const mbnAuthBtn = document.getElementById('mbnAuthBtn');
+    if (mbnAuthBtn) mbnAuthBtn.addEventListener('click', () => {
+        if (currentUser) openAccountPanel(); else openLoginModal();
+    });
+    // Mobile bottom nav cart badge sync
+    const mbnCartCount = document.getElementById('mbnCartCount');
+    if (mbnCartCount) {
+        const syncMbnCart = () => {
+            const total = cart.reduce((s,i) => s + i.qty, 0);
+            mbnCartCount.textContent = total;
+            mbnCartCount.style.display = total > 0 ? 'flex' : 'none';
+        };
+        document.addEventListener('cartUpdated', syncMbnCart);
+        syncMbnCart();
+    }
+
     // Chatbot
     initChatbot();
 
@@ -610,8 +627,78 @@ function updateAuthUI() {
 }
 function openLoginModal() {
     const modal = document.getElementById('authModal');
-    modal.innerHTML = `<div class="modal auth-modal"><button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button><div class="auth-tabs"><button class="auth-tab active" onclick="switchAuthTab('login')">Login</button><button class="auth-tab" onclick="switchAuthTab('register')">Register</button></div><div class="auth-form" id="loginForm"><h3><i class="fas fa-sign-in-alt"></i> Welcome Back</h3><p class="auth-subtitle">Login to manage your account</p><div class="form-group"><label>Email / Phone</label><input type="text" id="loginEmail" placeholder="Enter email or phone"><span class="field-error" id="loginEmailError" style="display:none;"></span></div><div class="form-group"><label>Password</label><input type="password" id="loginPassword" placeholder="Enter password"><span class="field-error" id="loginPasswordError" style="display:none;"></span></div><button class="btn btn-gradient btn-full" onclick="handleLogin()"><i class="fas fa-sign-in-alt"></i> Login</button><p class="auth-switch">No account? <a onclick="switchAuthTab('register')">Register</a></p></div><div class="auth-form" id="registerForm" style="display:none;"><h3><i class="fas fa-user-plus"></i> Create Account</h3><p class="auth-subtitle">Register to start ordering</p><div class="form-row"><div class="form-group"><label>First Name *</label><input type="text" id="regFirstName" placeholder="First name"><span class="field-error" id="regFirstNameError" style="display:none;"></span></div><div class="form-group"><label>Last Name *</label><input type="text" id="regLastName" placeholder="Last name"><span class="field-error" id="regLastNameError" style="display:none;"></span></div></div><div class="form-group"><label>Email *</label><input type="email" id="regEmail" placeholder="Email"><span class="field-error" id="regEmailError" style="display:none;"></span></div><div class="form-group"><label>Phone *</label><input type="tel" id="regPhone" placeholder="Phone"><span class="field-error" id="regPhoneError" style="display:none;"></span></div><div class="form-group"><label>Password *</label><input type="password" id="regPassword" placeholder="Min 6 chars"><span class="field-error" id="regPasswordError" style="display:none;"></span></div><div class="form-group"><label>Confirm Password *</label><input type="password" id="regConfirmPassword" placeholder="Confirm"><span class="field-error" id="regConfirmPasswordError" style="display:none;"></span></div><button class="btn btn-gradient btn-full" onclick="handleRegister()"><i class="fas fa-user-plus"></i> Create Account</button><p class="auth-switch">Have account? <a onclick="switchAuthTab('login')">Login</a></p></div></div>`;
+    modal.innerHTML = `
+<div class="modal auth-modal auth-split">
+  <div class="auth-panel-left">
+    <div class="auth-logo">
+      <img src="images/Images/SSA Logo.png" alt="SSA Logo" width="44">
+      <div class="auth-logo-text">
+        <span class="auth-logo-name">Siva Suresh</span>
+        <span class="auth-logo-sub">Agency</span>
+      </div>
+    </div>
+    <p class="auth-left-tagline">Premium hospital linen &amp; medical uniforms trusted by 500+ healthcare institutions.</p>
+    <div class="auth-left-trust">
+      <div class="auth-trust-row"><i class="fas fa-hospital"></i> 500+ Hospitals Trust Us</div>
+      <div class="auth-trust-row"><i class="fas fa-award"></i> 15+ Years Experience</div>
+      <div class="auth-trust-row"><i class="fas fa-truck"></i> Free Delivery on Bulk</div>
+      <div class="auth-trust-row"><i class="fas fa-palette"></i> Custom Colors &amp; Sizes</div>
+    </div>
+    <div class="auth-left-img">
+      <img src="images/Images/Male Full Sleeve.jpg" alt="Products">
+    </div>
+  </div>
+  <div class="auth-panel-right">
+    <button class="modal-close" onclick="closeAuthModal()" style="position:absolute;top:12px;right:12px;"><i class="fas fa-times"></i></button>
+    <div class="auth-tabs" style="margin-bottom:18px;">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Create Account</button>
+    </div>
+    <div class="auth-form" id="loginForm">
+      <h3 style="margin-bottom:4px;">Welcome Back</h3>
+      <p class="auth-subtitle" style="margin-bottom:16px;">Sign in to manage orders &amp; account</p>
+      <div class="form-group">
+        <label>Email or Phone</label>
+        <input type="text" id="loginEmail" placeholder="Enter your email or phone">
+        <span class="field-error" id="loginEmailError" style="display:none;"></span>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div style="position:relative;">
+          <input type="password" id="loginPassword" placeholder="Enter your password" style="padding-right:38px;">
+          <button type="button" onclick="togglePwdVis('loginPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:0.85rem;"><i class="fas fa-eye"></i></button>
+        </div>
+        <span class="field-error" id="loginPasswordError" style="display:none;"></span>
+      </div>
+      <button class="btn btn-gradient btn-full" style="margin-top:4px;" onclick="handleLogin()"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+      <p class="auth-switch">New here? <a onclick="switchAuthTab('register')">Create account</a></p>
+    </div>
+    <div class="auth-form" id="registerForm" style="display:none;">
+      <h3 style="margin-bottom:4px;">Create Account</h3>
+      <p class="auth-subtitle" style="margin-bottom:16px;">Register to start ordering online</p>
+      <div class="form-row">
+        <div class="form-group"><label>First Name *</label><input type="text" id="regFirstName" placeholder="First name"><span class="field-error" id="regFirstNameError" style="display:none;"></span></div>
+        <div class="form-group"><label>Last Name *</label><input type="text" id="regLastName" placeholder="Last name"><span class="field-error" id="regLastNameError" style="display:none;"></span></div>
+      </div>
+      <div class="form-group"><label>Email *</label><input type="email" id="regEmail" placeholder="Email address"><span class="field-error" id="regEmailError" style="display:none;"></span></div>
+      <div class="form-group"><label>Phone *</label><input type="tel" id="regPhone" placeholder="Mobile number"><span class="field-error" id="regPhoneError" style="display:none;"></span></div>
+      <div class="form-row">
+        <div class="form-group"><label>Password *</label><input type="password" id="regPassword" placeholder="Min 6 characters"><span class="field-error" id="regPasswordError" style="display:none;"></span></div>
+        <div class="form-group"><label>Confirm *</label><input type="password" id="regConfirmPassword" placeholder="Confirm password"><span class="field-error" id="regConfirmPasswordError" style="display:none;"></span></div>
+      </div>
+      <button class="btn btn-gradient btn-full" style="margin-top:4px;" onclick="handleRegister()"><i class="fas fa-user-plus"></i> Create Account</button>
+      <p class="auth-switch">Already have an account? <a onclick="switchAuthTab('login')">Sign in</a></p>
+    </div>
+  </div>
+</div>`;
     modal.classList.add('active');
+    setTimeout(() => { const el = document.getElementById('loginEmail'); if (el) el.focus(); }, 100);
+}
+function togglePwdVis(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') { input.type = 'text'; btn.innerHTML = '<i class="fas fa-eye-slash"></i>'; }
+    else { input.type = 'password'; btn.innerHTML = '<i class="fas fa-eye"></i>'; }
 }
 function switchAuthTab(tab) {
     document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
@@ -661,7 +748,7 @@ function handleRegister() {
 function closeAuthModal() { document.getElementById('authModal').classList.remove('active'); }
 async function openAccountPanel() {
     const modal = document.getElementById('authModal');
-    modal.innerHTML = `<div class="modal account-modal"><button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button><div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:24px;color:#0066cc;"></i><p>Loading your account...</p></div></div>`;
+    modal.innerHTML = `<div class="modal account-modal-v2"><button class="acct-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button><div style="text-align:center;padding:50px 30px;"><div class="loader"><div class="loader-ring"></div><span class="loader-text">SSA</span></div><p style="margin-top:14px;color:var(--text-muted);font-size:0.88rem;">Loading your account...</p></div></div>`;
     modal.classList.add('active');
     let firestoreOrders = [];
     if (window.fireDb) {
@@ -675,62 +762,81 @@ async function openAccountPanel() {
     const orders = firestoreOrders.length > 0 ? firestoreOrders : localOrders;
     const avatar = localStorage.getItem('ssa_avatar_' + currentUser.email) || '';
     const avatarHtml = avatar ? `<img src="${avatar}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.15);">` : `<i class="fas fa-user-circle" style="font-size:72px;color:#0066cc;"></i>`;
-    modal.innerHTML = `<div class="modal account-modal">
-        <button class="modal-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button>
-        <div class="account-header">
-            <div class="account-avatar" style="position:relative;cursor:pointer;" onclick="document.getElementById('avatarUpload').click()">
-                ${avatarHtml}
-                <span style="position:absolute;bottom:2px;right:2px;width:20px;height:20px;background:#0066cc;border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="fas fa-camera" style="font-size:9px;color:#fff;"></i></span>
-                <input type="file" id="avatarUpload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
+    modal.innerHTML = `<div class="modal account-modal-v2">
+        <div class="acct-top">
+            <div class="acct-top-inner">
+                <div class="acct-avatar-wrap" onclick="document.getElementById('avatarUpload').click()">
+                    ${avatar ? `<img src="${avatar}" alt="Avatar" class="acct-avatar-img">` : `<div class="acct-avatar-placeholder"><i class="fas fa-user"></i></div>`}
+                    <span class="acct-avatar-edit"><i class="fas fa-camera"></i></span>
+                    <input type="file" id="avatarUpload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
+                </div>
+                <div class="acct-user-info">
+                    <h4>${currentUser.name}</h4>
+                    <p>${currentUser.email}</p>
+                    ${currentUser.phone ? `<span class="acct-phone"><i class="fas fa-phone-alt"></i> ${currentUser.phone}</span>` : ''}
+                </div>
             </div>
-            <h3>${currentUser.name}</h3><p>${currentUser.email}</p>
+            <button class="acct-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button>
         </div>
-        <div class="account-tabs">
-            <button class="account-tab active" onclick="showAccountTab('orders')"><i class="fas fa-box"></i> Orders</button>
-            <button class="account-tab" onclick="showAccountTab('profile')"><i class="fas fa-user-edit"></i> Profile</button>
-            <button class="account-tab" onclick="showAccountTab('addresses')"><i class="fas fa-map-marker-alt"></i> Addresses</button>
-            <button class="account-tab" onclick="showAccountTab('security')"><i class="fas fa-lock"></i> Password</button>
+        <div class="acct-tabs-bar">
+            <button class="acct-tab-btn active" onclick="showAccountTab('orders')"><i class="fas fa-box-open"></i> Orders</button>
+            <button class="acct-tab-btn" onclick="showAccountTab('profile')"><i class="fas fa-user-edit"></i> Profile</button>
+            <button class="acct-tab-btn" onclick="showAccountTab('addresses')"><i class="fas fa-map-marker-alt"></i> Address</button>
+            <button class="acct-tab-btn" onclick="showAccountTab('security')"><i class="fas fa-lock"></i> Password</button>
         </div>
-        <div class="account-content" id="accountOrders">
-            ${orders.length === 0 ? '<div class="empty-orders"><i class="fas fa-box-open"></i><p>No orders yet</p></div>' : orders.map(o => `<div class="order-card"><div class="order-card-header"><div><span class="order-id-label">#${o.id}</span><span class="order-date">${new Date(o.date).toLocaleDateString('en-IN')}</span></div><span class="order-status">${o.status}</span></div><div class="order-card-items">${o.items.map(i => `<div class="order-item-row"><span>${i.name} x${i.qty}</span><span>₹${i.price*i.qty}</span></div>`).join('')}</div><div class="order-card-footer"><span class="order-total">₹${o.total.toLocaleString()}</span><span class="order-payment">${o.payment}</span></div></div>`).join('')}
-        </div>
-        <div class="account-content" id="accountProfile" style="display:none;">
-            <div class="profile-edit-form">
-                <div class="form-group"><label>Full Name</label><input type="text" id="editName" value="${currentUser.name}" placeholder="Your name"></div>
-                <div class="form-group"><label>Phone</label><input type="tel" id="editPhone" value="${currentUser.phone||''}" placeholder="Phone number"></div>
-                <div class="form-group"><label>Email <small style="color:#94a3b8">(cannot change)</small></label><input type="email" value="${currentUser.email}" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed;"></div>
-                <button class="btn btn-gradient btn-full" onclick="saveProfileChanges()"><i class="fas fa-save"></i> Save Changes</button>
+        <div class="acct-body">
+            <div class="acct-section active" id="accountOrders">
+                ${orders.length === 0 ? '<div class="empty-orders"><i class="fas fa-box-open"></i><p>No orders yet. Start shopping!</p><a href="categories.html" class="btn btn-gradient btn-sm" onclick="closeAuthModal()">Browse Products</a></div>' :
+                    orders.map(o => `<div class="acct-order-card">
+                        <div class="acct-order-head">
+                            <div><span class="acct-order-id">#${o.id}</span><span class="acct-order-date">${new Date(o.date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span></div>
+                            <span class="acct-order-status">${o.status}</span>
+                        </div>
+                        <div class="acct-order-items">${o.items.map(i => `<div class="acct-order-row"><span>${i.name} &times;${i.qty}</span><span>&#8377;${i.price*i.qty}</span></div>`).join('')}</div>
+                        <div class="acct-order-foot"><span class="acct-order-total">Total: &#8377;${o.total.toLocaleString('en-IN')}</span><span class="acct-order-pay"><i class="fas fa-credit-card"></i> ${o.payment}</span></div>
+                    </div>`).join('')}
+            </div>
+            <div class="acct-section" id="accountProfile" style="display:none;">
+                <div class="profile-edit-form">
+                    <div class="form-group"><span class="acct-field-label">Full Name</span><input type="text" id="editName" value="${currentUser.name}" placeholder="Your full name"></div>
+                    <div class="form-group"><span class="acct-field-label">Mobile Phone</span><input type="tel" id="editPhone" value="${currentUser.phone||''}" placeholder="Phone number"></div>
+                    <div class="form-group"><span class="acct-field-label">Email <small style="color:#94a3b8;font-size:0.7rem;">(cannot change)</small></span><input type="email" value="${currentUser.email}" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed;"></div>
+                    <button class="btn btn-gradient btn-full" onclick="saveProfileChanges()"><i class="fas fa-save"></i> Save Changes</button>
+                </div>
+            </div>
+            <div class="acct-section" id="accountAddresses" style="display:none;">
+                <div id="addressList"></div>
+                <button class="btn btn-outline-dark btn-full" style="margin-top:8px" onclick="showAddAddressForm()"><i class="fas fa-plus"></i> Add New Address</button>
+                <div id="addAddressForm" style="display:none;margin-top:12px;">
+                    <div class="form-group"><label>Street / Door No.</label><input type="text" id="addrStreet" placeholder="Street address"></div>
+                    <div class="form-row"><div class="form-group"><label>City</label><input type="text" id="addrCity" placeholder="City"></div><div class="form-group"><label>PIN Code</label><input type="text" id="addrPin" placeholder="PIN"></div></div>
+                    <div class="form-group"><label>State</label><input type="text" id="addrState" placeholder="State" value="Tamil Nadu"></div>
+                    <div class="form-row"><button class="btn btn-gradient" onclick="saveNewAddress()"><i class="fas fa-save"></i> Save</button><button class="btn btn-outline-dark" onclick="document.getElementById('addAddressForm').style.display='none'">Cancel</button></div>
+                </div>
+            </div>
+            <div class="acct-section" id="accountSecurity" style="display:none;">
+                <div class="profile-edit-form">
+                    <div class="form-group"><label>Current Password</label><input type="password" id="pwdCurrent" placeholder="Current password"></div>
+                    <div class="form-group"><label>New Password</label><input type="password" id="pwdNew" placeholder="New password (min 6 chars)"></div>
+                    <div class="form-group"><label>Confirm New Password</label><input type="password" id="pwdConfirm" placeholder="Confirm new password"></div>
+                    <p id="pwdMsg" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
+                    <button class="btn btn-gradient btn-full" onclick="changePassword()"><i class="fas fa-key"></i> Update Password</button>
+                </div>
             </div>
         </div>
-        <div class="account-content" id="accountAddresses" style="display:none;">
-            <div id="addressList"></div>
-            <button class="btn btn-outline-dark btn-full" style="margin-top:8px" onclick="showAddAddressForm()"><i class="fas fa-plus"></i> Add New Address</button>
-            <div id="addAddressForm" style="display:none;margin-top:12px;">
-                <div class="form-group"><label>Street / Door No.</label><input type="text" id="addrStreet" placeholder="Street address"></div>
-                <div class="form-row"><div class="form-group"><label>City</label><input type="text" id="addrCity" placeholder="City"></div><div class="form-group"><label>PIN Code</label><input type="text" id="addrPin" placeholder="PIN Code"></div></div>
-                <div class="form-group"><label>State</label><input type="text" id="addrState" placeholder="State" value="Tamil Nadu"></div>
-                <div class="form-row"><button class="btn btn-gradient" onclick="saveNewAddress()"><i class="fas fa-save"></i> Save</button><button class="btn btn-outline-dark" onclick="document.getElementById('addAddressForm').style.display='none'">Cancel</button></div>
-            </div>
+        <div class="acct-footer">
+            <a href="wishlist.html" class="btn btn-outline-dark" style="flex:1;justify-content:center;" onclick="closeAuthModal()"><i class="fas fa-heart"></i> Wishlist</a>
+            <button class="btn btn-outline-dark" style="flex:1;justify-content:center;color:var(--red);" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
         </div>
-        <div class="account-content" id="accountSecurity" style="display:none;">
-            <div class="profile-edit-form">
-                <div class="form-group"><label>Current Password</label><input type="password" id="pwdCurrent" placeholder="Current password"></div>
-                <div class="form-group"><label>New Password</label><input type="password" id="pwdNew" placeholder="New password (min 6 chars)"></div>
-                <div class="form-group"><label>Confirm New Password</label><input type="password" id="pwdConfirm" placeholder="Confirm new password"></div>
-                <p id="pwdMsg" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
-                <button class="btn btn-gradient btn-full" onclick="changePassword()"><i class="fas fa-key"></i> Update Password</button>
-            </div>
-        </div>
-        <button class="btn btn-outline-dark btn-full" style="margin-top:15px" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
     </div>`;
     renderAddressList();
 }
 function showAccountTab(tab) {
-    document.querySelectorAll('.account-tab').forEach(t => t.classList.remove('active'));
-    ['accountOrders','accountProfile','accountAddresses','accountSecurity'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    document.querySelectorAll('.acct-tab-btn, .account-tab').forEach(t => t.classList.remove('active'));
+    ['accountOrders','accountProfile','accountAddresses','accountSecurity'].forEach(id => { const el = document.getElementById(id); if (el) { el.style.display = 'none'; el.classList.remove('active'); } });
     const map = { orders:'accountOrders', profile:'accountProfile', addresses:'accountAddresses', security:'accountSecurity' };
     const el = document.getElementById(map[tab]); if (el) el.style.display = 'block';
-    const tabBtns = document.querySelectorAll('.account-tab');
+    const tabBtns = document.querySelectorAll('.acct-tab-btn, .account-tab');
     const tabIdx = { orders:0, profile:1, addresses:2, security:3 };
     if (tabBtns[tabIdx[tab]]) tabBtns[tabIdx[tab]].classList.add('active');
 }
