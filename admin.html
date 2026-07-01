@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=11">
+    <link rel="stylesheet" href="css/admin.css?v=12">
     <link rel="icon" type="image/jpeg" href="images/Images/SSA Logo.png">
 </head>
 <body>
@@ -112,7 +112,7 @@
                     <div class="stat-card green">
                         <div class="stat-icon-wrap"><i class="fas fa-rupee-sign"></i></div>
                         <div class="stat-info">
-                            <div class="stat-value" id="statRevenue">₹0</div>
+                            <div class="stat-value" id="statRevenue">?0</div>
                             <div class="stat-label">Total Revenue</div>
                         </div>
                     </div>
@@ -146,14 +146,14 @@
                     <div class="card">
                         <div class="card-header">
                             <h3><i class="fas fa-list-alt"></i> Recent Orders</h3>
-                            <a href="#" class="card-action" onclick="navigateTo('orders');return false;">View All →</a>
+                            <a href="#" class="card-action" onclick="navigateTo('orders');return false;">View All ?</a>
                         </div>
                         <div class="card-body" id="recentOrdersList"><p class="empty">Loading...</p></div>
                     </div>
                     <div class="card">
                         <div class="card-header">
                             <h3><i class="fas fa-exclamation-triangle"></i> Low Stock Alerts</h3>
-                            <a href="#" class="card-action" onclick="navigateTo('inventory');return false;">View All →</a>
+                            <a href="#" class="card-action" onclick="navigateTo('inventory');return false;">View All ?</a>
                         </div>
                         <div class="card-body" id="lowStockList"><p class="empty">Loading...</p></div>
                     </div>
@@ -332,8 +332,8 @@
                         </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label>Price (â‚¹) *</label><input type="number" id="pPrice" required></div>
-                        <div class="form-group"><label>Old Price (â‚¹)</label><input type="number" id="pOldPrice"></div>
+                        <div class="form-group"><label>Price (₹) *</label><input type="number" id="pPrice" required></div>
+                        <div class="form-group"><label>Old Price (₹)</label><input type="number" id="pOldPrice"></div>
                     </div>
                     <div class="form-row">
                         <div class="form-group"><label>Gender</label>
@@ -376,9 +376,9 @@
                     <div class="form-group">
                         <label>Stock Status</label>
                         <select id="stockStatus" style="background:var(--surface-2);">
-                            <option value="in_stock">âœ“ In Stock</option>
-                            <option value="low_stock">âš  Low Stock</option>
-                            <option value="out_of_stock">âœ— Out of Stock</option>
+                            <option value="in_stock">✓ In Stock</option>
+                            <option value="low_stock">⚠ Low Stock</option>
+                            <option value="out_of_stock">✗ Out of Stock</option>
                         </select>
                     </div>
                     <button type="submit" class="btn-primary btn-full"><i class="fas fa-save"></i> Save Status</button>
@@ -480,9 +480,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
     
     <!-- Firebase initialization -->
-    <script src="js/api.js?v=11"></script>
-    <script src="js/firebase-db-init.js?v=11"></script>
-    <script defer src="js/admin.js?v=11"></script>
+    <script src="js/api.js?v=12"></script>
+    <script src="js/firebase-db-init.js?v=12"></script>
+    <script defer src="js/admin.js?v=12"></script>
 </body>
 </html>
 
