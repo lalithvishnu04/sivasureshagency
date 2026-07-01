@@ -210,14 +210,14 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     function _rerender() {
         const page = document.body && document.body.dataset.page;
         if (page === 'categories') {
-            if (typeof renderProducts === 'function')
-                renderProducts(
-                    typeof currentFilter !== 'undefined' ? currentFilter : 'all',
-                    typeof displayedProducts !== 'undefined' ? displayedProducts : 12,
-                    window._currentGender, window._currentSleeve,
-                    typeof window._currentSearch !== 'undefined' ? window._currentSearch : ''
-                );
-                updateScrubsCount();
+            // Use window._currentFilter so the IIFE closure reliably reads the latest value
+            const _f  = window._currentFilter  || 'all';
+            const _c  = window._currentCount   || 12;
+            const _g  = window._currentGender  || null;
+            const _s  = window._currentSleeve  || null;
+            const _q  = window._currentSearch  || '';
+            if (typeof renderProducts === 'function') renderProducts(_f, _c, _g, _s, _q);
+            if (typeof updateScrubsCount === 'function') updateScrubsCount();
         } else if (page === 'home') {
             const grid = document.getElementById('shopGrid') || document.getElementById('featuredGrid');
             if (grid && typeof buildProductCard === 'function') {
@@ -393,6 +393,12 @@ let wishlist = JSON.parse(localStorage.getItem('ssa_wishlist') || '[]');
 let displayedProducts = 12;
 let currentFilter = 'all';
 let currentSearch = '';
+// Mirror state to window so the Firestore IIFE can always read the latest values
+function _syncWindowState() {
+    window._currentFilter  = currentFilter;
+    window._currentCount   = displayedProducts;
+    window._currentSearch  = currentSearch;
+}
 
 // ===== Wishlist =====
 function isWishlisted(id) { return wishlist.includes(id); }
@@ -658,20 +664,18 @@ function initCategoriesPage() {
     if (productSearchInput) {
         productSearchInput.addEventListener('input', (e) => {
             currentSearch = e.target.value.trim();
-            window._currentSearch = currentSearch;
             if (productSearchClear) productSearchClear.style.display = currentSearch ? 'flex' : 'none';
             displayedProducts = 12;
-            renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, currentSearch);
+            _syncWindowState(); renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, currentSearch);
         });
     }
     if (productSearchClear) {
         productSearchClear.addEventListener('click', () => {
             if (productSearchInput) productSearchInput.value = '';
             currentSearch = '';
-            window._currentSearch = '';
             productSearchClear.style.display = 'none';
             displayedProducts = 12;
-            renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, '');
+            _syncWindowState(); renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, '');
             if (productSearchInput) productSearchInput.focus();
         });
     }
@@ -683,7 +687,7 @@ function initCategoriesPage() {
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
             displayedProducts = 12;
-            renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
+            _syncWindowState(); renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
         });
     });
 
@@ -696,14 +700,14 @@ function initCategoriesPage() {
             else if (val === 'price-high') productsData.sort((a, b) => b.price - a.price);
             else if (val === 'newest') productsData.sort((a, b) => b.id - a.id);
             else productsData.sort((a, b) => b.reviews - a.reviews);
-            renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
+            _syncWindowState(); renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
         });
     }
 
     // Load more
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', () => { displayedProducts += 12; renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch); });
+        loadMoreBtn.addEventListener('click', () => { displayedProducts += 12; _syncWindowState(); renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch); });
     }
 
     // Store gender/sleeve for use by other callers
@@ -711,6 +715,7 @@ function initCategoriesPage() {
     window._currentSleeve = sleeve;
 
     updateScrubsCount();
+    _syncWindowState();
     renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
 }
 
@@ -821,6 +826,9 @@ function filterToScrubs() {
     currentFilter = 'scrub-suits';
     currentSearch = '';
     displayedProducts = 12;
+    window._currentGender = null;
+    window._currentSleeve = null;
+    _syncWindowState();
     const searchInput = document.getElementById('productSearchInput');
     if (searchInput) searchInput.value = '';
     const clearBtn = document.getElementById('productSearchClear');
@@ -1130,7 +1138,7 @@ function openProductDetail(id) {
     const firstAvailableSize = (p.sizes || []).find(s => !isVariantOutOfStock(p, s, defaultColor));
     const colorSection = colors ? `<div class="pd-color-section"><h4>Select Color</h4><div class="pd-color-swatches">${colors.map((c, i) => `<button class="pd-color-swatch${i === 0 ? ' active' : ''}" data-hex="${c.hex}" data-color-name="${c.name}" title="${c.name}" style="background:${c.hex}${c.hex === '#FFFFFF' ? ';border-color:#ccc' : ''}" onclick="selectDetailColor(this,${p.id})"></button>`).join('')}</div><span class="pd-color-name">${colors[0].name}</span></div>` : '';
     const modal = document.getElementById('productDetailModal');
-    modal.innerHTML = `<div class="modal product-detail-modal"><button class="modal-close pd-close" onclick="closeProductDetail()"><i class="fas fa-times"></i></button><div class="pd-grid"><div class="pd-image"><img src="${p.image}" alt="${p.name}">${p.badge ? `<span class="pd-badge">${p.badge}</span>` : ''}</div><div class="pd-info"><span class="pd-category">${p.category.replace(/-/g,' ')}</span><h2 class="pd-title">${p.name}</h2><div class="pd-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}<span>(${p.reviews} reviews)</span></div><div class="pd-price"><span class="pd-current-price">₹${p.price}</span><span class="pd-old-price">₹${p.oldPrice}</span><span class="pd-discount">${discount}% OFF</span></div><p class="pd-description">${p.description}</p>${colorSection}<div class="pd-size-section"><h4>Select Size</h4><div class="pd-sizes" id="pdSizes-${p.id}">${p.sizes.map((s,i) => { const oos = isVariantOutOfStock(p, s, defaultColor); const active = firstAvailableSize ? (s === firstAvailableSize) : (i === 0); return `<button class="pd-size-btn ${active && !oos ? 'active' : ''}${oos ? ' is-oos' : ''}" data-size="${s}" ${oos ? 'disabled' : ''} onclick="selectSize(this,${p.id})">${s}${oos ? ' • OOS' : ''}</button>`; }).join('')}</div><p id="pdVariantStockMsg-${p.id}" style="display:none;color:#dc2626;font-size:0.85rem;margin-top:8px;"></p></div><div class="pd-qty-section"><h4>Quantity</h4><div class="pd-qty"><button onclick="changePdQty(-1)"><i class="fas fa-minus"></i></button><span id="pdQty">1</span><button onclick="changePdQty(1)"><i class="fas fa-plus"></i></button></div></div><div class="pd-actions"><button id="pdAddBtn-${p.id}" class="btn btn-primary btn-lg" onclick="addToCartFromDetail(${p.id})"><i class="fas fa-cart-plus"></i> Add to Cart</button><button id="pdBuyBtn-${p.id}" class="btn btn-outline-dark btn-lg" onclick="buyNowFromDetail(${p.id})"><i class="fas fa-bolt"></i> Buy Now</button></div><div class="pd-features"><div class="pd-feature"><i class="fas fa-truck"></i> Free delivery above ₹2000</div><div class="pd-feature"><i class="fas fa-undo"></i> 7-day returns</div><div class="pd-feature"><i class="fas fa-shield-alt"></i> Quality guaranteed</div></div></div></div></div>`;
+    modal.innerHTML = `<div class="modal product-detail-modal"><button class="modal-close pd-close" onclick="closeProductDetail()"><i class="fas fa-times"></i></button><div class="pd-grid"><div class="pd-image"><img src="${p.image}" alt="${p.name}">${p.badge ? `<span class="pd-badge">${p.badge}</span>` : ''}</div><div class="pd-info"><span class="pd-category">${p.category.replace(/-/g,' ')}</span><h2 class="pd-title">${p.name}</h2><div class="pd-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}<span>(${p.reviews} reviews)</span></div><div class="pd-price"><span class="pd-current-price">₹${p.price}</span><span class="pd-old-price">₹${p.oldPrice}</span><span class="pd-discount">${discount}% OFF</span></div><p class="pd-description">${p.description}</p>${colorSection}<div class="pd-size-section"><h4>Select Size</h4><div class="pd-sizes" id="pdSizes-${p.id}">${p.sizes.map((s,i) => { const oos = isVariantOutOfStock(p, s, defaultColor); const active = firstAvailableSize ? (s === firstAvailableSize) : (i === 0); return `<button class="pd-size-btn ${active && !oos ? 'active' : ''}${oos ? ' is-oos' : ''}" data-size="${s}" ${oos ? 'disabled title="Out of stock"' : ''} onclick="selectSize(this,${p.id})">${s}</button>`; }).join('')}</div><p id="pdVariantStockMsg-${p.id}" style="display:none;color:#dc2626;font-size:0.85rem;margin-top:8px;"></p></div><div class="pd-qty-section"><h4>Quantity</h4><div class="pd-qty"><button onclick="changePdQty(-1)"><i class="fas fa-minus"></i></button><span id="pdQty">1</span><button onclick="changePdQty(1)"><i class="fas fa-plus"></i></button></div></div><div class="pd-actions"><button id="pdAddBtn-${p.id}" class="btn btn-primary btn-lg" onclick="addToCartFromDetail(${p.id})"><i class="fas fa-cart-plus"></i> Add to Cart</button><button id="pdBuyBtn-${p.id}" class="btn btn-outline-dark btn-lg" onclick="buyNowFromDetail(${p.id})"><i class="fas fa-bolt"></i> Buy Now</button></div><div class="pd-features"><div class="pd-feature"><i class="fas fa-truck"></i> Free delivery above ₹2000</div><div class="pd-feature"><i class="fas fa-undo"></i> 7-day returns</div><div class="pd-feature"><i class="fas fa-shield-alt"></i> Quality guaranteed</div></div></div></div></div>`;
     modal.classList.add('active'); pdQuantity = 1;
     updateProductDetailVariantState(p.id);
 }

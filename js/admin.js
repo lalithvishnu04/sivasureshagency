@@ -653,6 +653,7 @@ async function syncInventoryFromProducts() {
 
 function getColorsForCategory(category) {
     const colorMap = {
+        'scrub-suits': ['Ceil Blue', 'Hunter Green', 'Navy', 'Burgundy', 'Charcoal', 'Caribbean Blue', 'Black'],
         'doctor-uniform': ['White', 'Light Blue', 'Mint Green'],
         'staff-uniform': ['Blue', 'Green', 'Pink', 'Gray'],
         'bedsheets': ['White', 'Sky Blue', 'Navy Blue'],
@@ -1099,16 +1100,30 @@ function renderCustomers() {
     const tbody = document.getElementById('customersTableBody');
     if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No customers yet</td></tr>'; return; }
 
-    tbody.innerHTML = filtered.map(c => `
+    // Compute real order counts & spend from allOrders (live, not stale customer doc)
+    const ordersByEmail = new Map();
+    const spendByEmail  = new Map();
+    for (const o of (allOrders || [])) {
+        const key = (o.customerEmail || '').trim().toLowerCase();
+        if (!key) continue;
+        ordersByEmail.set(key, (ordersByEmail.get(key) || 0) + 1);
+        if (o.status !== 'Cancelled') spendByEmail.set(key, (spendByEmail.get(key) || 0) + (o.total || 0));
+    }
+
+    tbody.innerHTML = filtered.map(c => {
+        const key = (c.email || '').trim().toLowerCase();
+        const orders = ordersByEmail.get(key) ?? (c.orderCount || 0);
+        const spent  = spendByEmail.get(key)  ?? (c.totalSpent  || 0);
+        return `
         <tr>
             <td><strong>${c.name || 'N/A'}</strong></td>
             <td>${c.email || ''}</td>
             <td>${c.phone || ''}</td>
-            <td>${c.orderCount || 0}</td>
-            <td>\u20b9${(c.totalSpent || 0).toLocaleString()}</td>
+            <td>${orders}</td>
+            <td>\u20b9${spent.toLocaleString()}</td>
             <td>${c.createdAt ? new Date(c.createdAt.seconds * 1000).toLocaleDateString('en-IN') : 'N/A'}</td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
 document.getElementById('customerSearch')?.addEventListener('input', renderCustomers);
