@@ -775,8 +775,16 @@ function updateCardStockUI(cardEl) {
     const selectedColor = selectedColorBtn?.dataset.colorName || getProductColors(product)?.[0]?.name || '';
     const state = getCardStockState(product, selectedColor);
 
-    const badge = cardEl.querySelector('.shop-card-badge');
+    let badge = cardEl.querySelector('.shop-card-badge');
+    const ensureBadge = () => {
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'shop-card-badge';
+            cardEl.insertBefore(badge, cardEl.firstChild);
+        }
+    };
     if (state.isOut) {
+        ensureBadge();
         if (badge) {
             badge.textContent = 'Out of Stock';
             badge.style.background = '#ef4444';
@@ -785,6 +793,7 @@ function updateCardStockUI(cardEl) {
         cardEl.classList.add('out-of-stock-card');
         cardEl.classList.remove('low-stock-card');
     } else if (state.isLow) {
+        ensureBadge();
         if (badge) {
             badge.textContent = 'Variant OOS';
             badge.style.background = '#f59e0b';
@@ -1094,7 +1103,7 @@ function openLoginModal() {
     </div>
         <div class="auth-form" id="forgotForm" style="display:none;">
             <h3 style="margin-bottom:4px;">Reset Password</h3>
-            <p class="auth-subtitle" style="margin-bottom:16px;">Verify with email and phone to set a new password</p>
+            <p class="auth-subtitle" style="margin-bottom:16px;">Verify with email and phone to receive reset link</p>
             <div class="form-group"><label>Email</label><input type="email" id="fpEmail" placeholder="Registered email"></div>
             <div class="form-group"><label>Phone</label><input type="tel" id="fpPhone" placeholder="Registered phone"></div>
             <p id="fpMsg" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
