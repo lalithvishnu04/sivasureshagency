@@ -210,8 +210,9 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     function _rerender() {
         const page = document.body && document.body.dataset.page;
         if (page === 'categories') {
-            // Use window._currentFilter so the IIFE closure reliably reads the latest value
-            const _f  = window._currentFilter  || 'all';
+            // Read active filter button from DOM — always accurate, never stale
+            const activeBtn = document.querySelector('.filter-btn.active');
+            const _f = activeBtn?.dataset?.filter || window._currentFilter || 'all';
             const _c  = window._currentCount   || 12;
             const _g  = window._currentGender  || null;
             const _s  = window._currentSleeve  || null;

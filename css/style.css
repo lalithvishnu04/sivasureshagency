@@ -1711,20 +1711,37 @@ section.section-alt { background: var(--bg-off); }
 /* ════════════════════════════════════════════════════════════════
    SCRUBS FILTER BUTTON (SIGNATURE)
    ════════════════════════════════════════════════════════════════ */
+/* Unselected: outlined teal so it looks distinct from other filter buttons */
 .filter-btn-scrubs {
-    background: linear-gradient(135deg, #0d9488, #0f766e) !important;
-    color: #fff !important;
-    border-color: transparent !important;
+    background: #fff !important;
+    color: #0d9488 !important;
+    border: 2px solid #0d9488 !important;
     white-space: nowrap;
     gap: 6px;
+    font-weight: 700;
 }
 .filter-btn-scrubs i { font-size: 0.72rem; }
-.filter-btn-scrubs:hover,
+/* Hover: slight teal tint */
+.filter-btn-scrubs:hover {
+    background: #f0fdfa !important;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(13,148,136,0.18);
+    color: #0f766e !important;
+}
+/* Active/selected: solid dark teal — clearly different from both states */
 .filter-btn-scrubs.active {
     background: linear-gradient(135deg, #0f766e, #134e4a) !important;
+    border-color: transparent !important;
+    color: #fff !important;
     transform: translateY(-1px);
     box-shadow: 0 4px 16px rgba(13,148,136,0.38);
-    color: #fff !important;
+}
+.filter-btn-scrubs.active .scrubs-pill {
+    background: rgba(255,255,255,0.22);
+}
+.filter-btn-scrubs:not(.active) .scrubs-pill {
+    background: #ccfbf1;
+    color: #0f766e;
 }
 .scrubs-pill {
     display: inline-block;
