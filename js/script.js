@@ -771,7 +771,9 @@ function getCardStockState(product, color) {
 
     const outCount = sizes.filter(s => isVariantOutOfStock(product, s, color)).length;
     const lowCount = sizes.filter(s => !isVariantOutOfStock(product, s, color) && isVariantLowStock(product, s, color)).length;
-    const isOut = outCount > 0;
+    // isOut only when EVERY size for this color is OOS (product truly unavailable)
+    const isOut = sizes.length > 0 && outCount === sizes.length;
+    // isLow only when product is orderable but some variants are low/limited
     const isLow = !isOut && lowCount > 0;
 
     return { isOut, isLow, hasAnyOut: outCount > 0 };
