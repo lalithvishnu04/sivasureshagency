@@ -753,16 +753,28 @@ function isVariantOutOfStock(product, size, color) {
     return !!(outSizes && outSizes.has(normalizeSizeKey(size)));
 }
 
+function isVariantLowStock(product, size, color) {
+    if (!product || !size) return false;
+    const lowVariants = window.lowStockVariantMap?.[product.name];
+    const vKey = variantKey(size, color);
+    const vWildcard = variantKey(size, '');
+    if (lowVariants && (lowVariants.has(vKey) || lowVariants.has(vWildcard))) return true;
+    if (lowVariants && color) return false;
+    const lowSizes = window.lowStockMap?.[product.name];
+    return !!(lowSizes && lowSizes.has(normalizeSizeKey(size)));
+}
+
 function getCardStockState(product, color) {
     if (!product) return { isOut: false, isLow: false };
     const sizes = product.sizes || [];
     if (!sizes.length) return { isOut: !!product.outOfStock, isLow: !!product.lowStock };
 
     const outCount = sizes.filter(s => isVariantOutOfStock(product, s, color)).length;
+    const lowCount = sizes.filter(s => !isVariantOutOfStock(product, s, color) && isVariantLowStock(product, s, color)).length;
     const isOut = outCount === sizes.length;
-    const isLow = !isOut && outCount > 0;
+    const isLow = !isOut && (outCount > 0 || lowCount > 0);
 
-    return { isOut, isLow };
+    return { isOut, isLow, hasAnyOut: outCount > 0 };
 }
 
 function updateCardStockUI(cardEl) {
@@ -775,6 +787,8 @@ function updateCardStockUI(cardEl) {
     const selectedColor = selectedColorBtn?.dataset.colorName || getProductColors(product)?.[0]?.name || '';
     const state = getCardStockState(product, selectedColor);
 
+    const allBadges = Array.from(cardEl.querySelectorAll('.shop-card-badge'));
+    if (allBadges.length > 1) allBadges.slice(1).forEach(b => b.remove());
     let badge = cardEl.querySelector('.shop-card-badge');
     const ensureBadge = () => {
         if (!badge) {
@@ -795,14 +809,14 @@ function updateCardStockUI(cardEl) {
     } else if (state.isLow) {
         ensureBadge();
         if (badge) {
-            badge.textContent = 'Variant OOS';
+            badge.textContent = state.hasAnyOut ? 'Out of Stock' : 'Low Stock';
             badge.style.background = '#f59e0b';
             badge.style.color = '#fff';
         }
         cardEl.classList.add('low-stock-card');
         cardEl.classList.remove('out-of-stock-card');
     } else {
-        if (badge && (!product.badge || badge.textContent === 'Out of Stock' || badge.textContent === 'Variant OOS' || badge.textContent === 'Low Stock')) {
+        if (badge && (!product.badge || badge.textContent === 'Out of Stock' || badge.textContent === 'Low Stock')) {
             if (product.badge) {
                 badge.textContent = product.badge;
                 badge.style.background = '';
@@ -1146,8 +1160,13 @@ async function handleForgotPasswordReset() {
     const email = document.getElementById('fpEmail')?.value.trim();
     const phone = document.getElementById('fpPhone')?.value.trim();
     const msg = document.getElementById('fpMsg');
+    const sendBtn = document.querySelector('#forgotForm button.btn.btn-gradient');
     if (!msg) return;
-    const show = (text, ok) => { msg.textContent = text; msg.style.color = ok ? '#10b981' : '#ef4444'; msg.style.display = 'block'; };
+    const show = (text, ok) => {
+        msg.textContent = text;
+        msg.style.color = ok === null ? '#0ea5e9' : ok ? '#10b981' : '#ef4444';
+        msg.style.display = 'block';
+    };
 
     if (!email || !phone) { show('Please enter email and phone number'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { show('Please enter a valid email'); return; }
@@ -1160,6 +1179,12 @@ async function handleForgotPasswordReset() {
         return;
     }
 
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    }
+    show('Sending reset link...', null);
+
     // Secure flow: send reset link by email via auth provider.
     if (window.auth && typeof window.auth.sendPasswordResetEmail === 'function') {
         try {
@@ -1169,9 +1194,18 @@ async function handleForgotPasswordReset() {
             return;
         } catch (e) {
             console.warn('[forgot] Email reset failed:', e.message);
-            show('Unable to send reset email now. Please try again in a minute.');
+            show('Unable to send reset email: ' + (e?.message || 'Unknown error'));
             return;
+        } finally {
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reset Link';
+            }
         }
+    }
+    if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reset Link';
     }
     show('Reset email is temporarily unavailable. Please contact support.');
 }
