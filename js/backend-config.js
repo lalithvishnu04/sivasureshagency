@@ -3,6 +3,6 @@
 window.SSA_BACKEND = {
     provider: 'supabase',
     supabaseUrl: 'https://kyzlxhncnqahlpfhtoky.supabase.co',
-    supabaseAnonKey: '',
+    supabaseAnonKey: 'sb_publishable_0hcswuIONUUJPdBl7RRIHw_JH7MsGeK',
     storageBucket: 'assets'
 };
