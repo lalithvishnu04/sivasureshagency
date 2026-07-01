@@ -974,7 +974,7 @@ function backToLoginFromForgot() {
     if (tabs) tabs.style.display = 'flex';
     switchAuthTab('login');
 }
-function handleForgotPasswordReset() {
+async function handleForgotPasswordReset() {
     const email = document.getElementById('fpEmail')?.value.trim();
     const phone = document.getElementById('fpPhone')?.value.trim();
     const newPwd = document.getElementById('fpNewPassword')?.value;
@@ -987,6 +987,18 @@ function handleForgotPasswordReset() {
     if (newPwd.length < 6) { show('Password must be at least 6 characters'); return; }
     if (newPwd !== confirm) { show('Passwords do not match'); return; }
 
+    // Primary flow: secure email reset via backend auth provider
+    if (window.auth && typeof window.auth.sendPasswordResetEmail === 'function') {
+        try {
+            await window.auth.sendPasswordResetEmail(email);
+            show('Reset link sent to your email. Open mail and set a new password.', true);
+            return;
+        } catch (e) {
+            console.warn('[forgot] Email reset failed, falling back:', e.message);
+        }
+    }
+
+    // Legacy fallback: local profile verification (no email delivery)
     const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
     const idx = users.findIndex(u => u.email === email && String(u.phone || '') === String(phone));
     if (idx === -1) { show('Account not found with this email and phone'); return; }
@@ -999,19 +1011,62 @@ function handleForgotPasswordReset() {
     if (loginEmail) loginEmail.value = email;
     setTimeout(() => backToLoginFromForgot(), 700);
 }
-function handleLogin() {
+
+function _upsertLocalUserProfile(profile) {
+    const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
+    const idx = users.findIndex(u => u.email === profile.email);
+    const row = {
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
+        email: profile.email,
+        phone: profile.phone || '',
+        password: profile.password || users[idx]?.password || '',
+        createdAt: users[idx]?.createdAt || new Date().toISOString()
+    };
+    if (idx === -1) users.push(row);
+    else users[idx] = { ...users[idx], ...row };
+    localStorage.setItem('ssa_users', JSON.stringify(users));
+}
+
+async function handleLogin() {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     document.getElementById('loginEmailError').style.display = 'none';
     document.getElementById('loginPasswordError').style.display = 'none';
     if (!email) { document.getElementById('loginEmailError').textContent = 'Required'; document.getElementById('loginEmailError').style.display = 'block'; return; }
     if (!password) { document.getElementById('loginPasswordError').textContent = 'Required'; document.getElementById('loginPasswordError').style.display = 'block'; return; }
+
+    // Primary path: backend auth (email only)
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && window.auth && typeof window.auth.signInWithEmailAndPassword === 'function') {
+        try {
+            const r = await window.auth.signInWithEmailAndPassword(email, password);
+            const u = r?.user || r?.data?.user || null;
+            const md = u?.user_metadata || {};
+            const firstName = md.firstName || (md.name ? String(md.name).split(' ')[0] : 'User');
+            const lastName = md.lastName || '';
+            const phone = md.phone || '';
+
+            currentUser = { name: [firstName, lastName].filter(Boolean).join(' ') || 'User', email: u?.email || email, phone };
+            localStorage.setItem('ssa_user', JSON.stringify(currentUser));
+            _upsertLocalUserProfile({ firstName, lastName, email: currentUser.email, phone });
+
+            closeAuthModal();
+            updateAuthUI();
+            showToast(`Welcome back, ${firstName || 'User'}!`);
+            if (typeof syncPendingOrders === 'function') syncPendingOrders(currentUser.email, currentUser.name, currentUser.phone);
+            return;
+        } catch (e) {
+            console.warn('[login] Backend auth failed, trying local fallback:', e.message);
+        }
+    }
+
+    // Fallback path: local profile login
     const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
     const user = users.find(u => (u.email === email || u.phone === email) && u.password === password);
     if (user) { currentUser = { name: user.firstName + ' ' + user.lastName, email: user.email, phone: user.phone }; localStorage.setItem('ssa_user', JSON.stringify(currentUser)); closeAuthModal(); updateAuthUI(); showToast(`Welcome back, ${user.firstName}!`); if (typeof syncPendingOrders === 'function') syncPendingOrders(currentUser.email, currentUser.name, currentUser.phone); }
     else { document.getElementById('loginPasswordError').textContent = 'Invalid credentials'; document.getElementById('loginPasswordError').style.display = 'block'; }
 }
-function handleRegister() {
+async function handleRegister() {
     const fields = ['regFirstName','regLastName','regEmail','regPhone','regPassword','regConfirmPassword'];
     let valid = true;
     fields.forEach(id => { document.getElementById(id+'Error').style.display = 'none'; if (!document.getElementById(id).value.trim()) { document.getElementById(id+'Error').textContent = 'Required'; document.getElementById(id+'Error').style.display = 'block'; valid = false; } });
@@ -1027,6 +1082,18 @@ function handleRegister() {
     if (password !== confirm) { document.getElementById('regConfirmPasswordError').textContent = 'Mismatch'; document.getElementById('regConfirmPasswordError').style.display = 'block'; return; }
     const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
     if (users.find(u => u.email === email)) { document.getElementById('regEmailError').textContent = 'Already exists'; document.getElementById('regEmailError').style.display = 'block'; return; }
+    // Primary path: backend auth signup
+    if (window.auth && typeof window.auth.signUpWithEmailAndPassword === 'function') {
+        try {
+            await window.auth.signUpWithEmailAndPassword(email, password, { firstName, lastName, phone, name: (firstName + ' ' + lastName).trim() });
+            showToast('Verification email sent. Please verify and then sign in.');
+        } catch (e) {
+            document.getElementById('regEmailError').textContent = e.message || 'Registration failed';
+            document.getElementById('regEmailError').style.display = 'block';
+            return;
+        }
+    }
+
     users.push({ firstName, lastName, email, phone, password, createdAt: new Date().toISOString() });
     localStorage.setItem('ssa_users', JSON.stringify(users));
     currentUser = { name: firstName + ' ' + lastName, email, phone };
@@ -1224,18 +1291,34 @@ function setDefaultAddress(i) {
     localStorage.setItem('ssa_addresses_' + currentUser.email, JSON.stringify(addrs));
     renderAddressList();
 }
-function changePassword() {
+async function changePassword() {
     const curr    = document.getElementById('pwdCurrent')?.value;
     const newPwd  = document.getElementById('pwdNew')?.value;
     const confirm = document.getElementById('pwdConfirm')?.value;
     const msgEl   = document.getElementById('pwdMsg');
     const show = (msg, ok) => { msgEl.textContent = msg; msgEl.style.color = ok ? '#10b981' : '#ef4444'; msgEl.style.display = 'block'; };
     if (!curr || !newPwd || !confirm) { show('Please fill all fields'); return; }
+    if (newPwd.length < 6) { show('New password must be at least 6 characters'); return; }
+    if (newPwd !== confirm) { show('Passwords do not match'); return; }
+
+    // Primary path: backend auth update
+    if (window.auth && typeof window.auth.updatePassword === 'function') {
+        try {
+            await window.auth.updatePassword(newPwd);
+            show('Password updated successfully!', true);
+            document.getElementById('pwdCurrent').value = '';
+            document.getElementById('pwdNew').value = '';
+            document.getElementById('pwdConfirm').value = '';
+            return;
+        } catch (e) {
+            console.warn('[password] Backend update failed, trying local fallback:', e.message);
+        }
+    }
+
+    // Legacy fallback: local user password update
     const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
     const idx = users.findIndex(u => u.email === currentUser.email);
     if (idx === -1 || users[idx].password !== curr) { show('Current password is incorrect'); return; }
-    if (newPwd.length < 6) { show('New password must be at least 6 characters'); return; }
-    if (newPwd !== confirm) { show('Passwords do not match'); return; }
     users[idx].password = newPwd;
     localStorage.setItem('ssa_users', JSON.stringify(users));
     show('Password updated successfully!', true);

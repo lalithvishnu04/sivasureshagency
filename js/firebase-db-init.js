@@ -1,238 +1,287 @@
-﻿console.log('[firebase-db-init] Starting Firebase initialization...');
+console.log('[backend-init] Starting Supabase initialization...');
 
-const firebaseConfig = {
-    apiKey: "AIzaSyD3H7U7WwkRWx6hvsQxTGkmGO2Uq9xd4n4",
-    authDomain: "siva-suresh-agency.firebaseapp.com",
-    projectId: "siva-suresh-agency",
-    storageBucket: "siva-suresh-agency.firebasestorage.app",
-    messagingSenderId: "1069646087757",
-    appId: "1:1069646087757:web:986a9d840fcb77a68c3e04"
-};
+(function initSupabaseCompat() {
+    const cfg = window.SSA_BACKEND || {};
+    const provider = (cfg.provider || 'supabase').toLowerCase();
+    const url = cfg.supabaseUrl || '';
+    const anonKey = cfg.supabaseAnonKey || '';
+    const storageBucket = cfg.storageBucket || 'assets';
 
-firebase.initializeApp(firebaseConfig);
-const _auth  = firebase.auth();
-const _store = firebase.storage();
-
-window.auth = {
-    onAuthStateChanged: (cb) => _auth.onAuthStateChanged(cb),
-    signInWithEmailAndPassword: (e, p) => _auth.signInWithEmailAndPassword(e, p),
-    signOut: () => _auth.signOut(),
-    signInAnonymously: () => _auth.signInAnonymously(),
-    updatePassword: (p) => _auth.currentUser.updatePassword(p),
-    sendPasswordResetEmail: (e) => _auth.sendPasswordResetEmail(e),
-    currentUser: () => _auth.currentUser
-};
-window.storage = {
-    ref: (path) => _store.ref(path),
-    uploadBytes: (r, data) => r.put(data),
-    getDownloadURL: (r) => r.getDownloadURL(),
-    deleteObject: (r) => r.delete()
-};
-window.getCurrentUser = () => _auth.currentUser;
-
-// Firestore REST API — named database "sivasureshagency"
-// Uses runQuery (POST) for collection reads — the list (GET) API returns 403
-// on named databases even with 'allow read: if true' rules.
-// Individual document GET and all write operations work normally.
-const _DB  = 'sivasureshagency';
-const _FS  = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/${_DB}/documents`;
-const _KEY = firebaseConfig.apiKey;
-
-async function _fetch(url, opts = {}, _retry = 3) {
-    const user = _auth.currentUser;
-    const h = { 'Content-Type': 'application/json' };
-    if (user) { try { h['Authorization'] = 'Bearer ' + await user.getIdToken(); } catch(e) {} }
-    const sep = url.includes('?') ? '&' : '?';
-    const res  = await fetch(`${url}${sep}key=${_KEY}`, { ...opts, headers: h });
-    const text = await res.text();
-    const json = text ? JSON.parse(text) : {};
-    // Auto-retry on 429 Too Many Requests with exponential backoff
-    if (res.status === 429 && _retry > 0) {
-        const delay = (4 - _retry) * 1200; // 1200ms, 2400ms, 3600ms
-        await new Promise(r => setTimeout(r, delay));
-        return _fetch(url, opts, _retry - 1);
+    if (provider !== 'supabase') {
+        console.warn('[backend-init] Unsupported provider:', provider);
     }
-    if (!res.ok) throw new Error(json.error?.message || `Firestore ${res.status}`);
-    return json;
-}
 
-// Firestore value → JS
-function _fromV(v) {
-    if (!v) return null;
-    if ('stringValue'    in v) return v.stringValue;
-    if ('integerValue'   in v) return Number(v.integerValue);
-    if ('doubleValue'    in v) return v.doubleValue;
-    if ('booleanValue'   in v) return v.booleanValue;
-    if ('nullValue'      in v) return null;
-    if ('timestampValue' in v) { const d = new Date(v.timestampValue); return { seconds: Math.floor(d/1000), toDate: () => d }; }
-    if ('arrayValue'     in v) return (v.arrayValue.values || []).map(_fromV);
-    if ('mapValue'       in v) return _fromFields(v.mapValue.fields || {});
-    return null;
-}
-function _fromFields(f) { return Object.fromEntries(Object.entries(f).map(([k,v]) => [k, _fromV(v)])); }
-
-// JS → Firestore value
-function _toV(v) {
-    if (v === null || v === undefined) return { nullValue: null };
-    if (v instanceof Date)     return { timestampValue: v.toISOString() };
-    if (typeof v === 'string') return { stringValue: v };
-    if (typeof v === 'boolean') return { booleanValue: v };
-    if (typeof v === 'number') {
-        if (!isFinite(v) || isNaN(v)) return { nullValue: null };
-        return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+    if (!window.supabase || !window.supabase.createClient) {
+        console.error('[backend-init] Supabase SDK not loaded');
+        window._firebaseReady = false;
+        return;
     }
-    if (Array.isArray(v)) return { arrayValue: { values: v.map(_toV) } };
-    if (typeof v === 'object') return { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k,x]) => [k, _toV(x)])) } };
-    return { nullValue: null };
-}
 
-function _buildWrite(obj) {
-    const fields = {}, transforms = [];
-    for (const [k, v] of Object.entries(obj)) {
-        if (v && v._fsOp === 'serverTime')
-            transforms.push({ fieldPath: k, setToServerValue: 'REQUEST_TIME' });
-        else if (v && v._fsOp === 'increment')
-            transforms.push({ fieldPath: k, increment: { integerValue: String(v._n) } });
-        else
-            fields[k] = _toV(v);
+    if (!url || !anonKey) {
+        console.warn('[backend-init] Missing Supabase URL/Anon Key in js/backend-config.js');
+        window._firebaseReady = false;
+        return;
     }
-    return { fields, transforms };
-}
 
-function _parseDoc(raw) {
-    if (!raw?.name) return null;
-    return { id: raw.name.split('/').pop(), data: () => _fromFields(raw.fields || {}), exists: true };
-}
+    const client = window.supabase.createClient(url, anonKey, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
 
-function _autoId() {
-    const C = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    return Array.from({ length: 20 }, () => C[Math.floor(Math.random() * C.length)]).join('');
-}
+    function _maybeTimestamp(v) {
+        if (typeof v !== 'string') return v;
+        const d = new Date(v);
+        if (Number.isNaN(d.getTime())) return v;
+        return { seconds: Math.floor(d.getTime() / 1000), toDate: () => d };
+    }
 
-class ColRef {
-    constructor(name) { this._name = name; this._wheres = []; this._order = null; }
-    _clone() { const c = new ColRef(this._name); c._wheres = [...this._wheres]; c._order = this._order; return c; }
-    where(f, op, v) { const c = this._clone(); c._wheres.push({ f, op, v }); return c; }
-    orderBy(f, dir) { const c = this._clone(); c._order = { f, dir: dir === 'desc' ? 'desc' : 'asc' }; return c; }
+    function _normalizeRow(row) {
+        if (!row || typeof row !== 'object') return row;
+        const out = { ...row };
+        Object.keys(out).forEach(k => {
+            if (k.toLowerCase().endsWith('at')) out[k] = _maybeTimestamp(out[k]);
+        });
+        return out;
+    }
 
-    async get() {
-        // Use runQuery (POST) — the list (GET) API returns 403 on named databases.
-        // Push WHERE filters server-side so only matching docs are fetched (critical for
-        // large collections like inventory with 1800+ docs).
-        // Cursor-paginates if unfiltered collection exceeds 1000 docs.
+    function _serverNow() {
+        return new Date().toISOString();
+    }
 
-        const FS_OPS = { '==':'EQUAL','!=':'NOT_EQUAL','<':'LESS_THAN','<=':'LESS_THAN_OR_EQUAL','>':'GREATER_THAN','>=':'GREATER_THAN_OR_EQUAL','array-contains':'ARRAY_CONTAINS' };
-        const serverWheres = this._wheres.filter(w => FS_OPS[w.op]);
-        const clientWheres = this._wheres.filter(w => !FS_OPS[w.op]);
-        const hasServerFilter = serverWheres.length > 0;
+    function _isServerTime(v) {
+        return v && typeof v === 'object' && v._fsOp === 'serverTime';
+    }
 
-        let all = [], lastDocName = null, batchCount = 0;
-        do {
-            const q = { from: [{ collectionId: this._name }], limit: 1000 };
-            // Cursor pagination — only when no server filters (avoids composite index needs)
-            if (lastDocName && !hasServerFilter) {
-                q.orderBy = [{ field: { fieldPath: '__name__' }, direction: 'ASCENDING' }];
-                q.startAt = { values: [{ referenceValue: lastDocName }], before: false };
+    function _isIncrement(v) {
+        return v && typeof v === 'object' && v._fsOp === 'increment';
+    }
+
+    function _plainForWrite(obj) {
+        const out = {};
+        Object.entries(obj || {}).forEach(([k, v]) => {
+            if (_isServerTime(v)) out[k] = _serverNow();
+            else if (!_isIncrement(v)) out[k] = v;
+        });
+        return out;
+    }
+
+    async function _currentSession() {
+        const { data } = await client.auth.getSession();
+        return data?.session || null;
+    }
+
+    let _cachedCompatUser = null;
+    let _cachedRawUser = null;
+
+    function _toCompatUser(session) {
+        const u = session?.user;
+        if (!u) return null;
+        return {
+            id: u.id,
+            email: u.email || '',
+            user_metadata: u.user_metadata || {},
+            getIdToken: async () => session.access_token
+        };
+    }
+
+    function _refreshCachedUserFromSession(session) {
+        _cachedRawUser = session?.user || null;
+        _cachedCompatUser = _toCompatUser(session);
+    }
+
+    client.auth.getSession().then(({ data }) => {
+        _refreshCachedUserFromSession(data?.session || null);
+    }).catch(() => {
+        _cachedRawUser = null;
+        _cachedCompatUser = null;
+    });
+
+    client.auth.onAuthStateChange((_event, session) => {
+        _refreshCachedUserFromSession(session || null);
+    });
+
+    class ColRef {
+        constructor(name) {
+            this._name = name;
+            this._wheres = [];
+            this._order = null;
+        }
+
+        _clone() {
+            const c = new ColRef(this._name);
+            c._wheres = [...this._wheres];
+            c._order = this._order;
+            return c;
+        }
+
+        where(f, op, v) {
+            const c = this._clone();
+            c._wheres.push({ f, op, v });
+            return c;
+        }
+
+        orderBy(f, dir) {
+            const c = this._clone();
+            c._order = { f, dir: dir === 'desc' ? 'desc' : 'asc' };
+            return c;
+        }
+
+        async get() {
+            let q = client.from(this._name).select('*');
+
+            for (const { f, op, v } of this._wheres) {
+                if (op === '==') q = q.eq(f, v);
+                else if (op === '!=') q = q.neq(f, v);
+                else if (op === '>') q = q.gt(f, v);
+                else if (op === '>=') q = q.gte(f, v);
+                else if (op === '<') q = q.lt(f, v);
+                else if (op === '<=') q = q.lte(f, v);
+                else if (op === 'in' && Array.isArray(v)) q = q.in(f, v);
             }
-            // Server-side WHERE (single or composite AND)
-            if (serverWheres.length === 1) {
-                q.where = { fieldFilter: { field: { fieldPath: serverWheres[0].f }, op: FS_OPS[serverWheres[0].op], value: _toV(serverWheres[0].v) } };
-            } else if (serverWheres.length > 1) {
-                q.where = { compositeFilter: { op: 'AND', filters: serverWheres.map(w => ({ fieldFilter: { field: { fieldPath: w.f }, op: FS_OPS[w.op], value: _toV(w.v) } })) } };
+
+            if (this._order) q = q.order(this._order.f, { ascending: this._order.dir !== 'desc' });
+
+            const { data, error } = await q;
+            if (error) throw new Error(error.message || 'Database query failed');
+
+            const docs = (data || []).map(row => ({
+                id: row.id,
+                data: () => _normalizeRow(row),
+                exists: true
+            }));
+
+            return { docs, size: docs.length, empty: docs.length === 0 };
+        }
+
+        doc(id) {
+            return new DocRef(this._name, id);
+        }
+
+        async add(obj) {
+            const row = _plainForWrite(obj);
+            if (!row.createdAt) row.createdAt = _serverNow();
+            if (!row.updatedAt) row.updatedAt = _serverNow();
+            if (!row.id) row.id = 'id_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+            const { data, error } = await client.from(this._name).insert(row).select('id').single();
+            if (error) throw new Error(error.message || 'Insert failed');
+            return { id: data.id };
+        }
+    }
+
+    class DocRef {
+        constructor(col, id) {
+            this._col = col;
+            this._id = id;
+        }
+
+        async get() {
+            const { data, error } = await client.from(this._col).select('*').eq('id', this._id).maybeSingle();
+            if (error) throw new Error(error.message || 'Get failed');
+            if (!data) return { id: this._id, data: () => ({}), exists: false };
+            return { id: data.id, data: () => _normalizeRow(data), exists: true };
+        }
+
+        async set(obj, opts) {
+            const row = _plainForWrite(obj);
+            row.id = this._id;
+            if (!row.updatedAt) row.updatedAt = _serverNow();
+            if (!row.createdAt) row.createdAt = _serverNow();
+
+            if (opts && opts.merge) {
+                const existing = await this.get();
+                const merged = { ...(existing.exists ? existing.data() : {}), ...row, id: this._id };
+                const { error } = await client.from(this._col).upsert(merged, { onConflict: 'id' });
+                if (error) throw new Error(error.message || 'Merge set failed');
+                return;
             }
-            const res = await _fetch(`${_FS}:runQuery`, {
-                method: 'POST',
-                body: JSON.stringify({ structuredQuery: q })
-            });
-            const rawArr = Array.isArray(res) ? res : [res];
-            const rawDocs = rawArr.filter(r => r.document).map(r => r.document);
-            batchCount = rawDocs.length;
-            all = all.concat(rawDocs.map(_parseDoc).filter(Boolean));
-            // Only paginate for unfiltered queries (filtered results are always < 1000)
-            lastDocName = (!hasServerFilter && batchCount === 1000) ? (rawDocs[rawDocs.length - 1]?.name || null) : null;
-        } while (lastDocName);
 
-        // Client-side fallback for unsupported operators (e.g. 'in')
-        let docs = all;
-        for (const { f, op, v } of clientWheres) {
-            docs = docs.filter(d => {
-                const val = d.data()[f];
-                if (op === 'in') return Array.isArray(v) && v.includes(val);
-                return true;
-            });
+            const { error } = await client.from(this._col).upsert(row, { onConflict: 'id' });
+            if (error) throw new Error(error.message || 'Set failed');
         }
 
-        // Client-side sort
-        if (this._order) {
-            const { f, dir } = this._order;
-            docs.sort((a, b) => {
-                let av = a.data()[f], bv = b.data()[f];
-                if (av?.seconds !== undefined) av = av.seconds;
-                if (bv?.seconds !== undefined) bv = bv.seconds;
-                if (av < bv) return dir === 'desc' ? 1 : -1;
-                if (av > bv) return dir === 'desc' ? -1 : 1;
-                return 0;
-            });
+        async update(obj) {
+            const row = _plainForWrite(obj);
+            row.updatedAt = _serverNow();
+
+            const incEntries = Object.entries(obj || {}).filter(([, v]) => _isIncrement(v));
+            if (incEntries.length) {
+                const existing = await this.get();
+                const base = existing.exists ? existing.data() : {};
+                incEntries.forEach(([k, v]) => {
+                    row[k] = (Number(base[k]) || 0) + Number(v._n || 0);
+                });
+            }
+
+            const { error } = await client.from(this._col).update(row).eq('id', this._id);
+            if (error) throw new Error(error.message || 'Update failed');
         }
 
-        console.log(`[FS] ${this._name}: ${docs.length} docs`);
-        return { docs, size: docs.length, empty: !docs.length };
-    }
-
-    doc(id) { return new DocRef(this._name, id); }
-
-    async add(obj) {
-        const id = _autoId();
-        const { fields, transforms } = _buildWrite(obj);
-        const docPath = `projects/${firebaseConfig.projectId}/databases/${_DB}/documents/${this._name}/${id}`;
-        const write = { update: { name: docPath, fields } };
-        if (transforms.length) write.updateTransforms = transforms;
-        await _fetch(`${_FS}:commit`, { method: 'POST', body: JSON.stringify({ writes: [write] }) });
-        return { id };
-    }
-}
-
-class DocRef {
-    constructor(col, id) { this._col = col; this._id = id; }
-    get _docPath() { return `projects/${firebaseConfig.projectId}/databases/${_DB}/documents/${this._col}/${this._id}`; }
-
-    async get() {
-        try {
-            const res = await _fetch(`${_FS}/${this._col}/${this._id}`);
-            return _parseDoc(res) || { id: this._id, data: () => ({}), exists: false };
-        } catch { return { id: this._id, data: () => ({}), exists: false }; }
-    }
-
-    async set(obj, opts) {
-        const { fields, transforms } = _buildWrite(obj);
-        const write = { update: { name: this._docPath, fields } };
-        if (opts?.merge) write.updateMask = { fieldPaths: Object.keys(fields) };
-        if (transforms.length) write.updateTransforms = transforms;
-        await _fetch(`${_FS}:commit`, { method: 'POST', body: JSON.stringify({ writes: [write] }) });
-    }
-
-    async update(obj) {
-        const { fields, transforms } = _buildWrite(obj);
-        const writes = [];
-        if (Object.keys(fields).length) {
-            writes.push({
-                update: { name: this._docPath, fields },
-                updateMask: { fieldPaths: Object.keys(fields) },
-                ...(transforms.length ? { updateTransforms: transforms } : {})
-            });
-        } else if (transforms.length) {
-            writes.push({ transform: { document: this._docPath, fieldTransforms: transforms } });
+        async delete() {
+            const { error } = await client.from(this._col).delete().eq('id', this._id);
+            if (error) throw new Error(error.message || 'Delete failed');
         }
-        if (writes.length) await _fetch(`${_FS}:commit`, { method: 'POST', body: JSON.stringify({ writes }) });
     }
 
-    async delete() { await _fetch(`${_FS}/${this._col}/${this._id}`, { method: 'DELETE' }); }
-}
+    window.db = { collection: (name) => new ColRef(name) };
+    window.fireDb = window.db;
 
-window.db = { collection: (name) => new ColRef(name) };
-window.fireDb = window.db;
-window.fsServerTimestamp = () => ({ _fsOp: 'serverTime' });
-window.fsIncrement = (n) => ({ _fsOp: 'increment', _n: n });
-window._firebaseReady = true;
+    window.fsServerTimestamp = () => ({ _fsOp: 'serverTime' });
+    window.fsIncrement = (n) => ({ _fsOp: 'increment', _n: Number(n || 0) });
 
-console.log('[firebase-db-init] ✓ Ready');
+    window.auth = {
+        onAuthStateChanged: (cb) => {
+            client.auth.getSession().then(({ data }) => cb(data?.session?.user || null));
+            return client.auth.onAuthStateChange((_event, session) => {
+                _refreshCachedUserFromSession(session || null);
+                cb(session?.user || null);
+            });
+        },
+        signInWithEmailAndPassword: async (email, password) => {
+            const { data, error } = await client.auth.signInWithPassword({ email, password });
+            if (error) throw new Error(error.message || 'Sign-in failed');
+            return data;
+        },
+        signUpWithEmailAndPassword: async (email, password, metadata) => {
+            const { data, error } = await client.auth.signUp({ email, password, options: { data: metadata || {} } });
+            if (error) throw new Error(error.message || 'Sign-up failed');
+            return data;
+        },
+        signOut: async () => {
+            const { error } = await client.auth.signOut();
+            if (error) throw new Error(error.message || 'Sign-out failed');
+        },
+        signInAnonymously: async () => ({ ok: true }),
+        updatePassword: async (password) => {
+            const { error } = await client.auth.updateUser({ password });
+            if (error) throw new Error(error.message || 'Password update failed');
+        },
+        sendPasswordResetEmail: async (email) => {
+            const redirectTo = window.location.origin + window.location.pathname;
+            const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
+            if (error) throw new Error(error.message || 'Reset email failed');
+        },
+        currentUser: () => _cachedCompatUser
+    };
+
+    window.storage = {
+        ref: (path) => path,
+        uploadBytes: async (refPath, data) => {
+            const { data: out, error } = await client.storage.from(storageBucket).upload(refPath, data, { upsert: true });
+            if (error) throw new Error(error.message || 'Upload failed');
+            return out;
+        },
+        getDownloadURL: async (refPath) => {
+            const { data } = client.storage.from(storageBucket).getPublicUrl(refPath);
+            return data.publicUrl;
+        },
+        deleteObject: async (refPath) => {
+            const { error } = await client.storage.from(storageBucket).remove([refPath]);
+            if (error) throw new Error(error.message || 'Delete failed');
+        }
+    };
+
+    window.getCurrentUser = () => _cachedRawUser;
+    window._firebaseReady = true;
+
+    console.log('[backend-init] Supabase compat ready');
+})();
