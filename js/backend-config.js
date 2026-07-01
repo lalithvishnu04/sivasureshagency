@@ -2,7 +2,7 @@
 // Fill these from Supabase Project Settings > API.
 window.SSA_BACKEND = {
     provider: 'supabase',
-    supabaseUrl: '',
+    supabaseUrl: 'https://kyzlxhncnqahlpfhtoky.supabase.co',
     supabaseAnonKey: '',
     storageBucket: 'assets'
 };
