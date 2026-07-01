@@ -2,9 +2,13 @@ console.log('[backend-init] Starting Supabase initialization...');
 
 (function initSupabaseCompat() {
     const cfg = window.SSA_BACKEND || {};
+    const fallbackCfg = {
+        supabaseUrl: 'https://kyzlxhncnqahlpfhtoky.supabase.co',
+        supabaseAnonKey: 'sb_publishable_0hcswuIONUUJPdBl7RRIHw_JH7MsGeK'
+    };
     const provider = (cfg.provider || 'supabase').toLowerCase();
-    const url = cfg.supabaseUrl || '';
-    const anonKey = cfg.supabaseAnonKey || '';
+    const url = cfg.supabaseUrl || fallbackCfg.supabaseUrl || '';
+    const anonKey = cfg.supabaseAnonKey || fallbackCfg.supabaseAnonKey || '';
     const storageBucket = cfg.storageBucket || 'assets';
 
     if (provider !== 'supabase') {

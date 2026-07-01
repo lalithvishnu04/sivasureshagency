@@ -45,7 +45,7 @@ function initializeAuthListener() {
     if (typeof auth === 'undefined' || !auth || !window._firebaseReady) {
         if (authInitAttempts > 100) {
             const loginErr = document.getElementById('loginError');
-            if (loginErr) loginErr.textContent = 'Firebase initialization failed. Please refresh the page.';
+            if (loginErr) loginErr.textContent = 'Backend initialization failed. Please refresh the page.';
             return;
         }
         setTimeout(initializeAuthListener, 50);
@@ -93,7 +93,7 @@ initializeAuthListener();
 function handleAdminLogin(e) {
     e.preventDefault();
     if (typeof auth === 'undefined' || !auth || !window._firebaseReady) {
-        alert('Firebase is still loading. Please wait a moment and try again.');
+        alert('Backend is still loading. Please wait a moment and try again.');
         return;
     }
     const email = document.getElementById('adminEmail').value.trim();
