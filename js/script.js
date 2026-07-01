@@ -98,6 +98,16 @@ const colorOptions = {
         { name: 'Peach', hex: '#FFAB91' },
         { name: 'Sage Green', hex: '#81C784' },
     ],
+    'scrub-suits': [
+        { name: 'Ceil Blue', hex: '#6CA0DC' },
+        { name: 'Hunter Green', hex: '#355E3B' },
+        { name: 'Navy', hex: '#1A237E' },
+        { name: 'Burgundy', hex: '#800020' },
+        { name: 'Charcoal', hex: '#36454F' },
+        { name: 'Pewter', hex: '#8BA7A7' },
+        { name: 'Caribbean Blue', hex: '#00B5CC' },
+        { name: 'Black', hex: '#1A1A1A' },
+    ],
 };
 
 function getProductColors(product) {
@@ -204,8 +214,10 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
                 renderProducts(
                     typeof currentFilter !== 'undefined' ? currentFilter : 'all',
                     typeof displayedProducts !== 'undefined' ? displayedProducts : 12,
-                    window._currentGender, window._currentSleeve
+                    window._currentGender, window._currentSleeve,
+                    typeof window._currentSearch !== 'undefined' ? window._currentSearch : ''
                 );
+                updateScrubsCount();
         } else if (page === 'home') {
             const grid = document.getElementById('shopGrid') || document.getElementById('featuredGrid');
             if (grid && typeof buildProductCard === 'function') {
@@ -380,6 +392,7 @@ cart.forEach(item => { const p = productsData.find(x => x.id === item.id); if (p
 let wishlist = JSON.parse(localStorage.getItem('ssa_wishlist') || '[]');
 let displayedProducts = 12;
 let currentFilter = 'all';
+let currentSearch = '';
 
 // ===== Wishlist =====
 function isWishlisted(id) { return wishlist.includes(id); }
@@ -395,7 +408,7 @@ function toggleWishlist(id) {
         localStorage.setItem('ssa_wishlist', JSON.stringify(wishlist));
         updateWishlistCount();
         // Re-render so heart icon updates
-        renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve);
+        renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, currentSearch);
     });
 }
 function updateWishlistCount() {
@@ -639,6 +652,30 @@ function initCategoriesPage() {
         });
     }
 
+    // Product search input
+    const productSearchInput = document.getElementById('productSearchInput');
+    const productSearchClear = document.getElementById('productSearchClear');
+    if (productSearchInput) {
+        productSearchInput.addEventListener('input', (e) => {
+            currentSearch = e.target.value.trim();
+            window._currentSearch = currentSearch;
+            if (productSearchClear) productSearchClear.style.display = currentSearch ? 'flex' : 'none';
+            displayedProducts = 12;
+            renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, currentSearch);
+        });
+    }
+    if (productSearchClear) {
+        productSearchClear.addEventListener('click', () => {
+            if (productSearchInput) productSearchInput.value = '';
+            currentSearch = '';
+            window._currentSearch = '';
+            productSearchClear.style.display = 'none';
+            displayedProducts = 12;
+            renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, '');
+            if (productSearchInput) productSearchInput.focus();
+        });
+    }
+
     // Filter buttons
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -646,7 +683,7 @@ function initCategoriesPage() {
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
             displayedProducts = 12;
-            renderProducts(currentFilter, displayedProducts, gender, sleeve);
+            renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
         });
     });
 
@@ -659,17 +696,22 @@ function initCategoriesPage() {
             else if (val === 'price-high') productsData.sort((a, b) => b.price - a.price);
             else if (val === 'newest') productsData.sort((a, b) => b.id - a.id);
             else productsData.sort((a, b) => b.reviews - a.reviews);
-            renderProducts(currentFilter, displayedProducts, gender, sleeve);
+            renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
         });
     }
 
     // Load more
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', () => { displayedProducts += 12; renderProducts(currentFilter, displayedProducts, gender, sleeve); });
+        loadMoreBtn.addEventListener('click', () => { displayedProducts += 12; renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch); });
     }
 
-    renderProducts(currentFilter, displayedProducts, gender, sleeve);
+    // Store gender/sleeve for use by other callers
+    window._currentGender = gender;
+    window._currentSleeve = sleeve;
+
+    updateScrubsCount();
+    renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
 }
 
 // ===== Contact Page =====
@@ -733,22 +775,72 @@ function buildProductCard(p) {
     </div>`;
 }
 
-function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null) {
+function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null, searchQuery = '') {
     let filtered = filter === 'all' ? [...productsData] : productsData.filter(p => p.category === filter);
     if (gender) filtered = filtered.filter(p => p.gender === gender);
     if (sleeve) filtered = filtered.filter(p => p.sleeve === sleeve);
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        filtered = filtered.filter(p =>
+            p.name.toLowerCase().includes(q) ||
+            p.category.replace(/-/g, ' ').toLowerCase().includes(q) ||
+            (p.description && p.description.toLowerCase().includes(q))
+        );
+    }
     const toShow = filtered.slice(0, count);
     const grid = document.getElementById('shopGrid');
     if (!grid) return;
-    grid.innerHTML = toShow.map(p => buildProductCard(p)).join('');
-    grid.querySelectorAll('.shop-card').forEach(updateCardStockUI);
+    if (toShow.length === 0) {
+        const isScrubs = filter === 'scrub-suits';
+        grid.innerHTML = `<div class="products-empty-state">
+            <i class="fas fa-${isScrubs ? 'tshirt' : 'box-open'}"></i>
+            <h3>${isScrubs ? 'SSA CliniFlex™ Scrubs — Coming Soon!' : searchQuery ? 'No products match your search' : 'No products in this category yet'}</h3>
+            <p>${isScrubs ? 'Our signature scrub collection is being set up. Check back soon or contact us for availability.' : searchQuery ? 'Try different keywords or browse all products.' : 'Products will appear here once added by the admin.'}</p>
+            ${isScrubs ? '<a href="contact.html" class="btn btn-gradient btn-sm"><i class="fas fa-phone-alt"></i> Ask About Scrubs</a>' : ''}
+        </div>`;
+    } else {
+        grid.innerHTML = toShow.map(p => buildProductCard(p)).join('');
+        grid.querySelectorAll('.shop-card').forEach(updateCardStockUI);
+    }
 
     const info = document.getElementById('shopResultsInfo');
-    if (info) info.textContent = `Showing ${toShow.length} of ${filtered.length} products`;
+    if (info) {
+        if (searchQuery && filtered.length > 0)
+            info.textContent = `${filtered.length} result${filtered.length !== 1 ? 's' : ''} for "${searchQuery}"`;
+        else if (searchQuery && filtered.length === 0)
+            info.textContent = `No results for "${searchQuery}"`;
+        else
+            info.textContent = `Showing ${toShow.length} of ${filtered.length} products`;
+    }
 
     const loadMoreBtn = document.getElementById('loadMoreBtn');
-    if (loadMoreBtn) loadMoreBtn.style.display = count >= filtered.length ? 'none' : '';
+    if (loadMoreBtn) loadMoreBtn.style.display = (toShow.length === 0 || count >= filtered.length) ? 'none' : '';
 }
+
+function filterToScrubs() {
+    currentFilter = 'scrub-suits';
+    currentSearch = '';
+    displayedProducts = 12;
+    const searchInput = document.getElementById('productSearchInput');
+    if (searchInput) searchInput.value = '';
+    const clearBtn = document.getElementById('productSearchClear');
+    if (clearBtn) clearBtn.style.display = 'none';
+    document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.filter === 'scrub-suits');
+    });
+    renderProducts('scrub-suits', displayedProducts, null, null, '');
+    const shopSection = document.querySelector('.shop-section');
+    if (shopSection) shopSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+window.filterToScrubs = filterToScrubs;
+
+function updateScrubsCount() {
+    const el = document.getElementById('scrubsCount');
+    if (!el) return;
+    const count = productsData.filter(p => p.category === 'scrub-suits').length;
+    el.textContent = count > 0 ? count + '+' : 'Coming Soon';
+}
+window.updateScrubsCount = updateScrubsCount;
 
 function normalizeSizeKey(size) {
     if (size === undefined || size === null) return '';

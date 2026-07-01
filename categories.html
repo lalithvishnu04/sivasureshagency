@@ -44,6 +44,7 @@
                         <a href="categories.html" class="active">Categories <i class="fas fa-chevron-down nav-arrow"></i></a>
                         <div class="mega-menu">
                             <div class="mega-menu-inner">
+                                <div class="mega-col mega-col-scrubs"><h4><a href="categories.html?cat=scrub-suits"><i class="fas fa-award"></i> CliniFlex™ Scrubs</a></h4><span class="mega-scrubs-tag">★ Signature</span><ul><li><a href="categories.html?cat=scrub-suits&gender=male">Gents Scrub Suits</a></li><li><a href="categories.html?cat=scrub-suits&gender=female">Ladies Scrub Suits</a></li><li><a href="categories.html?cat=scrub-suits">All Scrub Suits</a></li></ul></div>
                                 <div class="mega-col"><h4><a href="categories.html?cat=doctor-uniform"><i class="fas fa-user-md"></i> Doctor Uniform</a></h4><ul><li><a href="categories.html?cat=doctor-uniform&gender=male" style="font-size:0.78rem;font-weight:700;color:var(--primary);padding:4px 0;display:block;">Male Doctor Uniform</a></li><li><a href="categories.html?cat=doctor-uniform&gender=male&sleeve=full">Full Sleeve</a></li><li><a href="categories.html?cat=doctor-uniform&gender=male&sleeve=half">Half Sleeve</a></li><li><a href="categories.html?cat=doctor-uniform&gender=female" style="font-size:0.78rem;font-weight:700;color:var(--primary);padding:4px 0;display:block;margin-top:6px;">Female Doctor Uniform</a></li><li><a href="categories.html?cat=doctor-uniform&gender=female&sleeve=full">Full Sleeve</a></li><li><a href="categories.html?cat=doctor-uniform&gender=female&sleeve=half">Half Sleeve</a></li></ul></div>
                                 <div class="mega-col"><h4><a href="categories.html?cat=staff-uniform"><i class="fas fa-tshirt"></i> Staff Uniform</a></h4><ul><li><a href="categories.html?cat=staff-uniform&gender=male" style="font-size:0.78rem;font-weight:700;color:var(--primary);padding:4px 0;display:block;">Male Staff Uniform</a></li><li><a href="categories.html?cat=staff-uniform&gender=male">All Male Styles</a></li><li><a href="categories.html?cat=staff-uniform&gender=female" style="font-size:0.78rem;font-weight:700;color:var(--primary);padding:4px 0;display:block;margin-top:6px;">Female Staff Uniform</a></li><li><a href="categories.html?cat=staff-uniform&gender=female">All Female Styles</a></li><li><a href="categories.html?cat=staff-uniform">All Staff Uniforms</a></li></ul></div>
                                 <div class="mega-col"><h4><a href="categories.html?cat=hospital-linen"><i class="fas fa-bed"></i> Linen & Bedsheets</a></h4><ul><li><a href="categories.html?cat=bedsheets">Bedsheets & Pillow Covers</a></li><li><a href="categories.html?cat=hospital-linen" style="font-size:0.78rem;font-weight:700;color:var(--primary);padding:4px 0;display:block;margin-top:6px;">Hospital Linen</a></li><li><a href="categories.html?cat=hospital-linen">Surgeon Aprons</a></li><li><a href="categories.html?cat=hospital-linen">OT Accessories</a></li><li><a href="categories.html?cat=hospital-linen">Patient Wear</a></li><li><a href="categories.html?cat=hotel-linen" style="font-size:0.78rem;font-weight:700;color:var(--primary);padding:4px 0;display:block;margin-top:6px;">Hotel Linen</a></li></ul></div>
@@ -87,12 +88,57 @@
         </div>
     </section>
 
+    <!-- Scrubs Spotlight -->
+    <section class="scrubs-spotlight">
+        <div class="container">
+            <div class="ss-inner">
+                <div class="ss-content">
+                    <span class="ss-badge"><i class="fas fa-award"></i> Signature Collection</span>
+                    <h2>SSA CliniFlex™ <span>Scrubs</span></h2>
+                    <p>Our flagship medical scrub suits — engineered for healthcare professionals who demand comfort, durability, and style through every shift.</p>
+                    <ul class="ss-features">
+                        <li><i class="fas fa-check-circle"></i> 2-Way Stretch Premium Fabric</li>
+                        <li><i class="fas fa-check-circle"></i> Moisture-Wicking Technology</li>
+                        <li><i class="fas fa-check-circle"></i> Anti-Microbial Treatment</li>
+                        <li><i class="fas fa-check-circle"></i> Available in Multiple Colors</li>
+                    </ul>
+                    <div class="ss-actions">
+                        <button class="btn btn-ss-white btn-lg" onclick="filterToScrubs()"><i class="fas fa-tshirt"></i> Shop Scrubs</button>
+                        <a href="contact.html" class="btn btn-ss-glass btn-lg">Bulk Order <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+                <div class="ss-visual">
+                    <div class="ss-card-wrap">
+                        <div class="ss-icon-card">
+                            <i class="fas fa-tshirt"></i>
+                            <span>CliniFlex™</span>
+                        </div>
+                        <div class="ss-stats">
+                            <div class="ss-stat"><span id="scrubsCount">—</span><small>Products</small></div>
+                            <div class="ss-stat"><span>★ 4.9</span><small>Rating</small></div>
+                            <div class="ss-stat"><span>1000+</span><small>Customers</small></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Shop Section -->
     <section class="shop-section section-pad">
         <div class="container">
+            <!-- Product Search -->
+            <div class="product-search-bar">
+                <div class="psb-wrap">
+                    <i class="fas fa-search psb-icon"></i>
+                    <input type="text" id="productSearchInput" placeholder="Search scrubs, uniforms, linen..." autocomplete="off" aria-label="Search products">
+                    <button class="psb-clear" id="productSearchClear" style="display:none;" aria-label="Clear search"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
             <div class="shop-toolbar">
                 <div class="shop-filters">
                     <button class="filter-btn active" data-filter="all">All Products</button>
+                    <button class="filter-btn filter-btn-scrubs" data-filter="scrub-suits"><i class="fas fa-star"></i> CliniFlex™ Scrubs <span class="scrubs-pill">Signature</span></button>
                     <button class="filter-btn" data-filter="doctor-uniform">Doctor Uniform</button>
                     <button class="filter-btn" data-filter="staff-uniform">Staff Uniform</button>
                     <button class="filter-btn" data-filter="bedsheets">Bedsheets</button>
@@ -136,7 +182,7 @@
             <div class="footer-grid">
                 <div class="footer-about"><a href="index.html" class="logo"><div class="logo-icon"><img src="images/Images/SSA Logo.png" alt="SSA Logo" width="44" height="48"></div><div class="logo-text-wrap"><span class="logo-text">Siva Suresh</span><span class="logo-sub">Agency</span></div></a><p>Leading manufacturers and suppliers of premium hospital linen, medical uniforms, and hotel textiles since 2010.</p><div class="social-links"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-twitter"></i></a><a href="#"><i class="fab fa-linkedin-in"></i></a></div></div>
                 <div class="footer-links"><h4>Quick Links</h4><ul><li><a href="about.html">About Us</a></li><li><a href="categories.html">Shop Online</a></li><li><a href="services.html">Services</a></li><li><a href="contact.html">Contact</a></li></ul></div>
-                <div class="footer-links"><h4>Categories</h4><ul><li><a href="categories.html?cat=doctor-uniform">Doctor Uniform</a></li><li><a href="categories.html?cat=staff-uniform">Staff Uniform</a></li><li><a href="categories.html?cat=bedsheets">Bedsheets</a></li><li><a href="categories.html?cat=hospital-linen">Hospital Linen</a></li><li><a href="categories.html?cat=hotel-linen">Hotel Linen</a></li></ul></div>
+                <div class="footer-links"><h4>Categories</h4><ul><li><a href="categories.html?cat=scrub-suits" style="color:var(--primary);font-weight:700;">★ CliniFlex™ Scrubs</a></li><li><a href="categories.html?cat=doctor-uniform">Doctor Uniform</a></li><li><a href="categories.html?cat=staff-uniform">Staff Uniform</a></li><li><a href="categories.html?cat=bedsheets">Bedsheets</a></li><li><a href="categories.html?cat=hospital-linen">Hospital Linen</a></li><li><a href="categories.html?cat=hotel-linen">Hotel Linen</a></li></ul></div>
                 <div class="footer-contact"><h4>Get In Touch</h4><p><i class="fas fa-map-marker-alt"></i> PVT Towers, 37/10, Selvam Nagar, Erode - 638 011</p><p><i class="fas fa-envelope"></i> <a href="mailto:sivasureshagency@gmail.com">sivasureshagency@gmail.com</a></p><p><i class="fas fa-phone-alt"></i> <a href="tel:+919366640050">+91 93666 40050</a></p></div>
             </div>
             <div class="footer-bottom"><p>&copy; 2024 Siva Suresh Agency. All rights reserved.</p><div class="footer-bottom-links"><a href="#" onclick="openPolicyModal('privacy');return false;">Privacy Policy</a><a href="#" onclick="openPolicyModal('terms');return false;">Terms of Service</a><a href="#" onclick="openPolicyModal('shipping');return false;">Shipping Policy</a></div></div>
