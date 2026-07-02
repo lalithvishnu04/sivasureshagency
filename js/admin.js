@@ -515,15 +515,17 @@ function openProductModal(product = null) {
     document.getElementById('productEditId').value = product ? product.docId : '';
     document.getElementById('productModalTitle').innerHTML = product ? '<i class="fas fa-edit"></i> Edit Product' : '<i class="fas fa-plus"></i> Add Product';
     document.getElementById('pName').value = product ? product.name : '';
-    document.getElementById('pCategory').value = product ? product.category : 'doctor-uniform';
+    document.getElementById('pCategory').value = product ? product.category : 'scrub-suits';
     document.getElementById('pPrice').value = product ? product.price : '';
     document.getElementById('pOldPrice').value = product ? product.oldPrice || '' : '';
     document.getElementById('pGender').value = product ? product.gender || '' : '';
     document.getElementById('pSleeve').value = product ? product.sleeve || '' : '';
     document.getElementById('pSizes').value = product ? (product.sizes || []).join(',') : 'S,M,L,XL,XXL,XXXL';
     document.getElementById('pDescription').value = product ? product.description || '' : '';
-    document.getElementById('pImage').value = product ? product.image || '' : '';
     document.getElementById('pBadge').value = product ? product.badge || '' : '';
+    // Load colorVariants
+    _cvData = (product?.colorVariants || []).map(cv => ({ name: cv.name || '', hex: cv.hex || '#0d9488', images: [...(cv.images || [])] }));
+    renderColorVariantRows();
     openModal('productModal');
 }
 
@@ -544,7 +546,9 @@ async function saveProduct(e) {
         sleeve: document.getElementById('pSleeve').value || null,
         sizes: document.getElementById('pSizes').value.split(',').map(s => s.trim()).filter(Boolean),
         description: document.getElementById('pDescription').value.trim(),
-        image: document.getElementById('pImage').value.trim(),
+        // Derive primary image from first colorVariant's first image for backward compat
+        image: (_cvData[0]?.images?.[0]) || '',
+        colorVariants: _cvData.map(cv => ({ name: cv.name, hex: cv.hex, images: cv.images })),
         badge: document.getElementById('pBadge').value.trim(),
         updatedAt: fsServerTimestamp()
     };
@@ -1234,8 +1238,83 @@ async function saveOrderModifications(e) {
 
 // ===== Product Image Upload =====
 // Converts the selected image to a compressed JPEG data-URL client-side.
-// No Firebase Storage upload — data URL stored directly in Firestore.
-function handleProductImageUpload(event) {
+// ===== Color Variants (product form) =====
+let _cvData = []; // [{name, hex, images:[dataUrl,...]}]
+
+function renderColorVariantRows() {
+    const container = document.getElementById('cvContainer');
+    if (!container) return;
+    if (_cvData.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No colors added yet. Click "Add Color" to add color variants with images.</p>';
+        return;
+    }
+    container.innerHTML = _cvData.map((cv, idx) => `
+    <div class="cv-row" data-idx="${idx}">
+        <div class="cv-row-head">
+            <div class="cv-fields">
+                <input type="text" class="cv-name" placeholder="Color name (e.g. Ceil Blue)" value="${cv.name || ''}" oninput="updateCV(${idx},'name',this.value)" style="flex:1">
+                <label class="cv-hex-wrap" title="Pick hex color">
+                    <input type="color" value="${cv.hex || '#000000'}" oninput="updateCV(${idx},'hex',this.value)" style="width:38px;height:34px;border:none;cursor:pointer;border-radius:6px;padding:2px">
+                </label>
+            </div>
+            <button type="button" class="btn-icon danger" onclick="removeColorVariant(${idx})" title="Remove color"><i class="fas fa-trash"></i></button>
+        </div>
+        <div class="cv-imgs" id="cvImgs_${idx}">${(cv.images||[]).map((img,ii) => `<div class="cv-thumb-wrap"><img src="${img}" class="cv-thumb"><button type="button" onclick="removeVariantImage(${idx},${ii})" class="cv-thumb-del">&#x2715;</button></div>`).join('')}</div>
+        <button type="button" class="cv-add-img-btn" onclick="triggerCVImageUpload(${idx})"><i class="fas fa-plus"></i> Add Image</button>
+        <input type="file" id="cvFile_${idx}" accept="image/*" style="display:none" onchange="handleCVImageUpload(event,${idx})" multiple>
+    </div>`).join('');
+}
+
+function addColorVariant() {
+    _cvData.push({ name: '', hex: '#0d9488', images: [] });
+    renderColorVariantRows();
+}
+window.addColorVariant = addColorVariant;
+
+function removeColorVariant(idx) {
+    _cvData.splice(idx, 1);
+    renderColorVariantRows();
+}
+window.removeColorVariant = removeColorVariant;
+
+function updateCV(idx, field, value) {
+    if (_cvData[idx]) _cvData[idx][field] = value;
+}
+window.updateCV = updateCV;
+
+function triggerCVImageUpload(idx) {
+    document.getElementById(`cvFile_${idx}`)?.click();
+}
+window.triggerCVImageUpload = triggerCVImageUpload;
+
+function removeVariantImage(varIdx, imgIdx) {
+    if (_cvData[varIdx]) { _cvData[varIdx].images.splice(imgIdx, 1); renderColorVariantRows(); }
+}
+window.removeVariantImage = removeVariantImage;
+
+function handleCVImageUpload(event, idx) {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    const MAX_W = 900, MAX_H = 900, QUALITY = 0.82;
+    files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+                let w = img.width, h = img.height;
+                if (w > MAX_W || h > MAX_H) { const r = Math.min(MAX_W/w, MAX_H/h); w = Math.round(w*r); h = Math.round(h*r); }
+                const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+                if (_cvData[idx]) { _cvData[idx].images.push(dataUrl); renderColorVariantRows(); }
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+    event.target.value = '';
+}
+window.handleCVImageUpload = handleCVImageUpload;
     const file = event.target.files[0];
     if (!file) return;
 

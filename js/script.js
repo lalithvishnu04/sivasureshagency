@@ -111,7 +111,9 @@ const colorOptions = {
 };
 
 function getProductColors(product) {
-    return colorOptions[product.category] || colorOptions['hospital-linen'];
+    if (product.colorVariants && product.colorVariants.length > 0)
+        return product.colorVariants.map(cv => ({ name: cv.name, hex: cv.hex }));
+    return null;
 }
 
 const productsData = [
@@ -160,6 +162,47 @@ const productsData = [
 ];
 productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
 
+// Auto-assign a single colorVariant to existing local products (derived from image filename)
+(function _initColorVariants() {
+    const _cm = {
+        'Male Full Sleeve.jpg':                  {name:'White',      hex:'#FFFFFF'},
+        'Male Half Sleeve.jpg':                  {name:'White',      hex:'#FFFFFF'},
+        'Female Full Sleeve.jpg':                {name:'White',      hex:'#FFFFFF'},
+        'Female Half Sleeve.jpg':                {name:'White',      hex:'#FFFFFF'},
+        'Male Uniform (Beige Style).jpg':        {name:'Beige',      hex:'#C8A882'},
+        'Male Uniform (Blue Style).jpg':         {name:'Blue',       hex:'#1565C0'},
+        'Male Uniform (Brown Style).jpg':        {name:'Brown',      hex:'#795548'},
+        'Male Uniform (Gray Style).jpg':         {name:'Gray',       hex:'#607D8B'},
+        'Male Uniform (Blue Ward Boy).jpg':      {name:'Blue',       hex:'#1565C0'},
+        'Male Uniform (Gray Ward Boy).jpg':      {name:'Gray',       hex:'#607D8B'},
+        'Male Uniform (Green Ward Boy).jpg':     {name:'Green',      hex:'#2E7D32'},
+        'Female Uniform (Blue Style).jpg':       {name:'Blue',       hex:'#1565C0'},
+        'Female Uniform (Blue Style 02).jpg':    {name:'Blue',       hex:'#1565C0'},
+        'Female Uniform (Dark Pink).jpg':        {name:'Dark Pink',  hex:'#AD1457'},
+        'Female Uniform (Green Color).jpg':      {name:'Green',      hex:'#2E7D32'},
+        'Female Uniform (Pink Style).jpg':       {name:'Pink',       hex:'#E91E63'},
+        'Female Uniform (Pink Style) (2).jpg':   {name:'Pink',       hex:'#E91E63'},
+        'Female Uniform (Red Style).jpg':        {name:'Red',        hex:'#C62828'},
+        'Striped Sheet.jpg':                     {name:'Blue & White',hex:'#B3D9FF'},
+        'Hospital Towel.jpg':                    {name:'White',      hex:'#FFFFFF'},
+        'Head cap and Mask.jpg':                 {name:'White',      hex:'#FFFFFF'},
+        'Surgeon Apron.jpg':                     {name:'Green',      hex:'#2E7D32'},
+        'Male Surgeon Apron.jpg':                {name:'Green',      hex:'#2E7D32'},
+        'abdominal Sheet 9x9.jpg':               {name:'White',      hex:'#FFFFFF'},
+        'Eye Pad.jpg':                           {name:'White',      hex:'#FFFFFF'},
+        'Female Surgoen Apron.jpg':              {name:'Green',      hex:'#2E7D32'},
+        'OT Nighty.jpg':                         {name:'White',      hex:'#FFFFFF'},
+        'Stripped Bedspread and Pillow Cover.jpg':{name:'Blue Stripe',hex:'#B3D9FF'},
+    };
+    productsData.forEach(p => {
+        if (!p.colorVariants && p.image && !p.image.startsWith('data:') && !p.image.startsWith('blob:')) {
+            const imgFile = p.image.split('/').pop();
+            const cv = _cm[imgFile];
+            if (cv) p.colorVariants = [{ ...cv, images: [p.image] }];
+        }
+    });
+})();
+
 // ===== Firestore Products Sync =====
 // Loads products from Firestore once per session and merges admin-set images/prices.
 // sessionStorage cache (10 min TTL) prevents repeated Firebase reads.
@@ -174,8 +217,8 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
             if (!fp.name) continue;
             const local = productsData.find(p => p.name === fp.name);
             if (local) {
-                // Overlay admin-editable fields (image, price, badge, description)
-                for (const f of ['image', 'price', 'oldPrice', 'badge', 'description']) {
+                // Overlay admin-editable fields (image, price, badge, description, colorVariants)
+                for (const f of ['image', 'price', 'oldPrice', 'badge', 'description', 'colorVariants']) {
                     const val = fp[f];
                     if (val !== undefined && val !== null && val !== '' && val !== local[f]) {
                         local[f] = val;
@@ -196,6 +239,7 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
                     description: fp.description || '',
                     image: fp.image || '',
                     badge: fp.badge || '',
+                    colorVariants: fp.colorVariants || [],
                     rating: 4.5, reviews: 0,
                     _fromFirestore: true
                 };
@@ -763,7 +807,7 @@ function buildProductCard(p) {
         ${outBadge}
         <button class="shop-card-wishlist" data-product-id="${p.id}" aria-label="Wishlist"><i class="${isWishlisted(p.id) ? 'fas' : 'far'} fa-heart"></i></button>
         <div class="shop-card-image" onclick="openProductDetail(${p.id})">
-            <img src="${p.image}" alt="${p.name}" loading="lazy">
+            <img src="${p.colorVariants?.[0]?.images?.[0] || p.image}" alt="${p.name}" loading="lazy">
             ${quickBtn}
         </div>
         <div class="shop-card-body" onclick="openProductDetail(${p.id})">
@@ -1133,28 +1177,43 @@ function closeSuccessModal() { document.getElementById('successModal').classList
 
 // ===== Product Detail =====
 let pdQuantity = 1;
+
+function _pdGetImages(p, colorName) {
+    if (p.colorVariants && p.colorVariants.length) {
+        const cv = colorName ? p.colorVariants.find(c => c.name === colorName) : p.colorVariants[0];
+        if (cv && cv.images && cv.images.length) return cv.images;
+        if (cv) return p.image ? [p.image] : [];
+    }
+    return p.image ? [p.image] : [];
+}
+
 function openProductDetail(id) {
     const p = productsData.find(x => x.id === id); if (!p) return;
-    const discount = Math.round((1 - p.price / p.oldPrice) * 100);
+    const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0;
     const colors = getProductColors(p);
 
-    // Auto-select the first color that has at least one available size
+    // Auto-select first color that has at least one available size
     let defaultColorObj = colors ? colors[0] : null;
     if (colors) {
-        const firstGoodColor = colors.find(c => (p.sizes || []).some(s => !isVariantOutOfStock(p, s, c.name)));
-        if (firstGoodColor) defaultColorObj = firstGoodColor;
+        const good = colors.find(c => (p.sizes || []).some(s => !isVariantOutOfStock(p, s, c.name)));
+        if (good) defaultColorObj = good;
     }
     const defaultColor = defaultColorObj ? defaultColorObj.name : null;
     const firstAvailableSize = (p.sizes || []).find(s => !isVariantOutOfStock(p, s, defaultColor));
 
-    const colorSection = colors ? `<div class="pd-color-section"><h4>Select Color</h4><div class="pd-color-swatches">${colors.map((c) => {
-        const isDefault = c.name === defaultColorObj?.name;
-        const allSizesOos = (p.sizes || []).every(s => isVariantOutOfStock(p, s, c.name));
-        return `<button class="pd-color-swatch${isDefault ? ' active' : ''}${allSizesOos ? ' swatch-oos' : ''}" data-hex="${c.hex}" data-color-name="${c.name}" title="${c.name}${allSizesOos ? ' (Out of Stock)' : ''}" style="background:${c.hex}${c.hex === '#FFFFFF' ? ';border-color:#ccc' : ''}" onclick="selectDetailColor(this,${p.id})"></button>`;
-    }).join('')}</div><span class="pd-color-name">${defaultColorObj?.name || ''}</span></div>` : '';
+    // Image gallery
+    const initImages = _pdGetImages(p, defaultColor);
+    const mainImg = initImages[0] || '';
+    const thumbsHtml = initImages.length > 1 ? `<div class="pd-thumbnails" id="pdThumbs-${p.id}">${initImages.map((img,i) => `<button class="pd-thumb${i===0?' active':''}" onclick="selectPdImage(this,'${img.replace(/'/g,\"\\'\")}',${ p.id})" style="background-image:url('${img.replace(/'/g,\"\\'\")}')"></button>`).join('')}</div>` : `<div class="pd-thumbnails" id="pdThumbs-${p.id}" style="display:none"></div>`;
+
+    // Color swatches
+    const colorSection = colors ? `<div class="pd-color-section"><h4>Select Color</h4><div class="pd-color-swatches">${colors.map(c => { const isDef = c.name === defaultColorObj?.name; const allOos = (p.sizes||[]).every(s => isVariantOutOfStock(p,s,c.name)); return `<button class="pd-color-swatch${isDef?' active':''}${allOos?' swatch-oos':''}" data-hex="${c.hex}" data-color-name="${c.name}" title="${c.name}${allOos?' (Out of Stock)':''}" style="background:${c.hex}${c.hex==='#FFFFFF'?';border-color:#ccc':''}" onclick="selectDetailColor(this,${p.id})"></button>`; }).join('')}</div><span class="pd-color-name">${defaultColorObj?.name||''}</span></div>` : '';
+
+    // Embroidery section (scrub-suits only)
+    const embHtml = p.category === 'scrub-suits' ? `<div class="emb-section" id="embSec-${p.id}"><div class="emb-toggle" onclick="toggleEmbroidery(${p.id})"><span><i class="fas fa-pen-nib"></i> Add Embroidery <span class="emb-badge">+\u20b9299</span></span><i class="fas fa-chevron-down emb-chevron" id="embChev-${p.id}"></i></div><div class="emb-body" id="embBody-${p.id}" style="display:none"><div class="emb-field"><label>Embroidery Type *</label><div class="emb-type-row"><button type="button" class="emb-type-btn active" data-type="TEXT" onclick="selectEmbType(this,${p.id})">TEXT</button><button type="button" class="emb-type-btn" data-type="LOGO" onclick="selectEmbType(this,${p.id})">LOGO</button><button type="button" class="emb-type-btn" data-type="TEXT &amp; LOGO" onclick="selectEmbType(this,${p.id})">TEXT &amp; LOGO</button></div></div><div class="emb-text-fields" id="embTF-${p.id}"><div class="emb-row2"><div class="emb-field"><label>Line 1 *</label><div class="emb-inp-wrap"><input type="text" id="embL1-${p.id}" maxlength="100" placeholder="Enter Line 1" oninput="updateEmbCount(this,'embC1-${p.id}')"><span id="embC1-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-field"><label>Line 2</label><div class="emb-inp-wrap"><input type="text" id="embL2-${p.id}" maxlength="100" placeholder="Enter Line 2" oninput="updateEmbCount(this,'embC2-${p.id}')"><span id="embC2-${p.id}" class="emb-char-count">0/100</span></div></div></div><div class="emb-field"><label>Line 3</label><div class="emb-inp-wrap"><input type="text" id="embL3-${p.id}" maxlength="100" placeholder="Enter Line 3" oninput="updateEmbCount(this,'embC3-${p.id}')"><span id="embC3-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-row2"><div class="emb-field"><label>Text Position *</label><select id="embPos-${p.id}"><option value="">Select Position</option><option>Left Chest</option><option>Right Chest</option><option>Back Center</option><option>Left Sleeve</option><option>Right Sleeve</option></select></div><div class="emb-field"><label>Text Color</label><div class="emb-colors"><button type="button" class="emb-col active" style="background:#fff;border:2px solid #ccc" data-c="White" onclick="selectEmbColor(this)" title="White"></button><button type="button" class="emb-col" style="background:#000" data-c="Black" onclick="selectEmbColor(this)" title="Black"></button><button type="button" class="emb-col" style="background:#1A237E" data-c="Navy" onclick="selectEmbColor(this)" title="Navy"></button><button type="button" class="emb-col" style="background:#F9A825" data-c="Yellow" onclick="selectEmbColor(this)" title="Yellow"></button><button type="button" class="emb-col" style="background:#C62828" data-c="Red" onclick="selectEmbColor(this)" title="Red"></button><button type="button" class="emb-col" style="background:#E65100" data-c="Orange" onclick="selectEmbColor(this)" title="Orange"></button><button type="button" class="emb-col" style="background:#1B5E20" data-c="Green" onclick="selectEmbColor(this)" title="Green"></button></div></div></div><div class="emb-field"><label>Font Style</label><div class="emb-fonts"><button type="button" class="emb-font active" style="font-family:cursive;font-size:1rem" data-f="Cursive" onclick="selectEmbFont(this)">The Scrub Life</button><button type="button" class="emb-font" style="font-family:Georgia,serif;font-size:0.9rem" data-f="Serif" onclick="selectEmbFont(this)">The Scrub Life</button><button type="button" class="emb-font" style="font-family:sans-serif;font-weight:900;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase" data-f="Block" onclick="selectEmbFont(this)">THE SCRUB LIFE</button></div></div></div></div></div>` : '';
 
     const modal = document.getElementById('productDetailModal');
-    modal.innerHTML = `<div class="modal product-detail-modal"><button class="modal-close pd-close" onclick="closeProductDetail()"><i class="fas fa-times"></i></button><div class="pd-grid"><div class="pd-image"><img src="${p.image}" alt="${p.name}">${p.badge ? `<span class="pd-badge">${p.badge}</span>` : ''}</div><div class="pd-info"><span class="pd-category">${p.category.replace(/-/g,' ')}</span><h2 class="pd-title">${p.name}</h2><div class="pd-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}<span>(${p.reviews} reviews)</span></div><div class="pd-price"><span class="pd-current-price">\u20b9${p.price}</span><span class="pd-old-price">\u20b9${p.oldPrice}</span><span class="pd-discount">${discount}% OFF</span></div><p class="pd-description">${p.description}</p>${colorSection}<div class="pd-size-section"><h4>Select Size</h4><div class="pd-sizes" id="pdSizes-${p.id}">${p.sizes.map((s,i) => { const oos = isVariantOutOfStock(p, s, defaultColor); const active = firstAvailableSize ? (s === firstAvailableSize) : (!oos && i === 0); return `<button class="pd-size-btn${active ? ' active' : ''}${oos ? ' is-oos' : ''}" data-size="${s}" ${oos ? 'disabled title="Out of stock for this color"' : ''} onclick="selectSize(this,${p.id})">${s}</button>`; }).join('')}</div><p id="pdVariantStockMsg-${p.id}" style="display:none;color:#dc2626;font-size:0.85rem;margin-top:8px;"></p></div><div class="pd-qty-section"><h4>Quantity</h4><div class="pd-qty"><button onclick="changePdQty(-1)"><i class="fas fa-minus"></i></button><span id="pdQty">1</span><button onclick="changePdQty(1)"><i class="fas fa-plus"></i></button></div></div><div class="pd-actions"><button id="pdAddBtn-${p.id}" class="btn btn-primary btn-lg" onclick="addToCartFromDetail(${p.id})"><i class="fas fa-cart-plus"></i> Add to Cart</button><button id="pdBuyBtn-${p.id}" class="btn btn-outline-dark btn-lg" onclick="buyNowFromDetail(${p.id})"><i class="fas fa-bolt"></i> Buy Now</button></div><div class="pd-features"><div class="pd-feature"><i class="fas fa-truck"></i> Free delivery above \u20b92000</div><div class="pd-feature"><i class="fas fa-undo"></i> 7-day returns</div><div class="pd-feature"><i class="fas fa-shield-alt"></i> Quality guaranteed</div></div></div></div></div>`;
+    modal.innerHTML = `<div class="modal product-detail-modal"><button class="modal-close pd-close" onclick="closeProductDetail()"><i class="fas fa-times"></i></button><div class="pd-grid"><div class="pd-image-gallery"><div class="pd-main-img" id="pdMainWrap-${p.id}">${mainImg ? `<img id="pdMainImg-${p.id}" src="${mainImg}" alt="${p.name}">` : `<div class="pd-no-img"><i class="fas fa-tshirt"></i></div>`}<button class="pd-expand-btn" onclick="openImageLightbox('pdMainImg-${p.id}')" aria-label="Expand"><i class="fas fa-expand-alt"></i></button>${p.badge?`<span class="pd-badge">${p.badge}</span>`:''}</div>${thumbsHtml}</div><div class="pd-info"><span class="pd-category">${p.category.replace(/-/g,' ')}</span><h2 class="pd-title">${p.name}</h2><div class="pd-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}<span>(${p.reviews} reviews)</span></div><div class="pd-price"><span class="pd-current-price">\u20b9${p.price}</span>${p.oldPrice?`<span class="pd-old-price">\u20b9${p.oldPrice}</span><span class="pd-discount">${discount}% OFF</span>`:''}</div><p class="pd-description">${p.description}</p>${colorSection}<div class="pd-size-section"><h4>Select Size</h4><div class="pd-sizes" id="pdSizes-${p.id}">${p.sizes.map((s,i)=>{ const oos=isVariantOutOfStock(p,s,defaultColor); const active=firstAvailableSize?(s===firstAvailableSize):(!oos&&i===0); return `<button class="pd-size-btn${active?' active':''}${oos?' is-oos':''}" data-size="${s}" ${oos?'disabled title="Out of stock for this color"':''} onclick="selectSize(this,${p.id})">${s}</button>`; }).join('')}</div><p id="pdVariantStockMsg-${p.id}" style="display:none;color:#dc2626;font-size:0.85rem;margin-top:8px;"></p></div>${embHtml}<div class="pd-qty-section"><h4>Quantity</h4><div class="pd-qty"><button onclick="changePdQty(-1)"><i class="fas fa-minus"></i></button><span id="pdQty">1</span><button onclick="changePdQty(1)"><i class="fas fa-plus"></i></button></div></div><div class="pd-actions"><button id="pdAddBtn-${p.id}" class="btn btn-primary btn-lg" onclick="addToCartFromDetail(${p.id})"><i class="fas fa-cart-plus"></i> Add to Cart</button><button id="pdBuyBtn-${p.id}" class="btn btn-outline-dark btn-lg" onclick="buyNowFromDetail(${p.id})"><i class="fas fa-bolt"></i> Buy Now</button></div><div class="pd-features"><div class="pd-feature"><i class="fas fa-truck"></i> Free delivery above \u20b92000</div><div class="pd-feature"><i class="fas fa-undo"></i> 7-day returns</div><div class="pd-feature"><i class="fas fa-shield-alt"></i> Quality guaranteed</div></div></div></div></div>`;
     modal.classList.add('active'); pdQuantity = 1;
     updateProductDetailVariantState(p.id);
 }
@@ -1173,9 +1232,14 @@ function addToCartFromDetail(id) {
         if (!p) return;
         if (size && isVariantOutOfStock(p, size, color)) { showToast(`${size}${color ? ' / ' + color : ''} is out of stock!`); return; }
         if (p.outOfStock) { showToast('This product is currently out of stock!'); return; }
-        const existing = cart.find(i => i.id === id && i.selectedSize === size && i.selectedColor === color);
-        if (existing) existing.qty += pdQuantity; else cart.push({ ...p, qty: pdQuantity, selectedSize: size, selectedColor: color || getProductColors(p)?.[0]?.name || null });
-        saveCart(); updateCartUI(); showToast(`${p.name} (${size}${color ? ', ' + color : ''}) added!`); closeProductDetail(); pdQuantity = 1;
+        const emb = getEmbroideryData(id);
+        const effectivePrice = p.price + (emb ? emb.price : 0);
+        const existing = cart.find(i => i.id === id && i.selectedSize === size && i.selectedColor === color && !i.embroidery);
+        if (existing && !emb) { existing.qty += pdQuantity; } else { cart.push({ ...p, price: effectivePrice, qty: pdQuantity, selectedSize: size, selectedColor: color || getProductColors(p)?.[0]?.name || null, embroidery: emb || null }); }
+        saveCart(); updateCartUI();
+        const embMsg = emb ? ` + Embroidery` : '';
+        showToast(`${p.name} (${size}${color ? ', ' + color : ''}${embMsg}) added!`);
+        closeProductDetail(); pdQuantity = 1;
     });
 }
 function buyNowFromDetail(id) { requireAuth(() => { addToCartFromDetail(id); openCheckout(); }); }
@@ -2032,24 +2096,133 @@ function selectCardColor(btn) {
     const label = swatches.querySelector('.color-name');
     if (label) label.textContent = btn.dataset.colorName;
     const card = btn.closest('.shop-card');
-    if (card) updateCardStockUI(card);
+    if (card) {
+        updateCardStockUI(card);
+        // Swap card image to selected color's image
+        const pid = Number(card.dataset.id);
+        const product = productsData.find(p => p.id === pid);
+        if (product?.colorVariants) {
+            const cv = product.colorVariants.find(c => c.name === btn.dataset.colorName);
+            if (cv?.images?.[0]) {
+                const img = card.querySelector('.shop-card-image img');
+                if (img) img.src = cv.images[0];
+            }
+        }
+    }
 }
 
-function selectDetailColor(btn) {
+function selectDetailColor(btn, pid) {
     const container = btn.parentElement;
     container.querySelectorAll('.pd-color-swatch').forEach(s => s.classList.remove('active'));
     btn.classList.add('active');
     const label = container.parentElement.querySelector('.pd-color-name');
     if (label) label.textContent = btn.dataset.colorName;
-    const modal = btn.closest('.modal.product-detail-modal');
-    if (modal) {
-        const sizeWrap = modal.querySelector('[id^="pdSizes-"]');
-        if (sizeWrap) {
-            const pid = Number(sizeWrap.id.replace('pdSizes-', ''));
-            if (pid) updateProductDetailVariantState(pid);
+    if (pid) {
+        // Swap images for selected color
+        const p = productsData.find(x => x.id === pid);
+        if (p) {
+            const imgs = _pdGetImages(p, btn.dataset.colorName);
+            const mainImg = document.getElementById(`pdMainImg-${pid}`);
+            if (mainImg && imgs[0]) mainImg.src = imgs[0];
+            // Rebuild thumbnails
+            const thumbs = document.getElementById(`pdThumbs-${pid}`);
+            if (thumbs) {
+                thumbs.style.display = imgs.length > 1 ? '' : 'none';
+                thumbs.innerHTML = imgs.map((img,i) => `<button class="pd-thumb${i===0?' active':''}" onclick="selectPdImage(this,'${img.replace(/'/g,"\\'")}',${ pid})" style="background-image:url('${img.replace(/'/g,"\\'")}')"></button>`).join('');
+            }
+        }
+        updateProductDetailVariantState(pid);
+    } else {
+        const modal = btn.closest('.modal.product-detail-modal');
+        if (modal) {
+            const sw = modal.querySelector('[id^="pdSizes-"]');
+            if (sw) { const p2 = Number(sw.id.replace('pdSizes-','')); if (p2) updateProductDetailVariantState(p2); }
         }
     }
 }
+
+// ===== Image Gallery & Lightbox =====
+function selectPdImage(btn, src, pid) {
+    if (!btn) return;
+    btn.closest('.pd-thumbnails')?.querySelectorAll('.pd-thumb').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const mainImg = document.getElementById(`pdMainImg-${pid}`);
+    if (mainImg) mainImg.src = src;
+}
+window.selectPdImage = selectPdImage;
+
+function openImageLightbox(imgIdOrSrc) {
+    const src = (imgIdOrSrc && !imgIdOrSrc.startsWith('data:') && !imgIdOrSrc.startsWith('http') && !imgIdOrSrc.startsWith('images/'))
+        ? (document.getElementById(imgIdOrSrc)?.src || imgIdOrSrc) : imgIdOrSrc;
+    if (!src) return;
+    const lb = document.createElement('div');
+    lb.id = '_imgLightbox';
+    lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:99999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;animation:_pmFadeIn .18s ease';
+    lb.innerHTML = `<img src="${src}" style="max-width:92vw;max-height:92vh;border-radius:10px;object-fit:contain;box-shadow:0 24px 72px rgba(0,0,0,0.7);pointer-events:none"><button onclick="document.getElementById('_imgLightbox').remove()" style="position:absolute;top:20px;right:24px;background:rgba(255,255,255,0.15);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)">&#x2715;</button>`;
+    lb.addEventListener('click', e => { if (e.target === lb) lb.remove(); });
+    document.addEventListener('keydown', function esc(e) { if (e.key==='Escape') { lb.remove(); document.removeEventListener('keydown',esc); } }, {once:true});
+    document.body.appendChild(lb);
+}
+window.openImageLightbox = openImageLightbox;
+
+// ===== Embroidery =====
+function toggleEmbroidery(pid) {
+    const body = document.getElementById(`embBody-${pid}`);
+    const chev = document.getElementById(`embChev-${pid}`);
+    if (!body) return;
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : '';
+    if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+}
+window.toggleEmbroidery = toggleEmbroidery;
+
+function selectEmbType(btn, pid) {
+    btn.closest('.emb-type-row')?.querySelectorAll('.emb-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tf = document.getElementById(`embTF-${pid}`);
+    if (tf) tf.style.display = btn.dataset.type === 'LOGO' ? 'none' : '';
+}
+window.selectEmbType = selectEmbType;
+
+function selectEmbColor(btn) {
+    btn.closest('.emb-colors')?.querySelectorAll('.emb-col').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+window.selectEmbColor = selectEmbColor;
+
+function selectEmbFont(btn) {
+    btn.closest('.emb-fonts')?.querySelectorAll('.emb-font').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+window.selectEmbFont = selectEmbFont;
+
+function updateEmbCount(input, countId) {
+    const el = document.getElementById(countId);
+    if (el) el.textContent = `${input.value.length}/100`;
+}
+window.updateEmbCount = updateEmbCount;
+
+function getEmbroideryData(pid) {
+    const body = document.getElementById(`embBody-${pid}`);
+    if (!body || body.style.display === 'none') return null;
+    const type = body.querySelector('.emb-type-btn.active')?.dataset?.type || 'TEXT';
+    if (type !== 'LOGO') {
+        const line1 = document.getElementById(`embL1-${pid}`)?.value?.trim() || '';
+        if (!line1) return null;
+        return {
+            type,
+            line1,
+            line2: document.getElementById(`embL2-${pid}`)?.value?.trim() || '',
+            line3: document.getElementById(`embL3-${pid}`)?.value?.trim() || '',
+            position: document.getElementById(`embPos-${pid}`)?.value || '',
+            color: body.querySelector('.emb-col.active')?.dataset?.c || 'White',
+            font: body.querySelector('.emb-font.active')?.dataset?.f || 'Cursive',
+            price: 299
+        };
+    }
+    return { type: 'LOGO', price: 299 };
+}
+window.getEmbroideryData = getEmbroideryData;
 
 // ===== Utilities =====
 function showToast(msg) {
