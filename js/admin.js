@@ -1362,8 +1362,8 @@ function applyColorPick(idx, value) {
 }
 window.applyColorPick = applyColorPick;
 
-// ===== Custom Color Picker (replaces native <input type="color"> to fix Chrome freeze) =====
-let _cvPicker = { idx: -1, h: 174, s: 0.9, v: 0.6, dragging: false };
+// ===== Custom Color Picker — tabbed: Wheel + From Image =====
+let _cvPicker = { idx: -1, h: 174, s: 0.9, v: 0.6, dragging: false, imgIdx: 0 };
 
 function _cvPickerCreate() {
     if (document.getElementById('cvCustomPicker')) return;
@@ -1373,29 +1373,50 @@ function _cvPickerCreate() {
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-label', 'Color Picker');
     el.innerHTML = `
-        <div class="cv-cp-header">
-            <span class="cv-cp-title">Pick Color</span>
-            <button class="cv-cp-close" onclick="closeCVPicker()" title="Close"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="cv-cp-sq" id="cvCpSq">
-            <div class="cv-cp-sq-white"></div>
-            <div class="cv-cp-sq-black"></div>
-            <div class="cv-cp-cursor" id="cvCpCursor"></div>
-        </div>
-        <div class="cv-cp-hue-wrap">
-            <input type="range" id="cvCpHue" class="cv-cp-hue" min="0" max="360" value="174">
-        </div>
-        <div class="cv-cp-bottom">
-            <span class="cv-cp-preview" id="cvCpPreview"></span>
-            <input type="text" id="cvCpHex" class="cv-cp-hexin" placeholder="#000000" maxlength="7">
-            <button id="cvCpEye" class="cv-cp-eye" title="Pick color from product image (click eyedropper then click the image)" style="display:none">
-                <i class="fas fa-eye-dropper"></i>
+    <div class="cv-cp-head">
+        <div class="cv-cp-tabs">
+            <button class="cv-cp-tab active" onclick="_cvTab('wheel',this)">
+                <i class="fas fa-circle-half-stroke"></i> Wheel
+            </button>
+            <button class="cv-cp-tab" onclick="_cvTab('image',this)" id="cvCpImgTabBtn">
+                <i class="fas fa-image"></i> From Image
             </button>
         </div>
-        <div class="cv-cp-hint" id="cvCpHint"></div>
+        <button class="cv-cp-x" onclick="closeCVPicker()" title="Close"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="cv-cp-pane" id="cvCpWheelPane">
+        <div class="cv-cp-sq" id="cvCpSq">
+            <div class="cv-cp-sq-sat"></div>
+            <div class="cv-cp-sq-val"></div>
+            <div class="cv-cp-cur" id="cvCpCursor"></div>
+        </div>
+        <div class="cv-cp-hue-row">
+            <input type="range" id="cvCpHue" class="cv-cp-hue" min="0" max="359" value="174">
+        </div>
+        <div class="cv-cp-row">
+            <span class="cv-cp-dot" id="cvCpPreview"></span>
+            <input type="text" id="cvCpHex" class="cv-cp-hexin" placeholder="#0d9488" maxlength="7">
+            <span class="cv-cp-apply-hint">Enter to apply</span>
+        </div>
+    </div>
+    <div class="cv-cp-pane" id="cvCpImgPane" style="display:none">
+        <div class="cv-cp-strip" id="cvCpStrip"></div>
+        <div class="cv-cp-canvas-wrap" id="cvCpCanvasWrap">
+            <canvas id="cvCpCanvas"></canvas>
+            <div class="cv-cp-lupe" id="cvCpLupe" style="display:none">
+                <canvas id="cvCpLupeCanvas" width="72" height="72"></canvas>
+            </div>
+        </div>
+        <div class="cv-cp-row" style="margin-top:8px">
+            <span class="cv-cp-dot" id="cvCpImgDot"></span>
+            <span class="cv-cp-img-hex" id="cvCpImgHex">Hover over image to preview</span>
+        </div>
+        <p class="cv-cp-img-tip"><i class="fas fa-hand-pointer"></i> Click any pixel to pick its color</p>
+    </div>
     `;
     document.body.appendChild(el);
 
+    // Wheel tab events
     const sq = el.querySelector('#cvCpSq');
     sq.addEventListener('mousedown', _cvCpSqDown);
     sq.addEventListener('touchstart', _cvCpSqTouch, { passive: false });
@@ -1403,139 +1424,196 @@ function _cvPickerCreate() {
     document.addEventListener('mouseup', _cvCpDocUp);
     document.addEventListener('touchmove', _cvCpDocTouchMove, { passive: false });
     document.addEventListener('touchend', _cvCpDocUp);
-
     el.querySelector('#cvCpHue').addEventListener('input', _cvCpHueInput);
     el.querySelector('#cvCpHex').addEventListener('input', _cvCpHexInput);
     el.querySelector('#cvCpHex').addEventListener('keydown', e => { if (e.key === 'Enter') closeCVPicker(); });
 
-    if (window.EyeDropper) {
-        const eyeBtn = el.querySelector('#cvCpEye');
-        eyeBtn.style.display = 'flex';
-        eyeBtn.addEventListener('click', _cvCpEyeDrop);
-    }
-
+    // Close on outside click
     document.addEventListener('mousedown', e => {
         const p = document.getElementById('cvCustomPicker');
-        if (p && p.style.display !== 'none' && !p.contains(e.target) && !e.target.closest('.cv-swatch-wrap')) {
+        if (p && p.style.display !== 'none' && !p.contains(e.target) && !e.target.closest('.cv-swatch-wrap'))
             closeCVPicker();
-        }
     });
+}
+
+function _cvTab(tab, btn) {
+    document.querySelectorAll('#cvCustomPicker .cv-cp-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('cvCpWheelPane').style.display = tab === 'wheel' ? 'block' : 'none';
+    document.getElementById('cvCpImgPane').style.display   = tab === 'image' ? 'block' : 'none';
+    if (tab === 'image') _cvCpLoadImageTab(_cvPicker.idx);
+}
+window._cvTab = _cvTab;
+
+function _cvCpLoadImageTab(idx) {
+    const images = _cvData[idx]?.images || [];
+    const strip  = document.getElementById('cvCpStrip');
+    const wrap   = document.getElementById('cvCpCanvasWrap');
+    if (!strip || !wrap) return;
+
+    _cvPicker.imgIdx = Math.min(_cvPicker.imgIdx, Math.max(0, images.length - 1));
+
+    // Build thumbnail strip
+    strip.innerHTML = images.length
+        ? images.map((src, i) => `<img src="${src}" class="cv-cp-thumb${i === _cvPicker.imgIdx ? ' active' : ''}" onclick="_cvCpSelectImg(${i})" title="Image ${i+1}">`).join('')
+        : '';
+
+    if (!images.length) {
+        wrap.innerHTML = '<p class="cv-cp-no-img"><i class="fas fa-image"></i><br>Add images first, then pick color from them.</p>';
+        return;
+    }
+    _cvCpDrawImageOnCanvas(images[_cvPicker.imgIdx]);
+}
+
+function _cvCpSelectImg(imgIdx) {
+    _cvPicker.imgIdx = imgIdx;
+    const images = _cvData[_cvPicker.idx]?.images || [];
+    document.querySelectorAll('#cvCpStrip .cv-cp-thumb').forEach((t, i) => t.classList.toggle('active', i === imgIdx));
+    if (images[imgIdx]) _cvCpDrawImageOnCanvas(images[imgIdx]);
+}
+window._cvCpSelectImg = _cvCpSelectImg;
+
+function _cvCpDrawImageOnCanvas(src) {
+    const wrap = document.getElementById('cvCpCanvasWrap');
+    if (!wrap) return;
+    // Reset wrap
+    wrap.innerHTML = `
+        <canvas id="cvCpCanvas"></canvas>
+        <div class="cv-cp-lupe" id="cvCpLupe" style="display:none">
+            <canvas id="cvCpLupeCanvas" width="72" height="72"></canvas>
+        </div>`;
+    const canvas = document.getElementById('cvCpCanvas');
+    const img    = new Image();
+    img.onload = () => {
+        const maxW = 268, maxH = 196;
+        const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+        canvas.width  = Math.round(img.width  * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.style.cursor = 'crosshair';
+        canvas.addEventListener('mousemove',  _cvCpCanvasMove);
+        canvas.addEventListener('mouseleave', _cvCpCanvasLeave);
+        canvas.addEventListener('click',      _cvCpCanvasClick);
+    };
+    img.src = src;
+}
+
+function _cvCpGetPixel(e) {
+    const canvas = e.target;
+    const rect   = canvas.getBoundingClientRect();
+    const sx = canvas.width  / rect.width;
+    const sy = canvas.height / rect.height;
+    const x  = Math.round((e.clientX - rect.left) * sx);
+    const y  = Math.round((e.clientY - rect.top)  * sy);
+    const px = canvas.getContext('2d').getImageData(Math.max(0,x), Math.max(0,y), 1, 1).data;
+    const hex = '#' + [px[0],px[1],px[2]].map(n => n.toString(16).padStart(2,'0')).join('');
+    return { x, y, hex, canvas, rect };
+}
+
+function _cvCpCanvasMove(e) {
+    const { hex, x, y, canvas, rect } = _cvCpGetPixel(e);
+    const dot = document.getElementById('cvCpImgDot');
+    const lbl = document.getElementById('cvCpImgHex');
+    if (dot) dot.style.background = hex;
+    if (lbl) lbl.textContent = hex;
+
+    // Magnifying lupe
+    const lupe  = document.getElementById('cvCpLupe');
+    const lupeC = document.getElementById('cvCpLupeCanvas');
+    if (!lupe || !lupeC) return;
+    lupe.style.display = 'block';
+    const lCtx = lupeC.getContext('2d');
+    lCtx.imageSmoothingEnabled = false;
+    lCtx.clearRect(0, 0, 72, 72);
+    lCtx.drawImage(canvas, x - 4, y - 4, 9, 9, 0, 0, 72, 72);
+    // crosshair lines
+    lCtx.strokeStyle = 'rgba(255,255,255,0.85)'; lCtx.lineWidth = 1.5;
+    lCtx.beginPath(); lCtx.moveTo(36,0); lCtx.lineTo(36,72); lCtx.stroke();
+    lCtx.beginPath(); lCtx.moveTo(0,36); lCtx.lineTo(72,36); lCtx.stroke();
+    lCtx.strokeStyle = 'rgba(0,0,0,0.3)'; lCtx.lineWidth = 0.5;
+    lCtx.beginPath(); lCtx.moveTo(35,0); lCtx.lineTo(35,72); lCtx.stroke();
+    lCtx.beginPath(); lCtx.moveTo(0,35); lCtx.lineTo(72,35); lCtx.stroke();
+    // position near cursor, keep inside wrap
+    const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+    lupe.style.left = (cx + 14 + 80 > rect.width  ? cx - 14 - 80 : cx + 14) + 'px';
+    lupe.style.top  = (cy - 80 < 0               ? cy + 14      : cy - 80)  + 'px';
+}
+
+function _cvCpCanvasLeave() {
+    const lupe = document.getElementById('cvCpLupe');
+    if (lupe) lupe.style.display = 'none';
+    const lbl = document.getElementById('cvCpImgHex');
+    if (lbl) lbl.textContent = 'Hover over image to preview';
+}
+
+function _cvCpCanvasClick(e) {
+    const { hex } = _cvCpGetPixel(e);
+    const [h, s, v] = _hexToHsv(hex);
+    _cvPicker.h = h; _cvPicker.s = s; _cvPicker.v = v;
+    applyColorPick(_cvPicker.idx, hex);
+    // Switch to wheel to confirm pick
+    const wheelBtn = document.querySelector('#cvCustomPicker .cv-cp-tab');
+    if (wheelBtn) _cvTab('wheel', wheelBtn);
+    _cvCpUpdate();
+    // Pulse preview dot
+    const dot = document.getElementById('cvCpPreview');
+    if (dot) { dot.style.transform = 'scale(1.4)'; setTimeout(() => { dot.style.transform = ''; }, 300); }
 }
 
 function _cvCpUpdate() {
     const { h, s, v } = _cvPicker;
     const hex = _hsvToHex(h, s, v);
-
-    // Update square hue background
     const sq = document.getElementById('cvCpSq');
-    if (sq) sq.style.background = `hsl(${h}, 100%, 50%)`;
-
-    // Update cursor position
+    if (sq) sq.style.background = `hsl(${h},100%,50%)`;
     const cursor = document.getElementById('cvCpCursor');
     if (cursor && sq) {
-        const w = sq.offsetWidth || 216;
-        const ht = sq.offsetHeight || 150;
-        cursor.style.left = (s * w) + 'px';
-        cursor.style.top = ((1 - v) * ht) + 'px';
+        cursor.style.left = (s * (sq.offsetWidth  || 260)) + 'px';
+        cursor.style.top  = ((1 - v) * (sq.offsetHeight || 160)) + 'px';
     }
-
-    // Update preview swatch and hex field
     const preview = document.getElementById('cvCpPreview');
     if (preview) preview.style.background = hex;
     const hexIn = document.getElementById('cvCpHex');
     if (hexIn && document.activeElement !== hexIn) hexIn.value = hex;
-
-    // Update hue slider thumb position
     const hueIn = document.getElementById('cvCpHue');
     if (hueIn) hueIn.value = h;
-
     return hex;
 }
 
 function _cvCpApply() {
     if (_cvPicker.idx < 0) return;
-    const hex = _hsvToHex(_cvPicker.h, _cvPicker.s, _cvPicker.v);
-    applyColorPick(_cvPicker.idx, hex);
+    applyColorPick(_cvPicker.idx, _hsvToHex(_cvPicker.h, _cvPicker.s, _cvPicker.v));
 }
 
-function _cvCpSqDown(e) {
-    _cvPicker.dragging = true;
-    _cvCpSqPick(e.clientX, e.clientY);
-    e.preventDefault();
-}
-function _cvCpSqTouch(e) {
-    _cvPicker.dragging = true;
-    _cvCpSqPick(e.touches[0].clientX, e.touches[0].clientY);
-    e.preventDefault();
-}
-function _cvCpDocMove(e) {
-    if (!_cvPicker.dragging) return;
-    _cvCpSqPick(e.clientX, e.clientY);
-}
-function _cvCpDocTouchMove(e) {
-    if (!_cvPicker.dragging) return;
-    _cvCpSqPick(e.touches[0].clientX, e.touches[0].clientY);
-    e.preventDefault();
-}
+function _cvCpSqDown(e) { _cvPicker.dragging = true; _cvCpSqPick(e.clientX, e.clientY); e.preventDefault(); }
+function _cvCpSqTouch(e) { _cvPicker.dragging = true; _cvCpSqPick(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }
+function _cvCpDocMove(e) { if (_cvPicker.dragging) _cvCpSqPick(e.clientX, e.clientY); }
+function _cvCpDocTouchMove(e) { if (_cvPicker.dragging) { _cvCpSqPick(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); } }
 function _cvCpDocUp() { _cvPicker.dragging = false; }
 
 function _cvCpSqPick(cx, cy) {
     const sq = document.getElementById('cvCpSq');
     if (!sq) return;
-    const rect = sq.getBoundingClientRect();
-    const x = Math.max(0, Math.min(rect.width,  cx - rect.left));
-    const y = Math.max(0, Math.min(rect.height, cy - rect.top));
-    _cvPicker.s = x / rect.width;
-    _cvPicker.v = 1 - y / rect.height;
-    _cvCpUpdate();
-    _cvCpApply();
+    const r = sq.getBoundingClientRect();
+    _cvPicker.s = Math.max(0, Math.min(1, (cx - r.left)  / r.width));
+    _cvPicker.v = Math.max(0, Math.min(1, 1 - (cy - r.top) / r.height));
+    _cvCpUpdate(); _cvCpApply();
 }
 
-function _cvCpHueInput(e) {
-    _cvPicker.h = parseInt(e.target.value);
-    _cvCpUpdate();
-    _cvCpApply();
-}
+function _cvCpHueInput(e) { _cvPicker.h = parseInt(e.target.value); _cvCpUpdate(); _cvCpApply(); }
 
 function _cvCpHexInput(e) {
     let raw = e.target.value.trim();
     if (raw && !raw.startsWith('#')) raw = '#' + raw;
     if (/^#[0-9a-fA-F]{6}$/.test(raw)) {
-        const [h, s, v] = _hexToHsv(raw);
-        _cvPicker.h = h; _cvPicker.s = s; _cvPicker.v = v;
-        _cvCpUpdate();
-        _cvCpApply();
-    }
-}
-
-async function _cvCpEyeDrop() {
-    try {
-        const savedIdx = _cvPicker.idx;
-        // Hide picker so the image is fully visible for picking
-        const picker = document.getElementById('cvCustomPicker');
-        if (picker) picker.style.display = 'none';
-
-        const result = await new EyeDropper().open();
-        const hex = result.sRGBHex;
-        const [h, s, v] = _hexToHsv(hex);
-        _cvPicker.h = h; _cvPicker.s = s; _cvPicker.v = v;
-        _cvPicker.idx = savedIdx;
-        applyColorPick(savedIdx, hex);
-
-        // Re-show picker with picked color
-        if (picker && savedIdx >= 0) {
-            picker.style.display = 'block';
-            _cvCpUpdate();
-        }
-    } catch (err) {
-        if (err.name !== 'AbortError') console.warn('EyeDropper cancelled or not supported:', err);
+        [_cvPicker.h, _cvPicker.s, _cvPicker.v] = _hexToHsv(raw);
+        _cvCpUpdate(); _cvCpApply();
     }
 }
 
 function _hsvToHex(h, s, v) {
     const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
     let r, g, b;
-    if (h < 60)       { r=c; g=x; b=0; }
+    if      (h <  60) { r=c; g=x; b=0; }
     else if (h < 120) { r=x; g=c; b=0; }
     else if (h < 180) { r=0; g=c; b=x; }
     else if (h < 240) { r=0; g=x; b=c; }
@@ -1545,49 +1623,51 @@ function _hsvToHex(h, s, v) {
 }
 
 function _hexToHsv(hex) {
-    const r = parseInt(hex.slice(1,3),16)/255;
-    const g = parseInt(hex.slice(3,5),16)/255;
-    const b = parseInt(hex.slice(5,7),16)/255;
-    const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
-    let h = 0, s = (max === 0) ? 0 : d/max, v = max;
+    const r=parseInt(hex.slice(1,3),16)/255, g=parseInt(hex.slice(3,5),16)/255, b=parseInt(hex.slice(5,7),16)/255;
+    const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+    let h=0, s=(max===0)?0:d/max, v=max;
     if (d) {
-        if (max===r)      h = ((g-b)/d + (g<b?6:0)) * 60;
-        else if (max===g) h = ((b-r)/d + 2) * 60;
-        else              h = ((r-g)/d + 4) * 60;
+        if      (max===r) h=((g-b)/d+(g<b?6:0))*60;
+        else if (max===g) h=((b-r)/d+2)*60;
+        else              h=((r-g)/d+4)*60;
     }
     return [h, s, v];
 }
 
 function openCVColorPicker(idx, swatchEl) {
     _cvPickerCreate();
-    _cvPicker.idx = idx;
+    _cvPicker.idx    = idx;
+    _cvPicker.imgIdx = 0;
     const hex = _cvData[idx]?.hex || '#0d9488';
-    const [h, s, v] = _hexToHsv(hex);
-    _cvPicker.h = h; _cvPicker.s = s; _cvPicker.v = v;
+    [_cvPicker.h, _cvPicker.s, _cvPicker.v] = _hexToHsv(hex);
 
-    // Update hint: show eyedropper tip when images are present
-    const hasImages = (_cvData[idx]?.images?.length || 0) > 0;
-    const hint = document.getElementById('cvCpHint');
-    if (hint) hint.textContent = (window.EyeDropper && hasImages)
-        ? '\ud83d\udca1 Click the eyedropper, then click your product image to pick its color'
-        : '';
+    // Show/hide "From Image" tab
+    const hasImages = !!(_cvData[idx]?.images?.length);
+    const imgTabBtn = document.getElementById('cvCpImgTabBtn');
+    if (imgTabBtn) imgTabBtn.style.display = hasImages ? 'inline-flex' : 'none';
+
+    // Always open on Wheel tab
+    const wheelBtn = document.querySelector('#cvCustomPicker .cv-cp-tab');
+    if (wheelBtn) {
+        document.querySelectorAll('#cvCustomPicker .cv-cp-tab').forEach(t => t.classList.remove('active'));
+        wheelBtn.classList.add('active');
+        document.getElementById('cvCpWheelPane').style.display = 'block';
+        document.getElementById('cvCpImgPane').style.display   = 'none';
+    }
 
     const picker = document.getElementById('cvCustomPicker');
     picker.style.display = 'block';
     requestAnimationFrame(() => {
         _cvCpUpdate();
-        // Position near swatch, avoid going off-screen
         const rect = swatchEl.getBoundingClientRect();
-        const pw = picker.offsetWidth  || 244;
-        const ph = picker.offsetHeight || 300;
-        let top  = rect.bottom + 8;
-        let left = rect.left;
+        const pw   = picker.offsetWidth  || 296;
+        const ph   = picker.offsetHeight || 360;
+        let top    = rect.bottom + 8;
+        let left   = rect.left;
         if (top  + ph > window.innerHeight - 16) top  = rect.top - ph - 8;
         if (left + pw > window.innerWidth  - 16) left = window.innerWidth - pw - 16;
-        if (left < 8) left = 8;
-        if (top  < 8) top  = 8;
-        picker.style.top  = top  + 'px';
-        picker.style.left = left + 'px';
+        picker.style.top  = Math.max(8, top)  + 'px';
+        picker.style.left = Math.max(8, left) + 'px';
     });
 }
 window.openCVColorPicker = openCVColorPicker;
