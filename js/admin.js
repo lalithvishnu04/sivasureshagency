@@ -1306,7 +1306,7 @@ function renderColorVariantRows() {
             <div class="cv-fields">
                 <input type="text" class="cv-name" placeholder="Color name (e.g. Ceil Blue)" value="${cv.name || ''}" oninput="updateCV(${idx},'name',this.value)" style="flex:1">
                 <label class="cv-hex-wrap" title="Pick hex color">
-                    <input type="color" value="${cv.hex || '#000000'}" oninput="updateCV(${idx},'hex',this.value)" style="width:38px;height:34px;border:none;cursor:pointer;border-radius:6px;padding:2px">
+                    <input type="color" value="${cv.hex || '#000000'}" onchange="updateCV(${idx},'hex',this.value)" style="width:38px;height:34px;border:none;cursor:pointer;border-radius:6px;padding:2px">
                 </label>
             </div>
             <button type="button" class="btn-icon danger" onclick="removeColorVariant(${idx})" title="Remove color"><i class="fas fa-trash"></i></button>
