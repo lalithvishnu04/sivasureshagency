@@ -1203,6 +1203,8 @@ function openProductDetail(id) {
 
     // Image gallery
     const initImages = _pdGetImages(p, defaultColor);
+    window._lbImages = initImages;
+    window._lbIndex = 0;
     const mainImg = initImages[0] || '';
     const thumbsHtml = initImages.length > 1 ? `<div class="pd-thumbnails" id="pdThumbs-${p.id}">${initImages.map((img,i) => `<button class="pd-thumb${i===0?' active':''}" onclick="selectPdImage(this,'${img.replace(/'/g,"\\'")}',${ p.id})" style="background-image:url('${img.replace(/'/g,"\\'")}')"></button>`).join('')}</div>` : `<div class="pd-thumbnails" id="pdThumbs-${p.id}" style="display:none"></div>`;
 
@@ -2122,6 +2124,8 @@ function selectDetailColor(btn, pid) {
         const p = productsData.find(x => x.id === pid);
         if (p) {
             const imgs = _pdGetImages(p, btn.dataset.colorName);
+            window._lbImages = imgs;
+            window._lbIndex = 0;
             const mainImg = document.getElementById(`pdMainImg-${pid}`);
             if (mainImg && imgs[0]) mainImg.src = imgs[0];
             // Rebuild thumbnails
@@ -2144,7 +2148,13 @@ function selectDetailColor(btn, pid) {
 // ===== Image Gallery & Lightbox =====
 function selectPdImage(btn, src, pid) {
     if (!btn) return;
-    btn.closest('.pd-thumbnails')?.querySelectorAll('.pd-thumb').forEach(b => b.classList.remove('active'));
+    const thumbs = btn.closest('.pd-thumbnails');
+    if (thumbs) {
+        thumbs.querySelectorAll('.pd-thumb').forEach((b, i) => {
+            b.classList.remove('active');
+            if (b === btn) window._lbIndex = i;
+        });
+    }
     btn.classList.add('active');
     const mainImg = document.getElementById(`pdMainImg-${pid}`);
     if (mainImg) mainImg.src = src;
@@ -2155,12 +2165,45 @@ function openImageLightbox(imgIdOrSrc) {
     const src = (imgIdOrSrc && !imgIdOrSrc.startsWith('data:') && !imgIdOrSrc.startsWith('http') && !imgIdOrSrc.startsWith('images/'))
         ? (document.getElementById(imgIdOrSrc)?.src || imgIdOrSrc) : imgIdOrSrc;
     if (!src) return;
+
+    // Use product image list for navigation if available
+    const imgs = (window._lbImages && window._lbImages.length > 1) ? window._lbImages : [src];
+    let idx = window._lbIndex || 0;
+    // Sync index to current src
+    const srcIdx = imgs.indexOf(src);
+    if (srcIdx >= 0) idx = srcIdx;
+
     const lb = document.createElement('div');
     lb.id = '_imgLightbox';
     lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:99999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;animation:_pmFadeIn .18s ease';
-    lb.innerHTML = `<img src="${src}" style="max-width:92vw;max-height:92vh;border-radius:10px;object-fit:contain;box-shadow:0 24px 72px rgba(0,0,0,0.7);pointer-events:none"><button onclick="document.getElementById('_imgLightbox').remove()" style="position:absolute;top:20px;right:24px;background:rgba(255,255,255,0.15);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)">&#x2715;</button>`;
+
+    function render() {
+        const hasMulti = imgs.length > 1;
+        lb.innerHTML = `
+            <img src="${imgs[idx]}" style="max-width:92vw;max-height:88vh;border-radius:10px;object-fit:contain;box-shadow:0 24px 72px rgba(0,0,0,0.7);pointer-events:none;user-select:none">
+            <button onclick="document.getElementById('_imgLightbox').remove()" style="position:absolute;top:20px;right:24px;background:rgba(255,255,255,0.15);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)">&#x2715;</button>
+            ${hasMulti ? `
+            <button id="_lbPrev" style="position:absolute;left:20px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);border:none;color:#fff;width:48px;height:48px;border-radius:50%;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:background 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'" onclick="event.stopPropagation();_lbNav(-1)">&#8592;</button>
+            <button id="_lbNext" style="position:absolute;right:20px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);border:none;color:#fff;width:48px;height:48px;border-radius:50%;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:background 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'" onclick="event.stopPropagation();_lbNav(1)">&#8594;</button>
+            <div style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:7px">${imgs.map((_,i) => `<span style="width:8px;height:8px;border-radius:50%;background:${i===idx?'#fff':'rgba(255,255,255,0.4)'};display:inline-block;cursor:pointer" onclick="event.stopPropagation();_lbNav(${i-idx})"></span>`).join('')}</div>
+            ` : ''}
+        `;
+    }
+
+    window._lbNav = function(delta) {
+        idx = (idx + delta + imgs.length) % imgs.length;
+        window._lbIndex = idx;
+        render();
+    };
+
+    render();
     lb.addEventListener('click', e => { if (e.target === lb) lb.remove(); });
-    document.addEventListener('keydown', function esc(e) { if (e.key==='Escape') { lb.remove(); document.removeEventListener('keydown',esc); } }, {once:true});
+    document.addEventListener('keydown', function lbKey(e) {
+        if (!document.getElementById('_imgLightbox')) { document.removeEventListener('keydown', lbKey); return; }
+        if (e.key === 'Escape') { lb.remove(); document.removeEventListener('keydown', lbKey); }
+        else if (e.key === 'ArrowLeft') window._lbNav(-1);
+        else if (e.key === 'ArrowRight') window._lbNav(1);
+    });
     document.body.appendChild(lb);
 }
 window.openImageLightbox = openImageLightbox;

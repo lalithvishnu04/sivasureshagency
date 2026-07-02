@@ -1305,14 +1305,16 @@ function renderColorVariantRows() {
         <div class="cv-row-head">
             <div class="cv-fields">
                 <input type="text" class="cv-name" placeholder="Color name (e.g. Ceil Blue)" value="${cv.name || ''}" oninput="updateCV(${idx},'name',this.value)" style="flex:1">
-                <label class="cv-hex-wrap" title="Pick hex color">
-                    <input type="color" value="${cv.hex || '#000000'}" onchange="updateCV(${idx},'hex',this.value)" style="width:38px;height:34px;border:none;cursor:pointer;border-radius:6px;padding:2px">
-                </label>
+                <div class="cv-hex-wrap" title="Click swatch to pick color" style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+                    <span class="cv-hex-swatch" id="cvSwatch_${idx}" style="width:30px;height:30px;border-radius:6px;background:${cv.hex||'#0d9488'};display:inline-block;border:1.5px solid var(--border);cursor:pointer;flex-shrink:0" onclick="triggerColorPick(${idx})" title="Click to pick color"></span>
+                    <input type="text" class="cv-hex-input" id="cvHexText_${idx}" value="${cv.hex||'#0d9488'}" placeholder="#hex" maxlength="7" oninput="updateCVHex(${idx},this)" style="width:76px;font-family:monospace;font-size:0.82rem;border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;background:var(--surface)">
+                    <input type="color" id="cvColor_${idx}" value="${cv.hex||'#0d9488'}" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none" onchange="applyColorPick(${idx},this.value)">
+                </div>
             </div>
             <button type="button" class="btn-icon danger" onclick="removeColorVariant(${idx})" title="Remove color"><i class="fas fa-trash"></i></button>
         </div>
         <div class="cv-imgs" id="cvImgs_${idx}">${(cv.images||[]).map((img,ii) => `<div class="cv-thumb-wrap"><img src="${img}" class="cv-thumb"><button type="button" onclick="removeVariantImage(${idx},${ii})" class="cv-thumb-del">&#x2715;</button></div>`).join('')}</div>
-        <button type="button" class="cv-add-img-btn" onclick="triggerCVImageUpload(${idx})"><i class="fas fa-plus"></i> Add Image</button>
+        <button type="button" class="btn-secondary" style="margin-top:8px;padding:7px 14px;font-size:0.82rem" onclick="triggerCVImageUpload(${idx})"><i class="fas fa-plus"></i> Add Image</button>
         <input type="file" id="cvFile_${idx}" accept="image/*" style="display:none" onchange="handleCVImageUpload(event,${idx})" multiple>
     </div>`).join('');
 }
@@ -1333,6 +1335,31 @@ function updateCV(idx, field, value) {
     if (_cvData[idx]) _cvData[idx][field] = value;
 }
 window.updateCV = updateCV;
+
+function updateCVHex(idx, input) {
+    let v = input.value.trim();
+    if (v && !v.startsWith('#')) v = '#' + v;
+    if (_cvData[idx]) _cvData[idx].hex = v;
+    const swatch = document.getElementById(`cvSwatch_${idx}`);
+    if (swatch && /^#[0-9a-fA-F]{6}$/.test(v)) swatch.style.background = v;
+    const picker = document.getElementById(`cvColor_${idx}`);
+    if (picker && /^#[0-9a-fA-F]{6}$/.test(v)) picker.value = v;
+}
+window.updateCVHex = updateCVHex;
+
+function triggerColorPick(idx) {
+    document.getElementById(`cvColor_${idx}`)?.click();
+}
+window.triggerColorPick = triggerColorPick;
+
+function applyColorPick(idx, value) {
+    if (_cvData[idx]) _cvData[idx].hex = value;
+    const swatch = document.getElementById(`cvSwatch_${idx}`);
+    if (swatch) swatch.style.background = value;
+    const hexText = document.getElementById(`cvHexText_${idx}`);
+    if (hexText) hexText.value = value;
+}
+window.applyColorPick = applyColorPick;
 
 function triggerCVImageUpload(idx) {
     document.getElementById(`cvFile_${idx}`)?.click();
