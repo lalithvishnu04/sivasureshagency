@@ -54,24 +54,33 @@ function initializeAuthListener() {
     auth.onAuthStateChanged(user => {
         // Only treat as admin if user has an email (not anonymous)
         if (user && user.email) {
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('adminPanel').style.display = 'flex';
-            const name = user.email.split('@')[0];
-            document.getElementById('adminName').textContent = name;
-            if (document.getElementById('adminNameTop')) document.getElementById('adminNameTop').textContent = name;
-            const av = document.getElementById('sidebarAvatar');
-            if (av) av.textContent = name.charAt(0).toUpperCase();
-            // Wait for Firestore (window.db) to be ready before loading data
-            waitForDbThenLoad();
+            showAdminPanel(user);
         } else {
             // No user, or anonymous user - show login screen
             if (user && !user.email) {
                 auth.signOut();
             }
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('adminPanel').style.display = 'none';
+            showLoginScreen();
         }
     });
+}
+
+// Show the admin dashboard for a signed-in user
+function showAdminPanel(user) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'flex';
+    const name = (user.email || 'admin').split('@')[0];
+    document.getElementById('adminName').textContent = name;
+    if (document.getElementById('adminNameTop')) document.getElementById('adminNameTop').textContent = name;
+    const av = document.getElementById('sidebarAvatar');
+    if (av) av.textContent = name.charAt(0).toUpperCase();
+    // Wait for the DB layer to be ready before loading data
+    waitForDbThenLoad();
+}
+// Show the login screen
+function showLoginScreen() {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('adminPanel').style.display = 'none';
 }
 // Wait for window.db to be ready then load dashboard
 function waitForDbThenLoad(attempts) {
@@ -104,12 +113,34 @@ function handleAdminLogin(e) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
 
+    const resetBtn = () => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In to Dashboard'; };
+
     auth.signInWithEmailAndPassword(email, password)
-        .then(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In'; })
+        .then(data => {
+            // Deterministic: a valid session means we are logged in — show the panel now,
+            // don't rely solely on the async auth-state event (which never fires when
+            // Supabase returns a user with no session, e.g. unconfirmed email).
+            if (data && data.session) {
+                resetBtn();
+                showAdminPanel(data.user || data.session.user || { email });
+            } else if (data && data.user && !data.session) {
+                resetBtn();
+                error.innerHTML = 'Your account exists but the email is not confirmed. In Supabase &rarr; Authentication &rarr; Sign In / Providers &rarr; Email, turn OFF "Confirm email" (then Save), or open the user in the Users list and confirm it.';
+            } else {
+                resetBtn();
+                error.textContent = 'Sign-in failed. Please try again.';
+            }
+        })
         .catch(err => {
-            error.textContent = err.message.includes('invalid') ? 'Invalid email or password' : err.message;
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+            resetBtn();
+            const m = (err.message || '').toLowerCase();
+            if (m.includes('not confirmed') || m.includes('email not')) {
+                error.innerHTML = 'Email not confirmed. In Supabase &rarr; Authentication &rarr; Sign In / Providers &rarr; Email, turn OFF "Confirm email" (then Save), or confirm this user in the Users list.';
+            } else if (m.includes('invalid')) {
+                error.textContent = 'Invalid email or password';
+            } else {
+                error.textContent = err.message || 'Sign-in failed';
+            }
         });
 }
 
@@ -1297,20 +1328,11 @@ window.removeVariantImage = removeVariantImage;
 function handleCVImageUpload(event, idx) {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
-    const MAX_W = 900, MAX_H = 900, QUALITY = 0.82;
     files.forEach(file => {
         const reader = new FileReader();
         reader.onload = e => {
-            const img = new Image();
-            img.onload = () => {
-                let w = img.width, h = img.height;
-                if (w > MAX_W || h > MAX_H) { const r = Math.min(MAX_W/w, MAX_H/h); w = Math.round(w*r); h = Math.round(h*r); }
-                const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
-                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
-                if (_cvData[idx]) { _cvData[idx].images.push(dataUrl); renderColorVariantRows(); }
-            };
-            img.src = e.target.result;
+            // Store the ORIGINAL image at full quality — no resize, no compression.
+            if (_cvData[idx]) { _cvData[idx].images.push(e.target.result); renderColorVariantRows(); }
         };
         reader.readAsDataURL(file);
     });
