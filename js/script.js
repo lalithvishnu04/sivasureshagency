@@ -1204,7 +1204,7 @@ function openProductDetail(id) {
     // Image gallery
     const initImages = _pdGetImages(p, defaultColor);
     const mainImg = initImages[0] || '';
-    const thumbsHtml = initImages.length > 1 ? `<div class="pd-thumbnails" id="pdThumbs-${p.id}">${initImages.map((img,i) => `<button class="pd-thumb${i===0?' active':''}" onclick="selectPdImage(this,'${img.replace(/'/g,\"\\'\")}',${ p.id})" style="background-image:url('${img.replace(/'/g,\"\\'\")}')"></button>`).join('')}</div>` : `<div class="pd-thumbnails" id="pdThumbs-${p.id}" style="display:none"></div>`;
+    const thumbsHtml = initImages.length > 1 ? `<div class="pd-thumbnails" id="pdThumbs-${p.id}">${initImages.map((img,i) => `<button class="pd-thumb${i===0?' active':''}" onclick="selectPdImage(this,'${img.replace(/'/g,"\\'")}',${ p.id})" style="background-image:url('${img.replace(/'/g,"\\'")}')"></button>`).join('')}</div>` : `<div class="pd-thumbnails" id="pdThumbs-${p.id}" style="display:none"></div>`;
 
     // Color swatches
     const colorSection = colors ? `<div class="pd-color-section"><h4>Select Color</h4><div class="pd-color-swatches">${colors.map(c => { const isDef = c.name === defaultColorObj?.name; const allOos = (p.sizes||[]).every(s => isVariantOutOfStock(p,s,c.name)); return `<button class="pd-color-swatch${isDef?' active':''}${allOos?' swatch-oos':''}" data-hex="${c.hex}" data-color-name="${c.name}" title="${c.name}${allOos?' (Out of Stock)':''}" style="background:${c.hex}${c.hex==='#FFFFFF'?';border-color:#ccc':''}" onclick="selectDetailColor(this,${p.id})"></button>`; }).join('')}</div><span class="pd-color-name">${defaultColorObj?.name||''}</span></div>` : '';
