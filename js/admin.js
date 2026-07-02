@@ -1,4 +1,5 @@
-﻿// db, auth, fsServerTimestamp, fsIncrement are set by js/firebase-db-init.js
+﻿// SSA Admin v36 — color variants: auto-extract dominant colors from image, no native color picker
+// db, auth, fsServerTimestamp, fsIncrement are set by js/db-init.js
 
 // ===== State =====
 let currentOrderFilter = 'all';
