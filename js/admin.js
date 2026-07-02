@@ -1358,6 +1358,8 @@ function handleCVImageUpload(event, idx) {
     event.target.value = '';
 }
 window.handleCVImageUpload = handleCVImageUpload;
+
+function handleProductImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
