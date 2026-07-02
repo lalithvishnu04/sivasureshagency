@@ -102,46 +102,65 @@ initializeAuthListener();
 function handleAdminLogin(e) {
     e.preventDefault();
     if (typeof auth === 'undefined' || !auth || !window._firebaseReady) {
-        alert('Backend is still loading. Please wait a moment and try again.');
+        showLoginError('Backend is still loading — please wait a moment and try again.');
         return;
     }
     const email = document.getElementById('adminEmail').value.trim();
     const password = document.getElementById('adminPassword').value;
     const btn = document.getElementById('loginBtn');
-    const error = document.getElementById('loginError');
-    error.textContent = '';
+    showLoginError('');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
-
     const resetBtn = () => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In to Dashboard'; };
 
     auth.signInWithEmailAndPassword(email, password)
         .then(data => {
-            // Deterministic: a valid session means we are logged in — show the panel now,
-            // don't rely solely on the async auth-state event (which never fires when
-            // Supabase returns a user with no session, e.g. unconfirmed email).
+            resetBtn();
             if (data && data.session) {
-                resetBtn();
+                showLoginError('');
                 showAdminPanel(data.user || data.session.user || { email });
             } else if (data && data.user && !data.session) {
-                resetBtn();
-                error.innerHTML = 'Your account exists but the email is not confirmed. In Supabase &rarr; Authentication &rarr; Sign In / Providers &rarr; Email, turn OFF "Confirm email" (then Save), or open the user in the Users list and confirm it.';
+                // Account exists but no session — email not yet confirmed
+                showLoginError(
+                    'Your email is not confirmed. ' +
+                    'Go to Supabase → Authentication → Sign In / Providers → Email → ' +
+                    'click Enable → turn OFF "Confirm email" → Save. Then try again.',
+                    true
+                );
             } else {
-                resetBtn();
-                error.textContent = 'Sign-in failed. Please try again.';
+                showLoginError('Sign-in failed — no session returned. Please try again.');
             }
         })
         .catch(err => {
             resetBtn();
             const m = (err.message || '').toLowerCase();
-            if (m.includes('not confirmed') || m.includes('email not')) {
-                error.innerHTML = 'Email not confirmed. In Supabase &rarr; Authentication &rarr; Sign In / Providers &rarr; Email, turn OFF "Confirm email" (then Save), or confirm this user in the Users list.';
-            } else if (m.includes('invalid')) {
-                error.textContent = 'Invalid email or password';
+            if (m.includes('provider') && (m.includes('not enabled') || m.includes('disabled'))) {
+                showLoginError(
+                    '⚠️ Email sign-in is DISABLED in Supabase. ' +
+                    'Go to: Supabase Dashboard → Authentication → Sign In / Providers → ' +
+                    'click "Email" → flip the toggle to ENABLED → ' +
+                    'turn OFF "Confirm email" → Save. Then refresh this page and try again.',
+                    true
+                );
+            } else if (m.includes('not confirmed') || m.includes('email not')) {
+                showLoginError(
+                    'Email not confirmed. Go to Supabase → Authentication → Sign In / Providers → ' +
+                    'Email → Enable it → turn OFF "Confirm email" → Save.',
+                    true
+                );
+            } else if (m.includes('invalid') || m.includes('credentials') || m.includes('password')) {
+                showLoginError('Invalid email or password. Check your credentials and try again.');
             } else {
-                error.textContent = err.message || 'Sign-in failed';
+                showLoginError('Error: ' + (err.message || 'Sign-in failed'));
             }
         });
+}
+function showLoginError(msg, isHtml) {
+    const el = document.getElementById('loginError');
+    if (!el) return;
+    if (!msg) { el.innerHTML = ''; el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    if (isHtml) el.innerHTML = msg; else el.textContent = msg;
 }
 
 function handleAdminLogout() {

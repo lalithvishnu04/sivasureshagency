@@ -183,7 +183,7 @@ img{max-width:100%;display:block;}
 }
 .btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(13,148,136,0.38);}
 .btn-login:disabled{opacity:0.55;cursor:not-allowed;transform:none;}
-.login-error{color:var(--danger);font-size:0.82rem;margin-top:10px;text-align:center;min-height:18px;}
+.login-error{color:var(--danger);font-size:0.82rem;margin-top:10px;text-align:center;min-height:18px;line-height:1.5;display:none;padding:10px 14px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:8px;}
 
 /* ── Admin Panel Layout ───────────────────────────────── */
 .admin-panel{display:flex;min-height:100vh;}
