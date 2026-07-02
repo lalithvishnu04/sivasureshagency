@@ -117,44 +117,7 @@ function handleAdminLogout() {
     auth.signOut();
 }
 
-function toggleAdminSetup(e) {
-    if (e) e.preventDefault();
-    const panel = document.getElementById('adminSetupPanel');
-    if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-}
-window.toggleAdminSetup = toggleAdminSetup;
 
-async function handleAdminSetup() {
-    const email = (document.getElementById('setupEmail')?.value || '').trim();
-    const pass  = (document.getElementById('setupPassword')?.value || '');
-    const conf  = (document.getElementById('setupConfirm')?.value || '');
-    const msg   = document.getElementById('setupMsg');
-    const btn   = document.getElementById('setupBtn');
-    const show  = (t, ok) => { if (!msg) return; msg.textContent = t; msg.style.color = ok ? '#10b981' : '#ef4444'; };
-
-    if (!email) { show('Please enter an email address.'); return; }
-    if (pass.length < 6) { show('Password must be at least 6 characters.'); return; }
-    if (pass !== conf) { show('Passwords do not match.'); return; }
-    if (!auth || !window._firebaseReady) { show('Backend not ready — please wait and try again.'); return; }
-
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
-    try {
-        await auth.signUpWithEmailAndPassword(email, pass, { role: 'admin' });
-        show('✓ Account created! Check email to confirm, then sign in above.', true);
-        btn.innerHTML = '<i class="fas fa-check"></i> Done';
-    } catch (err) {
-        const msg2 = err.message || '';
-        if (msg2.toLowerCase().includes('already') || msg2.toLowerCase().includes('exists')) {
-            show('Account already exists — just sign in above.', true);
-        } else {
-            show(msg2 || 'Failed to create account.', false);
-        }
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Admin Account';
-    }
-}
-window.handleAdminSetup = handleAdminSetup;
 
 // ===== Navigation =====
 function navigateTo(page) {
