@@ -1303,13 +1303,29 @@ function renderColorVariantRows() {
     container.innerHTML = _cvData.map((cv, idx) => `
     <div class="cv-card" data-idx="${idx}">
         <div class="cv-card-header">
-            <div class="cv-swatch-wrap" title="Click to pick color" onclick="openCVColorPicker(${idx}, this)">
-                <span class="cv-swatch-bg" id="cvSwatch_${idx}" style="background:${cv.hex||'#0d9488'}"></span>
+            <span class="cv-swatch-bg" id="cvSwatch_${idx}" style="background:${cv.hex||'#0d9488'};width:42px;height:42px;border-radius:8px;border:1.5px solid var(--border);flex-shrink:0;display:inline-block;box-shadow:0 1px 4px rgba(0,0,0,0.14)" title="${cv.name||'unnamed'}"></span>
+            <div class="cv-fields">
+                <div class="cv-field-row">
+                    <label class="cv-field-label">Color Name</label>
+                    <input type="text" class="cv-name-input" placeholder="e.g. Navy Blue" value="${cv.name||''}" oninput="updateCV(${idx},'name',this.value)">
+                </div>
+                <div class="cv-field-row">
+                    <label class="cv-field-label">Hex Code</label>
+                    <div class="cv-hex-wrap">
+                        <span class="cv-hex-prefix">#</span>
+                        <input type="text" class="cv-hex-input" id="cvHexText_${idx}" placeholder="0d9488" value="${(cv.hex||'#0d9488').replace('#','')}" oninput="updateCVHex(${idx},this)" spellcheck="false" autocomplete="off" maxlength="6">
+                    </div>
+                </div>
             </div>
-            <input type="text" class="cv-name-input" placeholder="Color name (e.g. Navy Blue)" value="${cv.name||''}" oninput="updateCV(${idx},'name',this.value)">
-            <input type="text" class="cv-hex-input" id="cvHexText_${idx}" placeholder="#hex" value="${cv.hex||'#0d9488'}" maxlength="7" oninput="updateCVHex(${idx},this)">
             <button type="button" class="btn-icon danger" onclick="removeColorVariant(${idx})" title="Remove color"><i class="fas fa-trash"></i></button>
         </div>
+        ${(cv.suggestedColors||[]).length ? `
+        <div class="cv-suggested" id="cvSuggested_${idx}">
+            <span class="cv-suggested-label"><i class="fas fa-wand-magic-sparkles"></i> Colors extracted from image — click to apply:</span>
+            <div class="cv-suggested-swatches">
+                ${(cv.suggestedColors).map(h => `<button type="button" class="cv-sg-swatch${(cv.hex||'').toLowerCase()===h.toLowerCase()?' active':''}" style="background:${h}" title="${h}" onclick="applySuggestedColor(${idx},'${h}')"></button>`).join('')}
+            </div>
+        </div>` : ''}
         <div class="cv-imgs-grid" id="cvImgs_${idx}">
             ${(cv.images||[]).map((img,ii) => `
             <div class="cv-img-tile">
@@ -1338,18 +1354,29 @@ function removeColorVariant(idx) {
 window.removeColorVariant = removeColorVariant;
 
 function updateCV(idx, field, value) {
-    if (_cvData[idx]) _cvData[idx][field] = value;
+    if (_cvData[idx]) {
+        _cvData[idx][field] = value;
+        // Live-update swatch tooltip so it reflects the new name
+        if (field === 'name') {
+            const sw = document.getElementById(`cvSwatch_${idx}`);
+            if (sw) sw.title = value || 'unnamed';
+        }
+    }
 }
 window.updateCV = updateCV;
 
 function updateCVHex(idx, input) {
-    let v = input.value.trim();
-    if (v && !v.startsWith('#')) v = '#' + v;
+    // Input stores 6-char hex WITHOUT #
+    const raw = input.value.replace(/[^0-9a-fA-F]/g, '');
+    input.value = raw; // strip non-hex in real time
+    const v = '#' + raw;
     if (_cvData[idx]) _cvData[idx].hex = v;
     const swatch = document.getElementById(`cvSwatch_${idx}`);
-    if (swatch && /^#[0-9a-fA-F]{6}$/.test(v)) swatch.style.background = v;
-    const picker = document.getElementById(`cvColor_${idx}`);
-    if (picker && /^#[0-9a-fA-F]{6}$/.test(v)) picker.value = v;
+    if (swatch && raw.length === 6) swatch.style.background = v;
+    // highlight matching suggested swatch
+    document.querySelectorAll(`#cvSuggested_${idx} .cv-sg-swatch`).forEach(s => {
+        s.classList.toggle('active', s.title.toLowerCase() === v.toLowerCase());
+    });
 }
 window.updateCVHex = updateCVHex;
 
@@ -1358,327 +1385,18 @@ function applyColorPick(idx, value) {
     const swatch = document.getElementById(`cvSwatch_${idx}`);
     if (swatch) swatch.style.background = value;
     const hexText = document.getElementById(`cvHexText_${idx}`);
-    if (hexText) hexText.value = value;
+    if (hexText) hexText.value = value.replace('#', '');
+    // highlight matching suggested swatch
+    document.querySelectorAll(`#cvSuggested_${idx} .cv-sg-swatch`).forEach(s => {
+        s.classList.toggle('active', s.title.toLowerCase() === value.toLowerCase());
+    });
 }
 window.applyColorPick = applyColorPick;
 
-// ===== Custom Color Picker — tabbed: Wheel + From Image =====
-let _cvPicker = { idx: -1, h: 174, s: 0.9, v: 0.6, dragging: false, imgIdx: 0 };
-
-function _cvPickerCreate() {
-    if (document.getElementById('cvCustomPicker')) return;
-    const el = document.createElement('div');
-    el.id = 'cvCustomPicker';
-    el.className = 'cv-cpicker';
-    el.setAttribute('role', 'dialog');
-    el.setAttribute('aria-label', 'Color Picker');
-    el.innerHTML = `
-    <div class="cv-cp-head">
-        <div class="cv-cp-tabs">
-            <button class="cv-cp-tab active" onclick="_cvTab('wheel',this)">
-                <i class="fas fa-circle-half-stroke"></i> Wheel
-            </button>
-            <button class="cv-cp-tab" onclick="_cvTab('image',this)" id="cvCpImgTabBtn">
-                <i class="fas fa-image"></i> From Image
-            </button>
-        </div>
-        <button class="cv-cp-x" onclick="closeCVPicker()" title="Close"><i class="fas fa-times"></i></button>
-    </div>
-    <div class="cv-cp-pane" id="cvCpWheelPane">
-        <div class="cv-cp-sq" id="cvCpSq">
-            <div class="cv-cp-sq-sat"></div>
-            <div class="cv-cp-sq-val"></div>
-            <div class="cv-cp-cur" id="cvCpCursor"></div>
-        </div>
-        <div class="cv-cp-hue-row">
-            <input type="range" id="cvCpHue" class="cv-cp-hue" min="0" max="359" value="174">
-        </div>
-        <div class="cv-cp-row">
-            <span class="cv-cp-dot" id="cvCpPreview"></span>
-            <input type="text" id="cvCpHex" class="cv-cp-hexin" placeholder="#0d9488" maxlength="7">
-            <span class="cv-cp-apply-hint">Enter to apply</span>
-        </div>
-    </div>
-    <div class="cv-cp-pane" id="cvCpImgPane" style="display:none">
-        <div class="cv-cp-strip" id="cvCpStrip"></div>
-        <div class="cv-cp-canvas-wrap" id="cvCpCanvasWrap">
-            <canvas id="cvCpCanvas"></canvas>
-            <div class="cv-cp-lupe" id="cvCpLupe" style="display:none">
-                <canvas id="cvCpLupeCanvas" width="72" height="72"></canvas>
-            </div>
-        </div>
-        <div class="cv-cp-row" style="margin-top:8px">
-            <span class="cv-cp-dot" id="cvCpImgDot"></span>
-            <span class="cv-cp-img-hex" id="cvCpImgHex">Hover over image to preview</span>
-        </div>
-        <p class="cv-cp-img-tip"><i class="fas fa-hand-pointer"></i> Click any pixel to pick its color</p>
-    </div>
-    `;
-    document.body.appendChild(el);
-
-    // Wheel tab events
-    const sq = el.querySelector('#cvCpSq');
-    sq.addEventListener('mousedown', _cvCpSqDown);
-    sq.addEventListener('touchstart', _cvCpSqTouch, { passive: false });
-    document.addEventListener('mousemove', _cvCpDocMove);
-    document.addEventListener('mouseup', _cvCpDocUp);
-    document.addEventListener('touchmove', _cvCpDocTouchMove, { passive: false });
-    document.addEventListener('touchend', _cvCpDocUp);
-    el.querySelector('#cvCpHue').addEventListener('input', _cvCpHueInput);
-    el.querySelector('#cvCpHex').addEventListener('input', _cvCpHexInput);
-    el.querySelector('#cvCpHex').addEventListener('keydown', e => { if (e.key === 'Enter') closeCVPicker(); });
-
-    // Close on outside click
-    document.addEventListener('mousedown', e => {
-        const p = document.getElementById('cvCustomPicker');
-        if (p && p.style.display !== 'none' && !p.contains(e.target) && !e.target.closest('.cv-swatch-wrap'))
-            closeCVPicker();
-    });
+function applySuggestedColor(idx, hex) {
+    applyColorPick(idx, hex);
 }
-
-function _cvTab(tab, btn) {
-    document.querySelectorAll('#cvCustomPicker .cv-cp-tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('cvCpWheelPane').style.display = tab === 'wheel' ? 'block' : 'none';
-    document.getElementById('cvCpImgPane').style.display   = tab === 'image' ? 'block' : 'none';
-    if (tab === 'image') _cvCpLoadImageTab(_cvPicker.idx);
-}
-window._cvTab = _cvTab;
-
-function _cvCpLoadImageTab(idx) {
-    const images = _cvData[idx]?.images || [];
-    const strip  = document.getElementById('cvCpStrip');
-    const wrap   = document.getElementById('cvCpCanvasWrap');
-    if (!strip || !wrap) return;
-
-    _cvPicker.imgIdx = Math.min(_cvPicker.imgIdx, Math.max(0, images.length - 1));
-
-    // Build thumbnail strip
-    strip.innerHTML = images.length
-        ? images.map((src, i) => `<img src="${src}" class="cv-cp-thumb${i === _cvPicker.imgIdx ? ' active' : ''}" onclick="_cvCpSelectImg(${i})" title="Image ${i+1}">`).join('')
-        : '';
-
-    if (!images.length) {
-        wrap.innerHTML = '<p class="cv-cp-no-img"><i class="fas fa-image"></i><br>Add images first, then pick color from them.</p>';
-        return;
-    }
-    _cvCpDrawImageOnCanvas(images[_cvPicker.imgIdx]);
-}
-
-function _cvCpSelectImg(imgIdx) {
-    _cvPicker.imgIdx = imgIdx;
-    const images = _cvData[_cvPicker.idx]?.images || [];
-    document.querySelectorAll('#cvCpStrip .cv-cp-thumb').forEach((t, i) => t.classList.toggle('active', i === imgIdx));
-    if (images[imgIdx]) _cvCpDrawImageOnCanvas(images[imgIdx]);
-}
-window._cvCpSelectImg = _cvCpSelectImg;
-
-function _cvCpDrawImageOnCanvas(src) {
-    const wrap = document.getElementById('cvCpCanvasWrap');
-    if (!wrap) return;
-    // Reset wrap
-    wrap.innerHTML = `
-        <canvas id="cvCpCanvas"></canvas>
-        <div class="cv-cp-lupe" id="cvCpLupe" style="display:none">
-            <canvas id="cvCpLupeCanvas" width="72" height="72"></canvas>
-        </div>`;
-    const canvas = document.getElementById('cvCpCanvas');
-    const img    = new Image();
-    img.onload = () => {
-        const maxW = 268, maxH = 196;
-        const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
-        canvas.width  = Math.round(img.width  * ratio);
-        canvas.height = Math.round(img.height * ratio);
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        canvas.style.cursor = 'crosshair';
-        canvas.addEventListener('mousemove',  _cvCpCanvasMove);
-        canvas.addEventListener('mouseleave', _cvCpCanvasLeave);
-        canvas.addEventListener('click',      _cvCpCanvasClick);
-    };
-    img.src = src;
-}
-
-function _cvCpGetPixel(e) {
-    const canvas = e.target;
-    const rect   = canvas.getBoundingClientRect();
-    const sx = canvas.width  / rect.width;
-    const sy = canvas.height / rect.height;
-    const x  = Math.round((e.clientX - rect.left) * sx);
-    const y  = Math.round((e.clientY - rect.top)  * sy);
-    const px = canvas.getContext('2d').getImageData(Math.max(0,x), Math.max(0,y), 1, 1).data;
-    const hex = '#' + [px[0],px[1],px[2]].map(n => n.toString(16).padStart(2,'0')).join('');
-    return { x, y, hex, canvas, rect };
-}
-
-function _cvCpCanvasMove(e) {
-    const { hex, x, y, canvas, rect } = _cvCpGetPixel(e);
-    const dot = document.getElementById('cvCpImgDot');
-    const lbl = document.getElementById('cvCpImgHex');
-    if (dot) dot.style.background = hex;
-    if (lbl) lbl.textContent = hex;
-
-    // Magnifying lupe
-    const lupe  = document.getElementById('cvCpLupe');
-    const lupeC = document.getElementById('cvCpLupeCanvas');
-    if (!lupe || !lupeC) return;
-    lupe.style.display = 'block';
-    const lCtx = lupeC.getContext('2d');
-    lCtx.imageSmoothingEnabled = false;
-    lCtx.clearRect(0, 0, 72, 72);
-    lCtx.drawImage(canvas, x - 4, y - 4, 9, 9, 0, 0, 72, 72);
-    // crosshair lines
-    lCtx.strokeStyle = 'rgba(255,255,255,0.85)'; lCtx.lineWidth = 1.5;
-    lCtx.beginPath(); lCtx.moveTo(36,0); lCtx.lineTo(36,72); lCtx.stroke();
-    lCtx.beginPath(); lCtx.moveTo(0,36); lCtx.lineTo(72,36); lCtx.stroke();
-    lCtx.strokeStyle = 'rgba(0,0,0,0.3)'; lCtx.lineWidth = 0.5;
-    lCtx.beginPath(); lCtx.moveTo(35,0); lCtx.lineTo(35,72); lCtx.stroke();
-    lCtx.beginPath(); lCtx.moveTo(0,35); lCtx.lineTo(72,35); lCtx.stroke();
-    // position near cursor, keep inside wrap
-    const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-    lupe.style.left = (cx + 14 + 80 > rect.width  ? cx - 14 - 80 : cx + 14) + 'px';
-    lupe.style.top  = (cy - 80 < 0               ? cy + 14      : cy - 80)  + 'px';
-}
-
-function _cvCpCanvasLeave() {
-    const lupe = document.getElementById('cvCpLupe');
-    if (lupe) lupe.style.display = 'none';
-    const lbl = document.getElementById('cvCpImgHex');
-    if (lbl) lbl.textContent = 'Hover over image to preview';
-}
-
-function _cvCpCanvasClick(e) {
-    const { hex } = _cvCpGetPixel(e);
-    const [h, s, v] = _hexToHsv(hex);
-    _cvPicker.h = h; _cvPicker.s = s; _cvPicker.v = v;
-    applyColorPick(_cvPicker.idx, hex);
-    // Switch to wheel to confirm pick
-    const wheelBtn = document.querySelector('#cvCustomPicker .cv-cp-tab');
-    if (wheelBtn) _cvTab('wheel', wheelBtn);
-    _cvCpUpdate();
-    // Pulse preview dot
-    const dot = document.getElementById('cvCpPreview');
-    if (dot) { dot.style.transform = 'scale(1.4)'; setTimeout(() => { dot.style.transform = ''; }, 300); }
-}
-
-function _cvCpUpdate() {
-    const { h, s, v } = _cvPicker;
-    const hex = _hsvToHex(h, s, v);
-    const sq = document.getElementById('cvCpSq');
-    if (sq) sq.style.background = `hsl(${h},100%,50%)`;
-    const cursor = document.getElementById('cvCpCursor');
-    if (cursor && sq) {
-        cursor.style.left = (s * (sq.offsetWidth  || 260)) + 'px';
-        cursor.style.top  = ((1 - v) * (sq.offsetHeight || 160)) + 'px';
-    }
-    const preview = document.getElementById('cvCpPreview');
-    if (preview) preview.style.background = hex;
-    const hexIn = document.getElementById('cvCpHex');
-    if (hexIn && document.activeElement !== hexIn) hexIn.value = hex;
-    const hueIn = document.getElementById('cvCpHue');
-    if (hueIn) hueIn.value = h;
-    return hex;
-}
-
-function _cvCpApply() {
-    if (_cvPicker.idx < 0) return;
-    applyColorPick(_cvPicker.idx, _hsvToHex(_cvPicker.h, _cvPicker.s, _cvPicker.v));
-}
-
-function _cvCpSqDown(e) { _cvPicker.dragging = true; _cvCpSqPick(e.clientX, e.clientY); e.preventDefault(); }
-function _cvCpSqTouch(e) { _cvPicker.dragging = true; _cvCpSqPick(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }
-function _cvCpDocMove(e) { if (_cvPicker.dragging) _cvCpSqPick(e.clientX, e.clientY); }
-function _cvCpDocTouchMove(e) { if (_cvPicker.dragging) { _cvCpSqPick(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); } }
-function _cvCpDocUp() { _cvPicker.dragging = false; }
-
-function _cvCpSqPick(cx, cy) {
-    const sq = document.getElementById('cvCpSq');
-    if (!sq) return;
-    const r = sq.getBoundingClientRect();
-    _cvPicker.s = Math.max(0, Math.min(1, (cx - r.left)  / r.width));
-    _cvPicker.v = Math.max(0, Math.min(1, 1 - (cy - r.top) / r.height));
-    _cvCpUpdate(); _cvCpApply();
-}
-
-function _cvCpHueInput(e) { _cvPicker.h = parseInt(e.target.value); _cvCpUpdate(); _cvCpApply(); }
-
-function _cvCpHexInput(e) {
-    let raw = e.target.value.trim();
-    if (raw && !raw.startsWith('#')) raw = '#' + raw;
-    if (/^#[0-9a-fA-F]{6}$/.test(raw)) {
-        [_cvPicker.h, _cvPicker.s, _cvPicker.v] = _hexToHsv(raw);
-        _cvCpUpdate(); _cvCpApply();
-    }
-}
-
-function _hsvToHex(h, s, v) {
-    const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
-    let r, g, b;
-    if      (h <  60) { r=c; g=x; b=0; }
-    else if (h < 120) { r=x; g=c; b=0; }
-    else if (h < 180) { r=0; g=c; b=x; }
-    else if (h < 240) { r=0; g=x; b=c; }
-    else if (h < 300) { r=x; g=0; b=c; }
-    else              { r=c; g=0; b=x; }
-    return '#' + [r,g,b].map(n => Math.max(0,Math.min(255,Math.round((n+m)*255))).toString(16).padStart(2,'0')).join('');
-}
-
-function _hexToHsv(hex) {
-    const r=parseInt(hex.slice(1,3),16)/255, g=parseInt(hex.slice(3,5),16)/255, b=parseInt(hex.slice(5,7),16)/255;
-    const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
-    let h=0, s=(max===0)?0:d/max, v=max;
-    if (d) {
-        if      (max===r) h=((g-b)/d+(g<b?6:0))*60;
-        else if (max===g) h=((b-r)/d+2)*60;
-        else              h=((r-g)/d+4)*60;
-    }
-    return [h, s, v];
-}
-
-function openCVColorPicker(idx, swatchEl) {
-    _cvPickerCreate();
-    _cvPicker.idx    = idx;
-    _cvPicker.imgIdx = 0;
-    const hex = _cvData[idx]?.hex || '#0d9488';
-    [_cvPicker.h, _cvPicker.s, _cvPicker.v] = _hexToHsv(hex);
-
-    // Show/hide "From Image" tab
-    const hasImages = !!(_cvData[idx]?.images?.length);
-    const imgTabBtn = document.getElementById('cvCpImgTabBtn');
-    if (imgTabBtn) imgTabBtn.style.display = hasImages ? 'inline-flex' : 'none';
-
-    // Always open on Wheel tab
-    const wheelBtn = document.querySelector('#cvCustomPicker .cv-cp-tab');
-    if (wheelBtn) {
-        document.querySelectorAll('#cvCustomPicker .cv-cp-tab').forEach(t => t.classList.remove('active'));
-        wheelBtn.classList.add('active');
-        document.getElementById('cvCpWheelPane').style.display = 'block';
-        document.getElementById('cvCpImgPane').style.display   = 'none';
-    }
-
-    const picker = document.getElementById('cvCustomPicker');
-    picker.style.display = 'block';
-    requestAnimationFrame(() => {
-        _cvCpUpdate();
-        const rect = swatchEl.getBoundingClientRect();
-        const pw   = picker.offsetWidth  || 296;
-        const ph   = picker.offsetHeight || 360;
-        let top    = rect.bottom + 8;
-        let left   = rect.left;
-        if (top  + ph > window.innerHeight - 16) top  = rect.top - ph - 8;
-        if (left + pw > window.innerWidth  - 16) left = window.innerWidth - pw - 16;
-        picker.style.top  = Math.max(8, top)  + 'px';
-        picker.style.left = Math.max(8, left) + 'px';
-    });
-}
-window.openCVColorPicker = openCVColorPicker;
-
-function closeCVPicker() {
-    const p = document.getElementById('cvCustomPicker');
-    if (p) p.style.display = 'none';
-    _cvPicker.idx = -1;
-}
-window.closeCVPicker = closeCVPicker;
-// ===== End Custom Color Picker =====
+window.applySuggestedColor = applySuggestedColor;
 
 function triggerCVImageUpload(idx) {
     document.getElementById(`cvFile_${idx}`)?.click();
@@ -1696,14 +1414,112 @@ function handleCVImageUpload(event, idx) {
     files.forEach(file => {
         const reader = new FileReader();
         reader.onload = e => {
-            // Store the ORIGINAL image at full quality — no resize, no compression.
-            if (_cvData[idx]) { _cvData[idx].images.push(e.target.result); renderColorVariantRows(); }
+            if (!_cvData[idx]) return;
+            _cvData[idx].images.push(e.target.result);
+            // Extract dominant colors from this image
+            _extractDominantColors(e.target.result, 8).then(colors => {
+                if (!_cvData[idx]) return;
+                // Merge into existing suggestions, keep unique, cap at 12
+                const existing = _cvData[idx].suggestedColors || [];
+                const merged = [...new Set([...existing, ...colors])].slice(0, 12);
+                _cvData[idx].suggestedColors = merged;
+                // Auto-apply the top color only if no hex set yet (still default)
+                if (!_cvData[idx].hex || _cvData[idx].hex === '#0d9488') {
+                    _cvData[idx].hex = merged[0] || _cvData[idx].hex;
+                }
+                renderColorVariantRows();
+            });
         };
         reader.readAsDataURL(file);
     });
     event.target.value = '';
 }
 window.handleCVImageUpload = handleCVImageUpload;
+
+/**
+ * Extract N dominant colors from an image data-URL using canvas pixel sampling
+ * + simple k-means clustering (3 iterations, good enough for thumbnails).
+ */
+function _extractDominantColors(dataUrl, n) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const SIZE = 80; // sample at 80×80 for speed
+                const canvas = document.createElement('canvas');
+                canvas.width = SIZE; canvas.height = SIZE;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, SIZE, SIZE);
+                const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
+
+                // Collect pixels, skip near-white and near-black and low-saturation
+                const pixels = [];
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+                    if (a < 128) continue;
+                    const max = Math.max(r,g,b), min = Math.min(r,g,b);
+                    const sat = max === 0 ? 0 : (max - min) / max;
+                    const bri = max / 255;
+                    // Skip very white (bri>0.95,sat<0.1), very black (bri<0.06), very grey (sat<0.06)
+                    if (bri > 0.95 && sat < 0.10) continue;
+                    if (bri < 0.06) continue;
+                    if (sat < 0.06) continue;
+                    pixels.push([r, g, b]);
+                }
+
+                if (pixels.length < 10) { resolve([]); return; }
+
+                // Seed: pick n pixels spread evenly across the array
+                let centers = [];
+                for (let k = 0; k < n; k++) {
+                    centers.push([...pixels[Math.floor(k * pixels.length / n)]]);
+                }
+
+                // k-means: 4 iterations
+                for (let iter = 0; iter < 4; iter++) {
+                    const sums = centers.map(() => [0,0,0,0]); // r,g,b,count
+                    for (const p of pixels) {
+                        let best = 0, bestD = Infinity;
+                        for (let k = 0; k < centers.length; k++) {
+                            const dr=p[0]-centers[k][0], dg=p[1]-centers[k][1], db=p[2]-centers[k][2];
+                            const d = dr*dr + dg*dg + db*db;
+                            if (d < bestD) { bestD = d; best = k; }
+                        }
+                        sums[best][0]+=p[0]; sums[best][1]+=p[1]; sums[best][2]+=p[2]; sums[best][3]++;
+                    }
+                    centers = sums.map((s,k) => s[3] > 0 ? [s[0]/s[3], s[1]/s[3], s[2]/s[3]] : centers[k]);
+                }
+
+                // Sort by cluster population (sums[k][3]), then convert to hex
+                const sums2 = centers.map(() => [0,0,0,0]);
+                for (const p of pixels) {
+                    let best = 0, bestD = Infinity;
+                    for (let k = 0; k < centers.length; k++) {
+                        const dr=p[0]-centers[k][0], dg=p[1]-centers[k][1], db=p[2]-centers[k][2];
+                        const d = dr*dr + dg*dg + db*db;
+                        if (d < bestD) { bestD = d; best = k; }
+                    }
+                    sums2[best][3]++;
+                }
+                const sorted = centers
+                    .map((c,k) => ({ c, count: sums2[k][3] }))
+                    .filter(x => x.count > 0)
+                    .sort((a,b) => b.count - a.count);
+
+                const hexColors = sorted.map(x => {
+                    const [r,g,b] = x.c.map(v => Math.max(0, Math.min(255, Math.round(v))));
+                    return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+                });
+
+                resolve(hexColors);
+            } catch(e) {
+                resolve([]);
+            }
+        };
+        img.onerror = () => resolve([]);
+        img.src = dataUrl;
+    });
+}
 
 function handleProductImageUpload(event) {
     const file = event.target.files[0];
