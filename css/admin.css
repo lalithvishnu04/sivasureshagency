@@ -1424,16 +1424,7 @@ img{max-width:100%;display:block;}
   inset: 0;
   border-radius: 7px;
 }
-.cv-color-native {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: none;
-}
+/* .cv-color-native removed — replaced by custom JS color picker */
 .cv-name-input {
   flex: 1;
   min-width: 0;
@@ -1521,3 +1512,160 @@ img{max-width:100%;display:block;}
 }
 .cv-add-tile i { font-size: 1rem; }
 
+/* ── Custom Color Picker Popup ──────────────────────────── */
+.cv-cpicker {
+  position: fixed;
+  z-index: 99999;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12);
+  width: 244px;
+  padding: 14px;
+  user-select: none;
+  touch-action: none;
+}
+.cv-cp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.cv-cp-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.cv-cp-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 7px;
+  font-size: 0.78rem;
+  border-radius: 5px;
+  line-height: 1;
+}
+.cv-cp-close:hover { background: var(--border); color: var(--text); }
+/* Color gradient square */
+.cv-cp-sq {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: crosshair;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+.cv-cp-sq-white {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, #fff, transparent);
+  pointer-events: none;
+}
+.cv-cp-sq-black {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent, #000);
+  pointer-events: none;
+}
+.cv-cp-cursor {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1.5px rgba(0,0,0,0.45);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+/* Hue slider */
+.cv-cp-hue-wrap { margin-bottom: 10px; }
+.cv-cp-hue {
+  width: 100%;
+  height: 14px;
+  border-radius: 7px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(to right,
+    hsl(0,100%,50%),hsl(30,100%,50%),hsl(60,100%,50%),hsl(90,100%,50%),
+    hsl(120,100%,50%),hsl(150,100%,50%),hsl(180,100%,50%),hsl(210,100%,50%),
+    hsl(240,100%,50%),hsl(270,100%,50%),hsl(300,100%,50%),hsl(330,100%,50%),
+    hsl(360,100%,50%));
+  cursor: pointer;
+  outline: none;
+  border: none;
+}
+.cv-cp-hue::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.25);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+.cv-cp-hue::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,0.25);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+/* Bottom row */
+.cv-cp-bottom {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.cv-cp-preview {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 1.5px solid var(--border);
+  display: inline-block;
+}
+.cv-cp-hexin {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-family: monospace;
+  background: var(--surface);
+  color: var(--text);
+  height: 32px;
+  box-sizing: border-box;
+}
+.cv-cp-hexin:focus { outline: none; border-color: var(--primary); }
+.cv-cp-eye {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+  padding: 0;
+}
+.cv-cp-eye:hover { border-color: var(--primary); color: var(--primary); background: rgba(13,148,136,0.06); }
+/* Hint text */
+.cv-cp-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+  line-height: 1.4;
+  min-height: 0;
+}

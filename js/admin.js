@@ -1303,9 +1303,8 @@ function renderColorVariantRows() {
     container.innerHTML = _cvData.map((cv, idx) => `
     <div class="cv-card" data-idx="${idx}">
         <div class="cv-card-header">
-            <div class="cv-swatch-wrap" title="Click to pick color">
+            <div class="cv-swatch-wrap" title="Click to pick color" onclick="openCVColorPicker(${idx}, this)">
                 <span class="cv-swatch-bg" id="cvSwatch_${idx}" style="background:${cv.hex||'#0d9488'}"></span>
-                <input type="color" id="cvColor_${idx}" value="${cv.hex||'#0d9488'}" class="cv-color-native" onchange="applyColorPick(${idx},this.value)">
             </div>
             <input type="text" class="cv-name-input" placeholder="Color name (e.g. Navy Blue)" value="${cv.name||''}" oninput="updateCV(${idx},'name',this.value)">
             <input type="text" class="cv-hex-input" id="cvHexText_${idx}" placeholder="#hex" value="${cv.hex||'#0d9488'}" maxlength="7" oninput="updateCVHex(${idx},this)">
@@ -1354,11 +1353,6 @@ function updateCVHex(idx, input) {
 }
 window.updateCVHex = updateCVHex;
 
-function triggerColorPick(idx) {
-    document.getElementById(`cvColor_${idx}`)?.click();
-}
-window.triggerColorPick = triggerColorPick;
-
 function applyColorPick(idx, value) {
     if (_cvData[idx]) _cvData[idx].hex = value;
     const swatch = document.getElementById(`cvSwatch_${idx}`);
@@ -1367,6 +1361,244 @@ function applyColorPick(idx, value) {
     if (hexText) hexText.value = value;
 }
 window.applyColorPick = applyColorPick;
+
+// ===== Custom Color Picker (replaces native <input type="color"> to fix Chrome freeze) =====
+let _cvPicker = { idx: -1, h: 174, s: 0.9, v: 0.6, dragging: false };
+
+function _cvPickerCreate() {
+    if (document.getElementById('cvCustomPicker')) return;
+    const el = document.createElement('div');
+    el.id = 'cvCustomPicker';
+    el.className = 'cv-cpicker';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', 'Color Picker');
+    el.innerHTML = `
+        <div class="cv-cp-header">
+            <span class="cv-cp-title">Pick Color</span>
+            <button class="cv-cp-close" onclick="closeCVPicker()" title="Close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="cv-cp-sq" id="cvCpSq">
+            <div class="cv-cp-sq-white"></div>
+            <div class="cv-cp-sq-black"></div>
+            <div class="cv-cp-cursor" id="cvCpCursor"></div>
+        </div>
+        <div class="cv-cp-hue-wrap">
+            <input type="range" id="cvCpHue" class="cv-cp-hue" min="0" max="360" value="174">
+        </div>
+        <div class="cv-cp-bottom">
+            <span class="cv-cp-preview" id="cvCpPreview"></span>
+            <input type="text" id="cvCpHex" class="cv-cp-hexin" placeholder="#000000" maxlength="7">
+            <button id="cvCpEye" class="cv-cp-eye" title="Pick color from product image (click eyedropper then click the image)" style="display:none">
+                <i class="fas fa-eye-dropper"></i>
+            </button>
+        </div>
+        <div class="cv-cp-hint" id="cvCpHint"></div>
+    `;
+    document.body.appendChild(el);
+
+    const sq = el.querySelector('#cvCpSq');
+    sq.addEventListener('mousedown', _cvCpSqDown);
+    sq.addEventListener('touchstart', _cvCpSqTouch, { passive: false });
+    document.addEventListener('mousemove', _cvCpDocMove);
+    document.addEventListener('mouseup', _cvCpDocUp);
+    document.addEventListener('touchmove', _cvCpDocTouchMove, { passive: false });
+    document.addEventListener('touchend', _cvCpDocUp);
+
+    el.querySelector('#cvCpHue').addEventListener('input', _cvCpHueInput);
+    el.querySelector('#cvCpHex').addEventListener('input', _cvCpHexInput);
+    el.querySelector('#cvCpHex').addEventListener('keydown', e => { if (e.key === 'Enter') closeCVPicker(); });
+
+    if (window.EyeDropper) {
+        const eyeBtn = el.querySelector('#cvCpEye');
+        eyeBtn.style.display = 'flex';
+        eyeBtn.addEventListener('click', _cvCpEyeDrop);
+    }
+
+    document.addEventListener('mousedown', e => {
+        const p = document.getElementById('cvCustomPicker');
+        if (p && p.style.display !== 'none' && !p.contains(e.target) && !e.target.closest('.cv-swatch-wrap')) {
+            closeCVPicker();
+        }
+    });
+}
+
+function _cvCpUpdate() {
+    const { h, s, v } = _cvPicker;
+    const hex = _hsvToHex(h, s, v);
+
+    // Update square hue background
+    const sq = document.getElementById('cvCpSq');
+    if (sq) sq.style.background = `hsl(${h}, 100%, 50%)`;
+
+    // Update cursor position
+    const cursor = document.getElementById('cvCpCursor');
+    if (cursor && sq) {
+        const w = sq.offsetWidth || 216;
+        const ht = sq.offsetHeight || 150;
+        cursor.style.left = (s * w) + 'px';
+        cursor.style.top = ((1 - v) * ht) + 'px';
+    }
+
+    // Update preview swatch and hex field
+    const preview = document.getElementById('cvCpPreview');
+    if (preview) preview.style.background = hex;
+    const hexIn = document.getElementById('cvCpHex');
+    if (hexIn && document.activeElement !== hexIn) hexIn.value = hex;
+
+    // Update hue slider thumb position
+    const hueIn = document.getElementById('cvCpHue');
+    if (hueIn) hueIn.value = h;
+
+    return hex;
+}
+
+function _cvCpApply() {
+    if (_cvPicker.idx < 0) return;
+    const hex = _hsvToHex(_cvPicker.h, _cvPicker.s, _cvPicker.v);
+    applyColorPick(_cvPicker.idx, hex);
+}
+
+function _cvCpSqDown(e) {
+    _cvPicker.dragging = true;
+    _cvCpSqPick(e.clientX, e.clientY);
+    e.preventDefault();
+}
+function _cvCpSqTouch(e) {
+    _cvPicker.dragging = true;
+    _cvCpSqPick(e.touches[0].clientX, e.touches[0].clientY);
+    e.preventDefault();
+}
+function _cvCpDocMove(e) {
+    if (!_cvPicker.dragging) return;
+    _cvCpSqPick(e.clientX, e.clientY);
+}
+function _cvCpDocTouchMove(e) {
+    if (!_cvPicker.dragging) return;
+    _cvCpSqPick(e.touches[0].clientX, e.touches[0].clientY);
+    e.preventDefault();
+}
+function _cvCpDocUp() { _cvPicker.dragging = false; }
+
+function _cvCpSqPick(cx, cy) {
+    const sq = document.getElementById('cvCpSq');
+    if (!sq) return;
+    const rect = sq.getBoundingClientRect();
+    const x = Math.max(0, Math.min(rect.width,  cx - rect.left));
+    const y = Math.max(0, Math.min(rect.height, cy - rect.top));
+    _cvPicker.s = x / rect.width;
+    _cvPicker.v = 1 - y / rect.height;
+    _cvCpUpdate();
+    _cvCpApply();
+}
+
+function _cvCpHueInput(e) {
+    _cvPicker.h = parseInt(e.target.value);
+    _cvCpUpdate();
+    _cvCpApply();
+}
+
+function _cvCpHexInput(e) {
+    let raw = e.target.value.trim();
+    if (raw && !raw.startsWith('#')) raw = '#' + raw;
+    if (/^#[0-9a-fA-F]{6}$/.test(raw)) {
+        const [h, s, v] = _hexToHsv(raw);
+        _cvPicker.h = h; _cvPicker.s = s; _cvPicker.v = v;
+        _cvCpUpdate();
+        _cvCpApply();
+    }
+}
+
+async function _cvCpEyeDrop() {
+    try {
+        const savedIdx = _cvPicker.idx;
+        // Hide picker so the image is fully visible for picking
+        const picker = document.getElementById('cvCustomPicker');
+        if (picker) picker.style.display = 'none';
+
+        const result = await new EyeDropper().open();
+        const hex = result.sRGBHex;
+        const [h, s, v] = _hexToHsv(hex);
+        _cvPicker.h = h; _cvPicker.s = s; _cvPicker.v = v;
+        _cvPicker.idx = savedIdx;
+        applyColorPick(savedIdx, hex);
+
+        // Re-show picker with picked color
+        if (picker && savedIdx >= 0) {
+            picker.style.display = 'block';
+            _cvCpUpdate();
+        }
+    } catch (err) {
+        if (err.name !== 'AbortError') console.warn('EyeDropper cancelled or not supported:', err);
+    }
+}
+
+function _hsvToHex(h, s, v) {
+    const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+    let r, g, b;
+    if (h < 60)       { r=c; g=x; b=0; }
+    else if (h < 120) { r=x; g=c; b=0; }
+    else if (h < 180) { r=0; g=c; b=x; }
+    else if (h < 240) { r=0; g=x; b=c; }
+    else if (h < 300) { r=x; g=0; b=c; }
+    else              { r=c; g=0; b=x; }
+    return '#' + [r,g,b].map(n => Math.max(0,Math.min(255,Math.round((n+m)*255))).toString(16).padStart(2,'0')).join('');
+}
+
+function _hexToHsv(hex) {
+    const r = parseInt(hex.slice(1,3),16)/255;
+    const g = parseInt(hex.slice(3,5),16)/255;
+    const b = parseInt(hex.slice(5,7),16)/255;
+    const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+    let h = 0, s = (max === 0) ? 0 : d/max, v = max;
+    if (d) {
+        if (max===r)      h = ((g-b)/d + (g<b?6:0)) * 60;
+        else if (max===g) h = ((b-r)/d + 2) * 60;
+        else              h = ((r-g)/d + 4) * 60;
+    }
+    return [h, s, v];
+}
+
+function openCVColorPicker(idx, swatchEl) {
+    _cvPickerCreate();
+    _cvPicker.idx = idx;
+    const hex = _cvData[idx]?.hex || '#0d9488';
+    const [h, s, v] = _hexToHsv(hex);
+    _cvPicker.h = h; _cvPicker.s = s; _cvPicker.v = v;
+
+    // Update hint: show eyedropper tip when images are present
+    const hasImages = (_cvData[idx]?.images?.length || 0) > 0;
+    const hint = document.getElementById('cvCpHint');
+    if (hint) hint.textContent = (window.EyeDropper && hasImages)
+        ? '\ud83d\udca1 Click the eyedropper, then click your product image to pick its color'
+        : '';
+
+    const picker = document.getElementById('cvCustomPicker');
+    picker.style.display = 'block';
+    requestAnimationFrame(() => {
+        _cvCpUpdate();
+        // Position near swatch, avoid going off-screen
+        const rect = swatchEl.getBoundingClientRect();
+        const pw = picker.offsetWidth  || 244;
+        const ph = picker.offsetHeight || 300;
+        let top  = rect.bottom + 8;
+        let left = rect.left;
+        if (top  + ph > window.innerHeight - 16) top  = rect.top - ph - 8;
+        if (left + pw > window.innerWidth  - 16) left = window.innerWidth - pw - 16;
+        if (left < 8) left = 8;
+        if (top  < 8) top  = 8;
+        picker.style.top  = top  + 'px';
+        picker.style.left = left + 'px';
+    });
+}
+window.openCVColorPicker = openCVColorPicker;
+
+function closeCVPicker() {
+    const p = document.getElementById('cvCustomPicker');
+    if (p) p.style.display = 'none';
+    _cvPicker.idx = -1;
+}
+window.closeCVPicker = closeCVPicker;
+// ===== End Custom Color Picker =====
 
 function triggerCVImageUpload(idx) {
     document.getElementById(`cvFile_${idx}`)?.click();
