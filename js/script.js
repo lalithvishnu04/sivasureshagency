@@ -1,6 +1,21 @@
 // ===== SVG Avatar Generator =====
+function normalizeCategoryKey(category) {
+    const key = String(category || '').trim().toLowerCase();
+    const map = {
+        'cliniflex': 'scrub-suits',
+        'cliniflex-scrubs': 'scrub-suits',
+        'clini-flex': 'scrub-suits',
+        'clini-flex-scrubs': 'scrub-suits',
+        'scrubs': 'scrub-suits',
+        'scrub-suit': 'scrub-suits',
+        'doctor-coats': 'doctor-uniform',
+        'doctor-coat': 'doctor-uniform'
+    };
+    return map[key] || key;
+}
+
 function generateProductSVG(product) {
-    const category = product.category;
+    const category = normalizeCategoryKey(product.category);
     const gender = product.gender || 'male';
     const sleeve = product.sleeve || 'full';
     const bgGradients = {
@@ -230,7 +245,7 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
                 const newP = {
                     id: 10000 + productsData.length,
                     name: fp.name,
-                    category: fp.category || 'hospital-linen',
+                    category: normalizeCategoryKey(fp.category || 'hospital-linen'),
                     price: fp.price || 0,
                     oldPrice: fp.oldPrice || null,
                     gender: fp.gender || null,
@@ -254,9 +269,10 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     function _rerender() {
         const page = document.body && document.body.dataset.page;
         if (page === 'categories') {
-            // Read active filter button from DOM — always accurate, never stale
+            const params = new URLSearchParams(window.location.search);
+            const urlCat = normalizeCategoryKey(params.get('cat') || '');
             const activeBtn = document.querySelector('.filter-btn.active');
-            const _f = activeBtn?.dataset?.filter || window._currentFilter || 'all';
+            const _f = window._currentFilter || activeBtn?.dataset?.filter || urlCat || 'all';
             const _c  = window._currentCount   || 12;
             const _g  = window._currentGender  || null;
             const _s  = window._currentSleeve  || null;
@@ -512,6 +528,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== Common Init (all pages) =====
 function initCommon() {
+    setupCliniflexNav();
+
     // Preloader — hide on DOMContentLoaded+300ms (don't wait for Firebase SDKs)
     const hidePreloader = () => { setTimeout(() => { const p = document.getElementById('preloader'); if (p) p.classList.add('hidden'); }, 300); };
     hidePreloader(); // DOMContentLoaded has already fired since we're inside this listener
@@ -676,6 +694,35 @@ function initCommon() {
     if (document.body.dataset.page === 'wishlist') initWishlistPage();
 }
 
+function setupCliniflexNav() {
+    const navLinks = document.getElementById('navLinks');
+    if (!navLinks) return;
+
+    const aboutLink = navLinks.querySelector('a[href="about.html"]');
+    const aboutItem = aboutLink ? aboutLink.closest('li') : null;
+
+    let cliniflexLink = navLinks.querySelector('.nav-cliniflex-link');
+    if (!cliniflexLink) {
+        const li = document.createElement('li');
+        li.className = 'nav-cliniflex';
+        li.innerHTML = '<a href="categories.html?cat=scrub-suits" class="nav-cliniflex-link"><i class="fas fa-award"></i> CliniFlex Scrubs <sup>&trade;</sup></a>';
+        if (aboutItem && aboutItem.parentNode) aboutItem.insertAdjacentElement('afterend', li);
+        else navLinks.insertAdjacentElement('afterbegin', li);
+        cliniflexLink = li.querySelector('.nav-cliniflex-link');
+    }
+
+    // CliniFlex has a dedicated top-nav link, so hide duplicate item in Categories mega menu.
+    document.querySelectorAll('.mega-col-scrubs').forEach(col => col.remove());
+
+    const page = document.body && document.body.dataset.page;
+    const params = new URLSearchParams(window.location.search);
+    const isCliniflexRoute = page === 'categories' && normalizeCategoryKey(params.get('cat')) === 'scrub-suits';
+    const categoriesLink = navLinks.querySelector('.nav-dropdown > a[href^="categories.html"]');
+
+    if (categoriesLink) categoriesLink.classList.toggle('active', page === 'categories' && !isCliniflexRoute);
+    if (cliniflexLink) cliniflexLink.classList.toggle('active', isCliniflexRoute);
+}
+
 // ===== Home Page =====
 function initHomePage() {
     initHeroSlider();
@@ -691,7 +738,7 @@ function initHomePage() {
 function initCategoriesPage() {
     // Parse URL params
     const params = new URLSearchParams(window.location.search);
-    const cat = params.get('cat');
+    const cat = normalizeCategoryKey(params.get('cat') || '');
     const gender = params.get('gender');
     const sleeve = params.get('sleeve');
 
@@ -730,7 +777,7 @@ function initCategoriesPage() {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            currentFilter = btn.dataset.filter;
+            currentFilter = normalizeCategoryKey(btn.dataset.filter);
             displayedProducts = 12;
             _syncWindowState(); renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
         });
@@ -826,7 +873,10 @@ function buildProductCard(p) {
 }
 
 function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null, searchQuery = '') {
-    let filtered = filter === 'all' ? [...productsData] : productsData.filter(p => p.category === filter);
+    const normalizedFilter = normalizeCategoryKey(filter || 'all') || 'all';
+    let filtered = normalizedFilter === 'all'
+        ? [...productsData]
+        : productsData.filter(p => normalizeCategoryKey(p.category) === normalizedFilter);
     if (gender) filtered = filtered.filter(p => p.gender === gender);
     if (sleeve) filtered = filtered.filter(p => p.sleeve === sleeve);
     if (searchQuery) {
@@ -841,7 +891,7 @@ function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null
     const grid = document.getElementById('shopGrid');
     if (!grid) return;
     if (toShow.length === 0) {
-        const isScrubs = filter === 'scrub-suits';
+        const isScrubs = normalizedFilter === 'scrub-suits';
         grid.innerHTML = `<div class="products-empty-state">
             <i class="fas fa-${isScrubs ? 'tshirt' : 'box-open'}"></i>
             <h3>${isScrubs ? 'SSA CliniFlex™ Scrubs — Coming Soon!' : searchQuery ? 'No products match your search' : 'No products in this category yet'}</h3>

@@ -7,6 +7,21 @@ let allProducts = [];
 let allInventory = [];
 let allCustomers = [];
 
+function normalizeCategoryKey(category) {
+    const key = String(category || '').trim().toLowerCase();
+    const map = {
+        'cliniflex': 'scrub-suits',
+        'cliniflex-scrubs': 'scrub-suits',
+        'clini-flex': 'scrub-suits',
+        'clini-flex-scrubs': 'scrub-suits',
+        'scrubs': 'scrub-suits',
+        'scrub-suit': 'scrub-suits',
+        'doctor-coat': 'doctor-uniform',
+        'doctor-coats': 'doctor-uniform'
+    };
+    return map[key] || key;
+}
+
 // ===== In-memory cache (90s TTL) — prevents repeated Firestore reads =====
 const _cache = {};
 const _CACHE_TTL = 90_000;
@@ -464,7 +479,8 @@ async function loadProducts() {
                 return docs;
             })
         );
-        allProducts = Array.isArray(data) ? data : data.docs.map(d => ({ docId: d.id, ...d.data() }));
+        allProducts = (Array.isArray(data) ? data : data.docs.map(d => ({ docId: d.id, ...d.data() })))
+            .map(p => ({ ...p, category: normalizeCategoryKey(p.category) }));
         allProducts.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         if (allProducts.length === 0) { await autoSeedProducts(); } else { await deduplicateProducts(); renderProducts(); }
     } catch (err) { console.error('Products error:', err); }
@@ -521,14 +537,14 @@ async function autoSeedProducts() {
     }
     showAdminToast(`Auto-seeded ${count} products to Firestore!`);
     const snap = await db.collection('products').orderBy('name').get();
-    allProducts = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+    allProducts = snap.docs.map(d => ({ docId: d.id, ...d.data(), category: normalizeCategoryKey(d.data().category) }));
     renderProducts();
 }
 
 function renderProducts() {
     const search = (document.getElementById('productSearch')?.value || '').toLowerCase();
     let filtered = allProducts;
-    if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search) || p.category.toLowerCase().includes(search));
+    if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search) || normalizeCategoryKey(p.category).includes(search));
 
     const tbody = document.getElementById('productsTableBody');
     if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">No products. Click "Add Product" or "Sync Products" in Inventory.</td></tr>'; return; }
@@ -567,7 +583,7 @@ function openProductModal(product = null) {
     document.getElementById('productEditId').value = product ? product.docId : '';
     document.getElementById('productModalTitle').innerHTML = product ? '<i class="fas fa-edit"></i> Edit Product' : '<i class="fas fa-plus"></i> Add Product';
     document.getElementById('pName').value = product ? product.name : '';
-    document.getElementById('pCategory').value = product ? product.category : 'scrub-suits';
+    document.getElementById('pCategory').value = product ? normalizeCategoryKey(product.category) : 'scrub-suits';
     document.getElementById('pPrice').value = product ? product.price : '';
     document.getElementById('pOldPrice').value = product ? product.oldPrice || '' : '';
     document.getElementById('pGender').value = product ? product.gender || '' : '';
@@ -591,7 +607,7 @@ async function saveProduct(e) {
     const docId = document.getElementById('productEditId').value;
     const data = {
         name: document.getElementById('pName').value.trim(),
-        category: document.getElementById('pCategory').value,
+        category: normalizeCategoryKey(document.getElementById('pCategory').value),
         price: parseInt(document.getElementById('pPrice').value),
         oldPrice: parseInt(document.getElementById('pOldPrice').value) || null,
         gender: document.getElementById('pGender').value || null,
@@ -708,6 +724,7 @@ async function syncInventoryFromProducts() {
 }
 
 function getColorsForCategory(category) {
+    const normalizedCategory = normalizeCategoryKey(category);
     const colorMap = {
         'scrub-suits': ['Ceil Blue', 'Hunter Green', 'Navy', 'Burgundy', 'Charcoal', 'Caribbean Blue', 'Black'],
         'doctor-uniform': ['White', 'Light Blue', 'Mint Green'],
@@ -716,7 +733,7 @@ function getColorsForCategory(category) {
         'hospital-linen': ['White', 'Teal', 'Green'],
         'hotel-linen': ['White', 'Ivory', 'Sky Blue']
     };
-    return colorMap[category] || ['White'];
+    return colorMap[normalizedCategory] || ['White'];
 }
 
 function getLocalProductsData() {
@@ -1358,6 +1375,8 @@ function handleCVImageUpload(event, idx) {
     event.target.value = '';
 }
 window.handleCVImageUpload = handleCVImageUpload;
+
+function handleProductImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 

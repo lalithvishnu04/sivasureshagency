@@ -110,6 +110,10 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outli
 .nav-links { display: flex; align-items: center; gap: 2px; }
 .nav-links > li > a { padding: 8px 14px; border-radius: 8px; font-weight: 500; font-size: 0.88rem; color: var(--text-mid); letter-spacing: 0.01em; display: flex; align-items: center; gap: 5px; }
 .nav-links > li > a:hover, .nav-links > li > a.active { color: var(--primary); background: var(--primary-bg); }
+.nav-links > li > a.nav-cliniflex-link { color: var(--primary); }
+.nav-links > li > a.nav-cliniflex-link:hover { color: var(--primary-dark); background: rgba(13,148,136,0.08); }
+.nav-links > li > a.nav-cliniflex-link.active { color: #fff; background: var(--primary-dark); }
+.nav-cliniflex-link sup { font-size: 0.58em; line-height: 1; top: -0.2em; position: relative; }
 .nav-arrow { font-size: 0.6rem; transition: var(--transition); }
 .nav-actions { display: flex; align-items: center; gap: 6px; }
 .nav-icon-btn { width: 40px; height: 40px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); background: var(--bg); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: var(--text-mid); transition: var(--transition); position: relative; }
