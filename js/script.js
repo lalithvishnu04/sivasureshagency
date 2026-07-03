@@ -912,7 +912,7 @@ function buildProductCard(p) {
         ${outBadge}
         <button class="shop-card-wishlist" data-product-id="${p.id}" aria-label="Wishlist"><i class="${isWishlisted(p.id) ? 'fas' : 'far'} fa-heart"></i></button>
         <div class="shop-card-image" onclick="openProductDetail(${p.id})">
-            <img src="${p.colorVariants?.[0]?.images?.[0] || p.image}" alt="${p.name}" loading="lazy">
+            <img src="${p.mainImage || p.colorVariants?.[0]?.images?.[0] || p.image}" alt="${p.name}" loading="lazy">
             ${quickBtn}
         </div>
         <div class="shop-card-body" onclick="openProductDetail(${p.id})">
@@ -2145,7 +2145,7 @@ function initCategoryTileScroll() {
     const catImages = {};
     productsData.forEach(p => {
         const img = p.mainImage || (p.colorVariants && p.colorVariants[0] && p.colorVariants[0].images && p.colorVariants[0].images[0]) || p.image;
-        if (!img || img.startsWith('data:') || img.startsWith('blob:')) return;
+        if (!img || img.startsWith('blob:')) return;
         if (!catImages[p.category]) catImages[p.category] = [];
         if (!catImages[p.category].includes(img)) catImages[p.category].push(img);
     });
@@ -2185,7 +2185,7 @@ function initHeroDynamicImages() {
         const prodImg = slide.querySelector('.hero-prod-img img');
         if (!prodImg) return;
         // Find a product with a real image for this category
-        const prod = productsData.find(p => p.category === cat && (p.mainImage || p.image) && !(p.mainImage || p.image).startsWith('data:'));
+        const prod = productsData.find(p => p.category === cat && (p.mainImage || p.image));
         if (prod) {
             const img = prod.mainImage || (prod.colorVariants && prod.colorVariants[0] && prod.colorVariants[0].images && prod.colorVariants[0].images[0]) || prod.image;
             if (img) prodImg.src = img;
