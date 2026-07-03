@@ -258,9 +258,9 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     });
 })();
 
-// ===== Firestore Products Sync =====
-// Loads products from Firestore once per session and merges admin-set images/prices.
-// sessionStorage cache (10 min TTL) prevents repeated Firebase reads.
+// ===== Supabase Products Sync =====
+// Loads products from Supabase once per session and merges admin-set images/prices.
+// sessionStorage cache (10 min TTL) prevents repeated reads.
 (function _initProductSync() {
     const CACHE_KEY = '_ssa_fs_products_v2';
     const TTL = 10 * 60 * 1000; // 10 minutes
@@ -363,7 +363,7 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
             } catch (e) { /* storage full */ }
             if (_merge(data)) _rerender();
         } catch (e) {
-            console.warn('[products-sync] Firestore unavailable, using local data only.');
+        console.warn('[products-sync] Supabase unavailable, using local data only.');
         }
     }
 

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=42">
+    <link rel="stylesheet" href="css/admin.css?v=43">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -434,13 +434,18 @@
                         <div id="cvContainer" style="display:flex;flex-direction:column;gap:12px;margin-top:8px;"></div>
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-image"></i> Main Image URL <small style="color:var(--text-muted);font-weight:400">(used as tile &amp; hero image)</small></label>
-                        <div style="display:flex;gap:8px;align-items:flex-start;flex-direction:column">
-                            <input type="url" id="pMainImage" placeholder="https://... or paste a direct image URL" style="width:100%" oninput="previewMainImage()">
-                            <div id="mainImagePreview" style="display:none;margin-top:4px">
-                                <img id="mainImagePreviewImg" src="" alt="Preview" style="max-height:120px;max-width:100%;border-radius:8px;border:1.5px solid var(--border-light);object-fit:contain;background:var(--surface-1);">
+                        <label><i class="fas fa-image"></i> Main Image <small style="color:var(--text-muted);font-weight:400">(tile &amp; hero — leave blank to auto-use first color image)</small></label>
+                        <input type="hidden" id="pMainImage">
+                        <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+                            <button type="button" class="btn-secondary btn-sm" onclick="document.getElementById('pMainImageFile').click()"><i class="fas fa-upload"></i> Upload Main Image</button>
+                            <input type="file" id="pMainImageFile" accept="image/*" style="display:none" onchange="handleMainImageUpload(event)">
+                            <button type="button" class="btn-secondary btn-sm" style="color:var(--danger,#ef4444)" onclick="clearMainImage()" id="pMainImageClearBtn" style="display:none"><i class="fas fa-times"></i> Remove</button>
+                        </div>
+                        <div id="mainImagePreview" style="display:none;margin-top:8px">
+                            <div style="position:relative;display:inline-block">
+                                <img id="mainImagePreviewImg" src="" alt="Main image preview" style="max-height:130px;max-width:220px;border-radius:8px;border:1.5px solid var(--border-light);object-fit:contain;background:var(--surface-1);display:block;">
+                                <button type="button" onclick="clearMainImage()" style="position:absolute;top:-8px;right:-8px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.7rem;display:flex;align-items:center;justify-content:center"><i class="fas fa-times"></i></button>
                             </div>
-                            <small style="color:var(--text-muted)"><i class="fas fa-info-circle"></i> This image appears on the home page category tile and hero section. Leave blank to auto-use the first color variant image.</small>
                         </div>
                     </div>
                     <div class="form-group"><label>Badge</label><input type="text" id="pBadge" placeholder="New, Popular, Premium, Bestseller"></div>
@@ -590,10 +595,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     
     <!-- Backend initialization -->
-    <script src="js/api.js?v=42" defer></script>
-    <script src="js/backend-config.js?v=42" defer></script>
-    <script src="js/db-init.js?v=42" defer></script>
-    <script defer src="js/admin.js?v=42"></script>
+    <script src="js/api.js?v=43" defer></script>
+    <script src="js/backend-config.js?v=43" defer></script>
+    <script src="js/db-init.js?v=43" defer></script>
+    <script defer src="js/admin.js?v=43"></script>
 </body>
 </html>
 

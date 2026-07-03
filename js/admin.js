@@ -581,7 +581,12 @@ function openProductModal(product = null) {
     document.getElementById('pFabricCare').value = product ? product.fabricCare || '' : '';
     document.getElementById('pReturns').value = product ? product.returns || '' : '';
     document.getElementById('pMainImage').value = product ? product.mainImage || '' : '';
-    previewMainImage();
+    // Show existing main image preview when editing
+    const _miVal = product?.mainImage || '';
+    const _miPreview = document.getElementById('mainImagePreview');
+    const _miImg = document.getElementById('mainImagePreviewImg');
+    if (_miVal && _miPreview && _miImg) { _miImg.src = _miVal; _miPreview.style.display = ''; }
+    else if (_miPreview) { _miPreview.style.display = 'none'; }
     // Load colorVariants
     _cvData = (product?.colorVariants || []).map(cv => ({ name: cv.name || '', hex: cv.hex || '#0d9488', images: [...(cv.images || [])] }));
     renderColorVariantRows();
@@ -1317,16 +1322,44 @@ function insertNameSymbol(sym) {
 }
 window.insertNameSymbol = insertNameSymbol;
 
-function previewMainImage() {
-    const url = document.getElementById('pMainImage')?.value?.trim();
+function handleMainImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const MAX_W = 900, MAX_H = 900, QUALITY = 0.82;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+            let w = img.width, h = img.height;
+            if (w > MAX_W || h > MAX_H) { const r = Math.min(MAX_W/w, MAX_H/h); w = Math.round(w*r); h = Math.round(h*r); }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+            document.getElementById('pMainImage').value = dataUrl;
+            const preview = document.getElementById('mainImagePreview');
+            const previewImg = document.getElementById('mainImagePreviewImg');
+            if (previewImg) previewImg.src = dataUrl;
+            if (preview) preview.style.display = '';
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+}
+window.handleMainImageUpload = handleMainImageUpload;
+
+function clearMainImage() {
+    document.getElementById('pMainImage').value = '';
     const preview = document.getElementById('mainImagePreview');
-    const img = document.getElementById('mainImagePreviewImg');
-    if (url && preview && img) {
-        img.src = url;
-        preview.style.display = '';
-    } else if (preview) {
-        preview.style.display = 'none';
-    }
+    const previewImg = document.getElementById('mainImagePreviewImg');
+    if (previewImg) previewImg.src = '';
+    if (preview) preview.style.display = 'none';
+}
+window.clearMainImage = clearMainImage;
+
+function previewMainImage() {
+    // kept for backward compat — no-op now that upload replaces URL input
 }
 window.previewMainImage = previewMainImage;
 
@@ -1371,7 +1404,7 @@ function saveSettings() {
         window.db.collection('settings').doc('scrubBrand').set(cfg)
             .then(() => showAdminToast('Settings saved — brand name updated to "' + name + suffix + '"'))
             .catch(() => {
-                // Firestore write failed but localStorage is saved; that's fine for single-admin use
+                // Supabase write failed but localStorage is saved; that's fine for single-admin use
                 showAdminToast('Settings saved locally. Brand: "' + name + suffix + '"');
             });
     } else {
