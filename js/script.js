@@ -892,6 +892,11 @@ function initContactPage() {
 // ===== Render Products =====
 function buildProductCard(p) {
     const colors = getProductColors(p);
+    // Card thumbnail: first colorVariant image that is NOT the mainImage (tile/hero banner)
+    const _allCvImgs = (p.colorVariants || []).flatMap(cv => cv.images || []);
+    const _cardImg = _allCvImgs.find(img => img && img !== p.mainImage)
+                  || (p.image && p.image !== p.mainImage ? p.image : null)
+                  || _allCvImgs[0] || p.image || '';
     const colorSwatchesHtml = colors ? `<div class="color-swatches" onclick="event.stopPropagation()">
         ${colors.map((c, i) => `<button class="color-swatch${i === 0 ? ' active' : ''}" data-hex="${c.hex}" data-color-name="${c.name}" title="${c.name}" style="background:${c.hex}${c.hex === '#FFFFFF' ? ';border-color:#ccc' : ''}" onclick="selectCardColor(this)"></button>`).join('')}
         <span class="color-name">${colors[0].name}</span>
@@ -916,7 +921,7 @@ function buildProductCard(p) {
         ${outBadge}
         <button class="shop-card-wishlist" data-product-id="${p.id}" aria-label="Wishlist"><i class="${isWishlisted(p.id) ? 'fas' : 'far'} fa-heart"></i></button>
         <div class="shop-card-image" onclick="openProductDetail(${p.id})">
-            <img src="${p.colorVariants?.[0]?.images?.[0] || p.image}" alt="${p.name}" loading="lazy">
+            <img src="${_cardImg}" alt="${p.name}" loading="lazy">
             ${quickBtn}
         </div>
         <div class="shop-card-body" onclick="openProductDetail(${p.id})">
