@@ -570,6 +570,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== Common Init (all pages) =====
 function initCommon() {
+    // Fix nav active state based on current URL (CliniFlex highlighted only on scrub-suits)
+    (function() {
+        const page = (window.location.pathname.split('/').pop() || 'index.html').replace(/\?.*$/, '');
+        const cat = new URLSearchParams(window.location.search).get('cat');
+        const isScrub = page === 'categories.html' && cat === 'scrub-suits';
+        document.querySelectorAll('a.nav-cliniflex').forEach(a => a.classList.toggle('active', isScrub));
+        document.querySelectorAll('.nav-dropdown > a').forEach(a => {
+            if (a.getAttribute('href') === 'categories.html') a.classList.toggle('active', page === 'categories.html' && !isScrub);
+        });
+    })();
     // Preloader — hide on DOMContentLoaded+300ms (don't wait for Firebase SDKs)
     const hidePreloader = () => { setTimeout(() => { const p = document.getElementById('preloader'); if (p) p.classList.add('hidden'); }, 300); };
     hidePreloader(); // DOMContentLoaded has already fired since we're inside this listener
@@ -871,7 +881,7 @@ function buildProductCard(p) {
         <div class="shop-card-body" onclick="openProductDetail(${p.id})">
             <span class="shop-card-category">${p.category.replace(/-/g, ' ')}</span>
             ${p.gender ? `<span class="shop-card-tag ${p.gender}">${p.gender === 'male' ? '<i class="fas fa-mars"></i> Gents' : '<i class="fas fa-venus"></i> Ladies'}${p.sleeve ? ' • ' + p.sleeve.charAt(0).toUpperCase() + p.sleeve.slice(1) + ' Sleeve' : ''}</span>` : ''}
-            <h4 class="shop-card-name" data-base-name="${p.name}">${p.name}</h4>
+            <h4 class="shop-card-name" data-base-name="${p.name}">${p.name}${colors && colors[0] ? ' \u2013 ' + colors[0].name : ''}</h4>
             ${colorSwatchesHtml}
             <div class="shop-card-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}${p.rating % 1 ? '<i class="fas fa-star-half-alt"></i>' : ''}<span>(${p.reviews})</span></div>
             <div class="shop-card-price"><span class="price">₹${p.price}</span><span class="old-price">₹${p.oldPrice}</span></div>

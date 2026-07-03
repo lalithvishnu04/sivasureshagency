@@ -110,8 +110,15 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outli
 .nav-links { display: flex; align-items: center; gap: 2px; }
 .nav-links > li > a { padding: 8px 14px; border-radius: 8px; font-weight: 500; font-size: 0.88rem; color: var(--text-mid); letter-spacing: 0.01em; display: flex; align-items: center; gap: 5px; }
 .nav-links > li > a:hover, .nav-links > li > a.active { color: var(--primary); background: var(--primary-bg); }
-a.nav-cliniflex { color: var(--primary) !important; font-weight: 700; background: var(--primary-bg) !important; }
+a.nav-cliniflex { color: var(--primary) !important; font-weight: 700; }
+a.nav-cliniflex.active { background: var(--primary-bg) !important; }
 a.nav-cliniflex i { font-size: 0.75em; }
+.nav-cliniflex-dropdown { position: relative; }
+.cliniflex-dropdown { position: absolute; top: calc(100% + 4px); left: 0; background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-xl); border: 1px solid var(--border); padding: 8px; min-width: 195px; opacity: 0; visibility: hidden; transition: var(--transition); z-index: 200; pointer-events: none; }
+.nav-cliniflex-dropdown:hover .cliniflex-dropdown { opacity: 1; visibility: visible; pointer-events: all; }
+.cliniflex-dropdown-badge { display: block; font-size: 0.72rem; font-weight: 700; color: var(--primary); letter-spacing: 0.06em; padding: 4px 8px 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.cliniflex-dropdown a { display: block; padding: 6px 10px; font-size: 0.82rem; color: var(--text-muted); border-radius: 6px; transition: var(--transition); }
+.cliniflex-dropdown a:hover { background: var(--primary-bg); color: var(--primary); }
 .nav-arrow { font-size: 0.6rem; transition: var(--transition); }
 .nav-actions { display: flex; align-items: center; gap: 6px; }
 .nav-icon-btn { width: 40px; height: 40px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); background: var(--bg); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: var(--text-mid); transition: var(--transition); position: relative; }

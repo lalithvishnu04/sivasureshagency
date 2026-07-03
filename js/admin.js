@@ -1351,9 +1351,9 @@ function applyTextFormat(fieldId, action) {
         const lineEnd = lineEndPos === -1 ? value.length : lineEndPos;
         const block = value.slice(lineStart, lineEnd);
         const updated = block.split('\n').map(line => {
-            if (!line.trim()) return '- ';
+            if (!line.trim()) return '• ';
             if (/^\s*[-*•]\s+/.test(line)) return line;
-            return '- ' + line;
+            return '• ' + line;
         }).join('\n');
         inp.value = value.slice(0, lineStart) + updated + value.slice(lineEnd);
         inp.selectionStart = lineStart;
