@@ -110,6 +110,8 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outli
 .nav-links { display: flex; align-items: center; gap: 2px; }
 .nav-links > li > a { padding: 8px 14px; border-radius: 8px; font-weight: 500; font-size: 0.88rem; color: var(--text-mid); letter-spacing: 0.01em; display: flex; align-items: center; gap: 5px; }
 .nav-links > li > a:hover, .nav-links > li > a.active { color: var(--primary); background: var(--primary-bg); }
+a.nav-cliniflex { color: var(--primary) !important; font-weight: 700; background: var(--primary-bg) !important; }
+a.nav-cliniflex i { font-size: 0.75em; }
 .nav-arrow { font-size: 0.6rem; transition: var(--transition); }
 .nav-actions { display: flex; align-items: center; gap: 6px; }
 .nav-icon-btn { width: 40px; height: 40px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); background: var(--bg); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: var(--text-mid); transition: var(--transition); position: relative; }
@@ -136,11 +138,11 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outli
 .mega-col h4 a { color: inherit; }
 .mega-col ul li a { display: block; padding: 4px 0; font-size: 0.79rem; color: var(--text-muted); transition: var(--transition); }
 .mega-col ul li a:hover { color: var(--primary); padding-left: 4px; }
-.mega-cta { display: flex; align-items: stretch; }
-.mega-promo { background: var(--navy); border-radius: var(--radius); padding: 18px; color: #fff; display: flex; flex-direction: column; justify-content: center; }
-.mega-promo-tag { font-size: 0.67rem; font-weight: 700; letter-spacing: 0.08em; background: rgba(13,148,136,0.2); color: #5eead4; padding: 3px 8px; border-radius: 4px; align-self: flex-start; margin-bottom: 8px; text-transform: uppercase; }
-.mega-promo h4 { font-size: 0.9rem; margin-bottom: 4px; color: #fff; }
-.mega-promo p  { font-size: 0.75rem; opacity: 0.78; margin-bottom: 11px; }
+.mega-cta { display: flex; align-items: stretch; grid-column: 1 / -1; }
+.mega-promo { background: var(--navy); border-radius: var(--radius); padding: 14px 24px; color: #fff; display: flex; flex-direction: row; align-items: center; gap: 24px; width: 100%; }
+.mega-promo-tag { font-size: 0.67rem; font-weight: 700; letter-spacing: 0.08em; background: rgba(13,148,136,0.2); color: #5eead4; padding: 3px 8px; border-radius: 4px; white-space: nowrap; text-transform: uppercase; }
+.mega-promo h4 { font-size: 0.9rem; margin-bottom: 0; color: #fff; white-space: nowrap; }
+.mega-promo p  { font-size: 0.75rem; opacity: 0.78; margin-bottom: 0; flex: 1; }
 
 /* ── 7. Search Overlay ────────────────────────────────────────── */
 .search-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.7); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: flex-start; justify-content: center; padding-top: 100px; opacity: 0; visibility: hidden; transition: var(--transition); }
@@ -492,6 +494,12 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outli
 .pd-features { border-top: 1px solid var(--border); padding-top: 12px; }
 .pd-feature { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; }
 .pd-feature i { color: var(--primary); }
+.pd-accordion { border-top: 1px solid var(--border); margin-top: 20px; }
+.pd-accordion-item { border-bottom: 1px solid var(--border); }
+.pd-accordion-header { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 14px 0; background: none; border: none; cursor: pointer; font-size: 0.92rem; font-weight: 600; color: var(--text); font-family: var(--font); }
+.pd-accordion-header:hover { color: var(--primary); }
+.pd-accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; font-size: 0.88rem; color: var(--text-muted); line-height: 1.7; padding-bottom: 0; white-space: pre-line; }
+.pd-accordion-item.open .pd-accordion-body { padding-bottom: 14px; }
 
 /* ── 22. Auth / Account ───────────────────────────────────────── */
 .auth-modal { max-width: 420px; padding: 26px; }

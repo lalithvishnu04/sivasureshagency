@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=36">
+    <link rel="stylesheet" href="css/admin.css?v=38">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -321,7 +321,7 @@
                 <form id="productForm" onsubmit="saveProduct(event)">
                     <input type="hidden" id="productEditId">
                     <div class="form-row">
-                        <div class="form-group"><label>Product Name *</label><input type="text" id="pName" required></div>
+                        <div class="form-group"><label>Product Name *</label><div style="display:flex;gap:6px;align-items:center"><input type="text" id="pName" required style="flex:1"><button type="button" class="btn-secondary btn-sm" onclick="insertNameSymbol('™')">™</button><button type="button" class="btn-secondary btn-sm" onclick="insertNameSymbol('®')">®</button></div></div>
                         <div class="form-group"><label>Category *</label>
                             <select id="pCategory" required>
                                 <option value="scrub-suits">&#9733; CliniFlex&#8482; Scrub Suits</option>
@@ -352,6 +352,9 @@
                         <div id="cvContainer" style="display:flex;flex-direction:column;gap:12px;margin-top:8px;"></div>
                     </div>
                     <div class="form-group"><label>Badge</label><input type="text" id="pBadge" placeholder="New, Popular, Premium, Bestseller"></div>
+                    <div class="form-group"><label><i class="fas fa-ruler"></i> Fit &amp; Sizing</label><textarea id="pFitSizing" rows="3" placeholder="e.g. True to size. Chest 36&quot; = Size S..."></textarea></div>
+                    <div class="form-group"><label><i class="fas fa-tshirt"></i> Fabric &amp; Care</label><textarea id="pFabricCare" rows="3" placeholder="e.g. 65% Polyester, 35% Cotton. Machine wash cold..."></textarea></div>
+                    <div class="form-group"><label><i class="fas fa-undo"></i> Returns &amp; Exchanges</label><textarea id="pReturns" rows="2" placeholder="e.g. 7-day returns on unused items..."></textarea></div>
                     <button type="submit" class="btn-primary btn-full"><i class="fas fa-save"></i> Save Product</button>
                 </form>
             </div>
@@ -498,10 +501,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     
     <!-- Backend initialization -->
-    <script src="js/api.js?v=36" defer></script>
-    <script src="js/backend-config.js?v=36" defer></script>
-    <script src="js/db-init.js?v=36" defer></script>
-    <script defer src="js/admin.js?v=36"></script>
+    <script src="js/api.js?v=38" defer></script>
+    <script src="js/backend-config.js?v=38" defer></script>
+    <script src="js/db-init.js?v=38" defer></script>
+    <script defer src="js/admin.js?v=38"></script>
 </body>
 </html>
 

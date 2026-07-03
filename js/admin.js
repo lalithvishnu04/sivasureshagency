@@ -576,6 +576,9 @@ function openProductModal(product = null) {
     document.getElementById('pSizes').value = product ? (product.sizes || []).join(',') : 'S,M,L,XL,XXL,XXXL';
     document.getElementById('pDescription').value = product ? product.description || '' : '';
     document.getElementById('pBadge').value = product ? product.badge || '' : '';
+    document.getElementById('pFitSizing').value = product ? product.fitSizing || '' : '';
+    document.getElementById('pFabricCare').value = product ? product.fabricCare || '' : '';
+    document.getElementById('pReturns').value = product ? product.returns || '' : '';
     // Load colorVariants
     _cvData = (product?.colorVariants || []).map(cv => ({ name: cv.name || '', hex: cv.hex || '#0d9488', images: [...(cv.images || [])] }));
     renderColorVariantRows();
@@ -603,6 +606,9 @@ async function saveProduct(e) {
         image: (_cvData[0]?.images?.[0]) || '',
         colorVariants: _cvData.map(cv => ({ name: cv.name, hex: cv.hex, images: cv.images })),
         badge: document.getElementById('pBadge').value.trim(),
+        fitSizing: document.getElementById('pFitSizing').value.trim(),
+        fabricCare: document.getElementById('pFabricCare').value.trim(),
+        returns: document.getElementById('pReturns').value.trim(),
         updatedAt: fsServerTimestamp()
     };
 
@@ -1291,6 +1297,18 @@ async function saveOrderModifications(e) {
 
 // ===== Product Image Upload =====
 // Converts the selected image to a compressed JPEG data-URL client-side.
+
+// Insert trademark / registered symbol at cursor position in product name field
+function insertNameSymbol(sym) {
+    const inp = document.getElementById('pName');
+    if (!inp) return;
+    const s = inp.selectionStart, e = inp.selectionEnd;
+    inp.value = inp.value.slice(0, s) + sym + inp.value.slice(e);
+    inp.selectionStart = inp.selectionEnd = s + sym.length;
+    inp.focus();
+}
+window.insertNameSymbol = insertNameSymbol;
+
 // ===== Color Variants (product form) =====
 let _cvData = []; // [{name, hex, images:[dataUrl,...]}]
 
