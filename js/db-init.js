@@ -192,18 +192,20 @@ console.log('[backend-init] Starting Supabase initialization...');
             const row = _plainForWrite(obj);
             row.id = this._id;
             if (!row.updatedAt) row.updatedAt = _serverNow();
-            if (!row.createdAt) row.createdAt = _serverNow();
 
             if (opts && opts.merge) {
                 const existing = await this.get();
-                const merged = { ...(existing.exists ? existing.data() : {}), ...row, id: this._id };
-                // Use insert/update pattern instead of upsert for better compatibility
+                const base = existing.exists ? existing.data() : {};
+                // For insert: include createdAt; for update: keep existing createdAt from base
+                const insertRow = { createdAt: _serverNow(), ...base, ...row, id: this._id };
+                const updateRow = { ...row, id: this._id };
+                delete updateRow.createdAt;
                 try {
                     if (existing.exists) {
-                        const { error } = await client.from(this._col).update(merged).eq('id', this._id);
+                        const { error } = await client.from(this._col).update(updateRow).eq('id', this._id);
                         if (error) throw new Error(error.message || 'Merge update failed');
                     } else {
-                        const { error } = await client.from(this._col).insert(merged);
+                        const { error } = await client.from(this._col).insert(insertRow);
                         if (error) throw new Error(error.message || 'Merge insert failed');
                     }
                 } catch (e) {
@@ -216,10 +218,14 @@ console.log('[backend-init] Starting Supabase initialization...');
             try {
                 const existing = await this.get();
                 if (existing.exists) {
-                    const { error } = await client.from(this._col).update(row).eq('id', this._id);
+                    // Do NOT send createdAt on updates — column may not exist or should not change
+                    const updateRow = { ...row };
+                    delete updateRow.createdAt;
+                    const { error } = await client.from(this._col).update(updateRow).eq('id', this._id);
                     if (error) throw new Error(error.message || 'Update failed');
                 } else {
-                    const { error } = await client.from(this._col).insert(row);
+                    const insertRow = { createdAt: _serverNow(), ...row };
+                    const { error } = await client.from(this._col).insert(insertRow);
                     if (error) throw new Error(error.message || 'Insert failed');
                 }
             } catch (e) {

@@ -93,8 +93,10 @@ create table if not exists public.settings (
   id text primary key,
   name text,
   suffix text,
+  "createdAt" timestamptz not null default now(),
   "updatedAt" timestamptz not null default now()
 );
+alter table public.settings add column if not exists "createdAt" timestamptz not null default now();
 
 create index if not exists idx_orders_customer_email on public.orders("customerEmail");
 create index if not exists idx_orders_created_at on public.orders("createdAt" desc);
