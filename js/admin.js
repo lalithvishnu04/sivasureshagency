@@ -1,4 +1,4 @@
-﻿// SSA Admin v36 — color variants: auto-extract dominant colors from image, no native color picker
+// SSA Admin v36 — color variants: auto-extract dominant colors from image, no native color picker
 // db, auth, fsServerTimestamp, fsIncrement are set by js/db-init.js
 
 // ===== State =====
@@ -1415,6 +1415,8 @@ window.loadSettings = loadSettings;
 window.saveSettings = saveSettings;
 window.updateBrandPreview = updateBrandPreview;
 window.insertScrubBrandSymbol = insertScrubBrandSymbol;
+
+function applyTextFormat(fieldId, action) {
     const inp = document.getElementById(fieldId);
     if (!inp) return;
     inp.focus();
@@ -1832,3 +1834,4 @@ window.printOrderInvoice = printOrderInvoice;
 window.updateInventoryStatus = updateInventoryStatus;
 window.openStockModal = openStockModal;
 window.saveStock = saveStock;
+
