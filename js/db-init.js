@@ -169,7 +169,7 @@ console.log('[backend-init] Starting Supabase initialization...');
             if (!row.updatedAt) row.updatedAt = _serverNow();
             if (!row.id) row.id = 'id_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-            const { data, error } = await client.from(this._name).insert(row).select('id').single();
+            const { data, error } = await client.from(this._name).insert([row]).select('id').single();
             if (error) throw new Error(error.message || 'Insert failed');
             return { id: data.id };
         }
@@ -197,13 +197,34 @@ console.log('[backend-init] Starting Supabase initialization...');
             if (opts && opts.merge) {
                 const existing = await this.get();
                 const merged = { ...(existing.exists ? existing.data() : {}), ...row, id: this._id };
-                const { error } = await client.from(this._col).upsert(merged, { onConflict: 'id' });
-                if (error) throw new Error(error.message || 'Merge set failed');
+                // Use insert/update pattern instead of upsert for better compatibility
+                try {
+                    if (existing.exists) {
+                        const { error } = await client.from(this._col).update(merged).eq('id', this._id);
+                        if (error) throw new Error(error.message || 'Merge update failed');
+                    } else {
+                        const { error } = await client.from(this._col).insert(merged);
+                        if (error) throw new Error(error.message || 'Merge insert failed');
+                    }
+                } catch (e) {
+                    throw e;
+                }
                 return;
             }
 
-            const { error } = await client.from(this._col).upsert(row, { onConflict: 'id' });
-            if (error) throw new Error(error.message || 'Set failed');
+            // Use insert/update pattern instead of upsert for better compatibility
+            try {
+                const existing = await this.get();
+                if (existing.exists) {
+                    const { error } = await client.from(this._col).update(row).eq('id', this._id);
+                    if (error) throw new Error(error.message || 'Update failed');
+                } else {
+                    const { error } = await client.from(this._col).insert(row);
+                    if (error) throw new Error(error.message || 'Insert failed');
+                }
+            } catch (e) {
+                throw e;
+            }
         }
 
         async update(obj) {
