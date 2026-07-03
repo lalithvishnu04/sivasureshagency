@@ -335,29 +335,30 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     }
 
     async function _sync() {
-        // 1. Check sessionStorage cache first (zero Firebase reads if hit)
-        // But skip cache if admin just saved a product (dirty flag in localStorage)
+        const dirty = localStorage.getItem('_ssa_products_dirty');
+
+        // 1. Render from cache IMMEDIATELY (stale-while-revalidate — eliminates visual flash)
+        let needsFetch = true;
         try {
-            const dirty = localStorage.getItem('_ssa_products_dirty');
             const raw = sessionStorage.getItem(CACHE_KEY);
             if (raw) {
                 const { data, exp, savedAt } = JSON.parse(raw);
-                const cacheStillFresh = Date.now() < exp && (!dirty || (savedAt && Number(dirty) < Number(savedAt)));
-                if (cacheStillFresh) {
-                    if (_merge(data)) _rerender();
-                    return;
+                if (data) {
+                    if (_merge(data)) _rerender(); // Render right away, even if stale
+                    const cacheStillFresh = Date.now() < exp && (!dirty || (savedAt && Number(dirty) < Number(savedAt)));
+                    if (cacheStillFresh) return; // Fresh + clean — no background fetch needed
                 }
             }
         } catch (e) { /* ignore quota/parse errors */ }
 
-        // 2. Wait for Firebase REST DB (max 4 s)
+        // 2. Wait for DB (max 4 s) then fetch fresh data in background
         for (let i = 0; i < 80; i++) {
             if (window.db) break;
             await new Promise(r => setTimeout(r, 50));
         }
         if (!window.db) return;
 
-        // 3. Fetch from Firestore — single read per session
+        // 3. Fetch from Supabase and update if anything changed
         try {
             const snap = await window.db.collection('products').get();
             const data = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
@@ -366,15 +367,15 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
             } catch (e) { /* storage full */ }
             if (_merge(data)) _rerender();
         } catch (e) {
-        console.warn('[products-sync] Supabase unavailable, using local data only.');
+            console.warn('[products-sync] Supabase unavailable, using local data only.');
         }
     }
 
-    // Kick off after DOM is ready + short delay so Firebase scripts have loaded
+    // Start immediately — no artificial delay (db wait loop handles readiness)
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => setTimeout(_sync, 400));
+        document.addEventListener('DOMContentLoaded', () => _sync());
     } else {
-        setTimeout(_sync, 400);
+        _sync();
     }
 })();
 
