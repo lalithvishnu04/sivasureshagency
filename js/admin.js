@@ -1,4 +1,5 @@
-﻿// db, auth, fsServerTimestamp, fsIncrement are set by js/firebase-db-init.js
+// SSA Admin v36 — color variants: auto-extract dominant colors from image, no native color picker
+// db, auth, fsServerTimestamp, fsIncrement are set by js/db-init.js
 
 // ===== State =====
 let currentOrderFilter = 'all';
@@ -6,21 +7,6 @@ let allOrders = [];
 let allProducts = [];
 let allInventory = [];
 let allCustomers = [];
-
-function normalizeCategoryKey(category) {
-    const key = String(category || '').trim().toLowerCase();
-    const map = {
-        'cliniflex': 'scrub-suits',
-        'cliniflex-scrubs': 'scrub-suits',
-        'clini-flex': 'scrub-suits',
-        'clini-flex-scrubs': 'scrub-suits',
-        'scrubs': 'scrub-suits',
-        'scrub-suit': 'scrub-suits',
-        'doctor-coat': 'doctor-uniform',
-        'doctor-coats': 'doctor-uniform'
-    };
-    return map[key] || key;
-}
 
 // ===== In-memory cache (90s TTL) — prevents repeated Firestore reads =====
 const _cache = {};
@@ -206,8 +192,9 @@ document.querySelectorAll('.nav-item').forEach(item => {
         if (page === 'customers') loadCustomers();
         if (page === 'messages') loadMessages();
         if (page === 'dashboard') loadDashboard();
+        if (page === 'settings') loadSettings();
         // Update subtitle
-        const subtitles = {dashboard:'Overview & analytics',orders:'Manage customer orders',products:'Product catalogue',inventory:'Stock levels',customers:'Registered users',messages:'Contact form submissions'};
+        const subtitles = {dashboard:'Overview & analytics',orders:'Manage customer orders',products:'Product catalogue',inventory:'Stock levels',customers:'Registered users',messages:'Contact form submissions',settings:'Site configuration'};
         const sub = document.getElementById('pageSubtitle');
         if (sub) { const n = document.getElementById('adminNameTop')?.textContent||'Admin'; sub.innerHTML = (subtitles[page]||page)+', <span id="adminNameTop">'+n+'</span>'; }
         // Close sidebar on mobile
@@ -479,8 +466,7 @@ async function loadProducts() {
                 return docs;
             })
         );
-        allProducts = (Array.isArray(data) ? data : data.docs.map(d => ({ docId: d.id, ...d.data() })))
-            .map(p => ({ ...p, category: normalizeCategoryKey(p.category) }));
+        allProducts = Array.isArray(data) ? data : data.docs.map(d => ({ docId: d.id, ...d.data() }));
         allProducts.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         if (allProducts.length === 0) { await autoSeedProducts(); } else { await deduplicateProducts(); renderProducts(); }
     } catch (err) { console.error('Products error:', err); }
@@ -537,14 +523,14 @@ async function autoSeedProducts() {
     }
     showAdminToast(`Auto-seeded ${count} products to Firestore!`);
     const snap = await db.collection('products').orderBy('name').get();
-    allProducts = snap.docs.map(d => ({ docId: d.id, ...d.data(), category: normalizeCategoryKey(d.data().category) }));
+    allProducts = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
     renderProducts();
 }
 
 function renderProducts() {
     const search = (document.getElementById('productSearch')?.value || '').toLowerCase();
     let filtered = allProducts;
-    if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search) || normalizeCategoryKey(p.category).includes(search));
+    if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search) || p.category.toLowerCase().includes(search));
 
     const tbody = document.getElementById('productsTableBody');
     if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">No products. Click "Add Product" or "Sync Products" in Inventory.</td></tr>'; return; }
@@ -583,7 +569,7 @@ function openProductModal(product = null) {
     document.getElementById('productEditId').value = product ? product.docId : '';
     document.getElementById('productModalTitle').innerHTML = product ? '<i class="fas fa-edit"></i> Edit Product' : '<i class="fas fa-plus"></i> Add Product';
     document.getElementById('pName').value = product ? product.name : '';
-    document.getElementById('pCategory').value = product ? normalizeCategoryKey(product.category) : 'scrub-suits';
+    document.getElementById('pCategory').value = product ? product.category : 'scrub-suits';
     document.getElementById('pPrice').value = product ? product.price : '';
     document.getElementById('pOldPrice').value = product ? product.oldPrice || '' : '';
     document.getElementById('pGender').value = product ? product.gender || '' : '';
@@ -591,6 +577,16 @@ function openProductModal(product = null) {
     document.getElementById('pSizes').value = product ? (product.sizes || []).join(',') : 'S,M,L,XL,XXL,XXXL';
     document.getElementById('pDescription').value = product ? product.description || '' : '';
     document.getElementById('pBadge').value = product ? product.badge || '' : '';
+    document.getElementById('pFitSizing').value = product ? product.fitSizing || '' : '';
+    document.getElementById('pFabricCare').value = product ? product.fabricCare || '' : '';
+    document.getElementById('pReturns').value = product ? product.returns || '' : '';
+    document.getElementById('pMainImage').value = product ? product.mainImage || '' : '';
+    // Show existing main image preview when editing
+    const _miVal = product?.mainImage || '';
+    const _miPreview = document.getElementById('mainImagePreview');
+    const _miImg = document.getElementById('mainImagePreviewImg');
+    if (_miVal && _miPreview && _miImg) { _miImg.src = _miVal; _miPreview.style.display = ''; }
+    else if (_miPreview) { _miPreview.style.display = 'none'; }
     // Load colorVariants
     _cvData = (product?.colorVariants || []).map(cv => ({ name: cv.name || '', hex: cv.hex || '#0d9488', images: [...(cv.images || [])] }));
     renderColorVariantRows();
@@ -607,7 +603,7 @@ async function saveProduct(e) {
     const docId = document.getElementById('productEditId').value;
     const data = {
         name: document.getElementById('pName').value.trim(),
-        category: normalizeCategoryKey(document.getElementById('pCategory').value),
+        category: document.getElementById('pCategory').value,
         price: parseInt(document.getElementById('pPrice').value),
         oldPrice: parseInt(document.getElementById('pOldPrice').value) || null,
         gender: document.getElementById('pGender').value || null,
@@ -616,8 +612,12 @@ async function saveProduct(e) {
         description: document.getElementById('pDescription').value.trim(),
         // Derive primary image from first colorVariant's first image for backward compat
         image: (_cvData[0]?.images?.[0]) || '',
+        mainImage: document.getElementById('pMainImage').value.trim() || null,
         colorVariants: _cvData.map(cv => ({ name: cv.name, hex: cv.hex, images: cv.images })),
         badge: document.getElementById('pBadge').value.trim(),
+        fitSizing: document.getElementById('pFitSizing').value.trim(),
+        fabricCare: document.getElementById('pFabricCare').value.trim(),
+        returns: document.getElementById('pReturns').value.trim(),
         updatedAt: fsServerTimestamp()
     };
 
@@ -636,7 +636,11 @@ async function saveProduct(e) {
         closeModal('productModal');
         loadProducts();
     } catch (err) {
-        showAdminToast('Error: ' + err.message, 'error');
+        if ((err.message || '').toLowerCase().includes('schema cache')) {
+            showAdminToast('Database schema is missing new product fields. Run tools/supabase_setup.sql once in Supabase SQL Editor, then retry.', 'error');
+        } else {
+            showAdminToast('Error: ' + err.message, 'error');
+        }
     }
 }
 
@@ -724,7 +728,6 @@ async function syncInventoryFromProducts() {
 }
 
 function getColorsForCategory(category) {
-    const normalizedCategory = normalizeCategoryKey(category);
     const colorMap = {
         'scrub-suits': ['Ceil Blue', 'Hunter Green', 'Navy', 'Burgundy', 'Charcoal', 'Caribbean Blue', 'Black'],
         'doctor-uniform': ['White', 'Light Blue', 'Mint Green'],
@@ -733,7 +736,7 @@ function getColorsForCategory(category) {
         'hospital-linen': ['White', 'Teal', 'Green'],
         'hotel-linen': ['White', 'Ivory', 'Sky Blue']
     };
-    return colorMap[normalizedCategory] || ['White'];
+    return colorMap[category] || ['White'];
 }
 
 function getLocalProductsData() {
@@ -1307,6 +1310,161 @@ async function saveOrderModifications(e) {
 
 // ===== Product Image Upload =====
 // Converts the selected image to a compressed JPEG data-URL client-side.
+
+// Insert trademark / registered symbol at cursor position in product name field
+function insertNameSymbol(sym) {
+    const inp = document.getElementById('pName');
+    if (!inp) return;
+    const s = inp.selectionStart, e = inp.selectionEnd;
+    inp.value = inp.value.slice(0, s) + sym + inp.value.slice(e);
+    inp.selectionStart = inp.selectionEnd = s + sym.length;
+    inp.focus();
+}
+window.insertNameSymbol = insertNameSymbol;
+
+function handleMainImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const MAX_W = 900, MAX_H = 900, QUALITY = 0.82;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+            let w = img.width, h = img.height;
+            if (w > MAX_W || h > MAX_H) { const r = Math.min(MAX_W/w, MAX_H/h); w = Math.round(w*r); h = Math.round(h*r); }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+            document.getElementById('pMainImage').value = dataUrl;
+            const preview = document.getElementById('mainImagePreview');
+            const previewImg = document.getElementById('mainImagePreviewImg');
+            if (previewImg) previewImg.src = dataUrl;
+            if (preview) preview.style.display = '';
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+}
+window.handleMainImageUpload = handleMainImageUpload;
+
+function clearMainImage() {
+    document.getElementById('pMainImage').value = '';
+    const preview = document.getElementById('mainImagePreview');
+    const previewImg = document.getElementById('mainImagePreviewImg');
+    if (previewImg) previewImg.src = '';
+    if (preview) preview.style.display = 'none';
+}
+window.clearMainImage = clearMainImage;
+
+function previewMainImage() {
+    // kept for backward compat — no-op now that upload replaces URL input
+}
+window.previewMainImage = previewMainImage;
+
+// ===== Settings =====
+function loadSettings() {
+    try {
+        const cfg = JSON.parse(localStorage.getItem('ssa_scrub_brand') || '{}');
+        const nameEl = document.getElementById('sScrubBrandName');
+        const suffixEl = document.getElementById('sScrubBrandSuffix');
+        if (nameEl) nameEl.value = cfg.name || 'CliniFlex';
+        if (suffixEl) suffixEl.value = cfg.suffix !== undefined ? cfg.suffix : '™';
+        updateBrandPreview();
+    } catch(e) {}
+    // Wire up live preview
+    ['sScrubBrandName','sScrubBrandSuffix'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateBrandPreview);
+    });
+}
+function updateBrandPreview() {
+    const name = document.getElementById('sScrubBrandName')?.value?.trim() || 'CliniFlex';
+    const suffix = document.getElementById('sScrubBrandSuffix')?.value || '';
+    const preview = document.getElementById('brandPreviewText');
+    if (preview) preview.textContent = name + suffix;
+}
+function insertScrubBrandSymbol(sym) {
+    const inp = document.getElementById('sScrubBrandName');
+    if (!inp) return;
+    const s = inp.selectionStart, e = inp.selectionEnd;
+    inp.value = inp.value.slice(0, s) + sym + inp.value.slice(e);
+    inp.selectionStart = inp.selectionEnd = s + sym.length;
+    inp.focus();
+    updateBrandPreview();
+}
+function saveSettings() {
+    const name = document.getElementById('sScrubBrandName')?.value?.trim() || 'CliniFlex';
+    const suffix = document.getElementById('sScrubBrandSuffix')?.value || '™';
+    const cfg = { name, suffix };
+    localStorage.setItem('ssa_scrub_brand', JSON.stringify(cfg));
+    // Optionally persist to Firestore so other devices/sessions pick it up
+    if (window.db) {
+        window.db.collection('settings').doc('scrubBrand').set(cfg)
+            .then(() => showAdminToast('Settings saved — brand name updated to "' + name + suffix + '"'))
+            .catch(() => {
+                // Supabase write failed but localStorage is saved; that's fine for single-admin use
+                showAdminToast('Settings saved locally. Brand: "' + name + suffix + '"');
+            });
+    } else {
+        showAdminToast('Settings saved locally. Brand: "' + name + suffix + '"');
+    }
+}
+window.loadSettings = loadSettings;
+window.saveSettings = saveSettings;
+window.updateBrandPreview = updateBrandPreview;
+window.insertScrubBrandSymbol = insertScrubBrandSymbol;
+
+function applyTextFormat(fieldId, action) {
+    const inp = document.getElementById(fieldId);
+    if (!inp) return;
+    inp.focus();
+
+    const value = inp.value || '';
+    const start = inp.selectionStart ?? value.length;
+    const end = inp.selectionEnd ?? value.length;
+
+    const wrapSelection = (left, right) => {
+        const a = Math.min(start, end);
+        const b = Math.max(start, end);
+        const selected = value.slice(a, b) || 'text';
+        inp.value = value.slice(0, a) + left + selected + right + value.slice(b);
+        inp.selectionStart = a + left.length;
+        inp.selectionEnd = a + left.length + selected.length;
+    };
+
+    if (action === 'bold') {
+        wrapSelection('**', '**');
+        return;
+    }
+    if (action === 'italic') {
+        wrapSelection('*', '*');
+        return;
+    }
+    if (action === 'underline') {
+        wrapSelection('__', '__');
+        return;
+    }
+    if (action === 'bullet') {
+        const a = Math.min(start, end);
+        const b = Math.max(start, end);
+        const lineStart = value.lastIndexOf('\n', Math.max(0, a - 1)) + 1;
+        const lineEndPos = value.indexOf('\n', b);
+        const lineEnd = lineEndPos === -1 ? value.length : lineEndPos;
+        const block = value.slice(lineStart, lineEnd);
+        const updated = block.split('\n').map(line => {
+            if (!line.trim()) return '• ';
+            if (/^\s*[-*•]\s+/.test(line)) return line;
+            return '• ' + line;
+        }).join('\n');
+        inp.value = value.slice(0, lineStart) + updated + value.slice(lineEnd);
+        inp.selectionStart = lineStart;
+        inp.selectionEnd = lineStart + updated.length;
+    }
+}
+window.applyTextFormat = applyTextFormat;
+
 // ===== Color Variants (product form) =====
 let _cvData = []; // [{name, hex, images:[dataUrl,...]}]
 
@@ -1314,22 +1472,46 @@ function renderColorVariantRows() {
     const container = document.getElementById('cvContainer');
     if (!container) return;
     if (_cvData.length === 0) {
-        container.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No colors added yet. Click "Add Color" to add color variants with images.</p>';
+        container.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:12px 0">No colors added yet. Click "+ Add Color" to add color variants with images.</p>';
         return;
     }
     container.innerHTML = _cvData.map((cv, idx) => `
-    <div class="cv-row" data-idx="${idx}">
-        <div class="cv-row-head">
+    <div class="cv-card" data-idx="${idx}">
+        <div class="cv-card-header">
+            <span class="cv-swatch-bg" id="cvSwatch_${idx}" style="background:${cv.hex||'#0d9488'};width:42px;height:42px;border-radius:8px;border:1.5px solid var(--border);flex-shrink:0;display:inline-block;box-shadow:0 1px 4px rgba(0,0,0,0.14)" title="${cv.name||'unnamed'}"></span>
             <div class="cv-fields">
-                <input type="text" class="cv-name" placeholder="Color name (e.g. Ceil Blue)" value="${cv.name || ''}" oninput="updateCV(${idx},'name',this.value)" style="flex:1">
-                <label class="cv-hex-wrap" title="Pick hex color">
-                    <input type="color" value="${cv.hex || '#000000'}" oninput="updateCV(${idx},'hex',this.value)" style="width:38px;height:34px;border:none;cursor:pointer;border-radius:6px;padding:2px">
-                </label>
+                <div class="cv-field-row">
+                    <label class="cv-field-label">Color Name</label>
+                    <input type="text" class="cv-name-input" placeholder="e.g. Navy Blue" value="${cv.name||''}" oninput="updateCV(${idx},'name',this.value)">
+                </div>
+                <div class="cv-field-row">
+                    <label class="cv-field-label">Hex Code</label>
+                    <div class="cv-hex-wrap">
+                        <span class="cv-hex-prefix">#</span>
+                        <input type="text" class="cv-hex-input" id="cvHexText_${idx}" placeholder="0d9488" value="${(cv.hex||'#0d9488').replace('#','')}" oninput="updateCVHex(${idx},this)" spellcheck="false" autocomplete="off" maxlength="6">
+                    </div>
+                </div>
             </div>
             <button type="button" class="btn-icon danger" onclick="removeColorVariant(${idx})" title="Remove color"><i class="fas fa-trash"></i></button>
         </div>
-        <div class="cv-imgs" id="cvImgs_${idx}">${(cv.images||[]).map((img,ii) => `<div class="cv-thumb-wrap"><img src="${img}" class="cv-thumb"><button type="button" onclick="removeVariantImage(${idx},${ii})" class="cv-thumb-del">&#x2715;</button></div>`).join('')}</div>
-        <button type="button" class="cv-add-img-btn" onclick="triggerCVImageUpload(${idx})"><i class="fas fa-plus"></i> Add Image</button>
+        ${(cv.suggestedColors||[]).length ? `
+        <div class="cv-suggested" id="cvSuggested_${idx}">
+            <span class="cv-suggested-label"><i class="fas fa-wand-magic-sparkles"></i> Colors extracted from image — click to apply:</span>
+            <div class="cv-suggested-swatches">
+                ${(cv.suggestedColors).map(h => `<button type="button" class="cv-sg-swatch${(cv.hex||'').toLowerCase()===h.toLowerCase()?' active':''}" style="background:${h}" title="${h}" onclick="applySuggestedColor(${idx},'${h}')"></button>`).join('')}
+            </div>
+        </div>` : ''}
+        <div class="cv-imgs-grid" id="cvImgs_${idx}">
+            ${(cv.images||[]).map((img,ii) => `
+            <div class="cv-img-tile">
+                <img src="${img}" class="cv-img-preview">
+                <button type="button" class="cv-img-del" onclick="removeVariantImage(${idx},${ii})"><i class="fas fa-times"></i></button>
+            </div>`).join('')}
+            <button type="button" class="cv-add-tile" onclick="triggerCVImageUpload(${idx})">
+                <i class="fas fa-plus"></i>
+                <span>Add Image</span>
+            </button>
+        </div>
         <input type="file" id="cvFile_${idx}" accept="image/*" style="display:none" onchange="handleCVImageUpload(event,${idx})" multiple>
     </div>`).join('');
 }
@@ -1347,9 +1529,49 @@ function removeColorVariant(idx) {
 window.removeColorVariant = removeColorVariant;
 
 function updateCV(idx, field, value) {
-    if (_cvData[idx]) _cvData[idx][field] = value;
+    if (_cvData[idx]) {
+        _cvData[idx][field] = value;
+        // Live-update swatch tooltip so it reflects the new name
+        if (field === 'name') {
+            const sw = document.getElementById(`cvSwatch_${idx}`);
+            if (sw) sw.title = value || 'unnamed';
+        }
+    }
 }
 window.updateCV = updateCV;
+
+function updateCVHex(idx, input) {
+    // Input stores 6-char hex WITHOUT #
+    const raw = input.value.replace(/[^0-9a-fA-F]/g, '');
+    input.value = raw; // strip non-hex in real time
+    const v = '#' + raw;
+    if (_cvData[idx]) _cvData[idx].hex = v;
+    const swatch = document.getElementById(`cvSwatch_${idx}`);
+    if (swatch && raw.length === 6) swatch.style.background = v;
+    // highlight matching suggested swatch
+    document.querySelectorAll(`#cvSuggested_${idx} .cv-sg-swatch`).forEach(s => {
+        s.classList.toggle('active', s.title.toLowerCase() === v.toLowerCase());
+    });
+}
+window.updateCVHex = updateCVHex;
+
+function applyColorPick(idx, value) {
+    if (_cvData[idx]) _cvData[idx].hex = value;
+    const swatch = document.getElementById(`cvSwatch_${idx}`);
+    if (swatch) swatch.style.background = value;
+    const hexText = document.getElementById(`cvHexText_${idx}`);
+    if (hexText) hexText.value = value.replace('#', '');
+    // highlight matching suggested swatch
+    document.querySelectorAll(`#cvSuggested_${idx} .cv-sg-swatch`).forEach(s => {
+        s.classList.toggle('active', s.title.toLowerCase() === value.toLowerCase());
+    });
+}
+window.applyColorPick = applyColorPick;
+
+function applySuggestedColor(idx, hex) {
+    applyColorPick(idx, hex);
+}
+window.applySuggestedColor = applySuggestedColor;
 
 function triggerCVImageUpload(idx) {
     document.getElementById(`cvFile_${idx}`)?.click();
@@ -1367,14 +1589,112 @@ function handleCVImageUpload(event, idx) {
     files.forEach(file => {
         const reader = new FileReader();
         reader.onload = e => {
-            // Store the ORIGINAL image at full quality — no resize, no compression.
-            if (_cvData[idx]) { _cvData[idx].images.push(e.target.result); renderColorVariantRows(); }
+            if (!_cvData[idx]) return;
+            _cvData[idx].images.push(e.target.result);
+            // Extract dominant colors from this image
+            _extractDominantColors(e.target.result, 8).then(colors => {
+                if (!_cvData[idx]) return;
+                // Merge into existing suggestions, keep unique, cap at 12
+                const existing = _cvData[idx].suggestedColors || [];
+                const merged = [...new Set([...existing, ...colors])].slice(0, 12);
+                _cvData[idx].suggestedColors = merged;
+                // Auto-apply the top color only if no hex set yet (still default)
+                if (!_cvData[idx].hex || _cvData[idx].hex === '#0d9488') {
+                    _cvData[idx].hex = merged[0] || _cvData[idx].hex;
+                }
+                renderColorVariantRows();
+            });
         };
         reader.readAsDataURL(file);
     });
     event.target.value = '';
 }
 window.handleCVImageUpload = handleCVImageUpload;
+
+/**
+ * Extract N dominant colors from an image data-URL using canvas pixel sampling
+ * + simple k-means clustering (3 iterations, good enough for thumbnails).
+ */
+function _extractDominantColors(dataUrl, n) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const SIZE = 80; // sample at 80×80 for speed
+                const canvas = document.createElement('canvas');
+                canvas.width = SIZE; canvas.height = SIZE;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, SIZE, SIZE);
+                const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
+
+                // Collect pixels, skip near-white and near-black and low-saturation
+                const pixels = [];
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+                    if (a < 128) continue;
+                    const max = Math.max(r,g,b), min = Math.min(r,g,b);
+                    const sat = max === 0 ? 0 : (max - min) / max;
+                    const bri = max / 255;
+                    // Skip very white (bri>0.95,sat<0.1), very black (bri<0.06), very grey (sat<0.06)
+                    if (bri > 0.95 && sat < 0.10) continue;
+                    if (bri < 0.06) continue;
+                    if (sat < 0.06) continue;
+                    pixels.push([r, g, b]);
+                }
+
+                if (pixels.length < 10) { resolve([]); return; }
+
+                // Seed: pick n pixels spread evenly across the array
+                let centers = [];
+                for (let k = 0; k < n; k++) {
+                    centers.push([...pixels[Math.floor(k * pixels.length / n)]]);
+                }
+
+                // k-means: 4 iterations
+                for (let iter = 0; iter < 4; iter++) {
+                    const sums = centers.map(() => [0,0,0,0]); // r,g,b,count
+                    for (const p of pixels) {
+                        let best = 0, bestD = Infinity;
+                        for (let k = 0; k < centers.length; k++) {
+                            const dr=p[0]-centers[k][0], dg=p[1]-centers[k][1], db=p[2]-centers[k][2];
+                            const d = dr*dr + dg*dg + db*db;
+                            if (d < bestD) { bestD = d; best = k; }
+                        }
+                        sums[best][0]+=p[0]; sums[best][1]+=p[1]; sums[best][2]+=p[2]; sums[best][3]++;
+                    }
+                    centers = sums.map((s,k) => s[3] > 0 ? [s[0]/s[3], s[1]/s[3], s[2]/s[3]] : centers[k]);
+                }
+
+                // Sort by cluster population (sums[k][3]), then convert to hex
+                const sums2 = centers.map(() => [0,0,0,0]);
+                for (const p of pixels) {
+                    let best = 0, bestD = Infinity;
+                    for (let k = 0; k < centers.length; k++) {
+                        const dr=p[0]-centers[k][0], dg=p[1]-centers[k][1], db=p[2]-centers[k][2];
+                        const d = dr*dr + dg*dg + db*db;
+                        if (d < bestD) { bestD = d; best = k; }
+                    }
+                    sums2[best][3]++;
+                }
+                const sorted = centers
+                    .map((c,k) => ({ c, count: sums2[k][3] }))
+                    .filter(x => x.count > 0)
+                    .sort((a,b) => b.count - a.count);
+
+                const hexColors = sorted.map(x => {
+                    const [r,g,b] = x.c.map(v => Math.max(0, Math.min(255, Math.round(v))));
+                    return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+                });
+
+                resolve(hexColors);
+            } catch(e) {
+                resolve([]);
+            }
+        };
+        img.onerror = () => resolve([]);
+        img.src = dataUrl;
+    });
+}
 
 function handleProductImageUpload(event) {
     const file = event.target.files[0];
@@ -1514,3 +1834,5 @@ window.printOrderInvoice = printOrderInvoice;
 window.updateInventoryStatus = updateInventoryStatus;
 window.openStockModal = openStockModal;
 window.saveStock = saveStock;
+
+

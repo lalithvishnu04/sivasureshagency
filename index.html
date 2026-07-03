@@ -10,12 +10,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=27">
+    <link rel="stylesheet" href="css/style.css?v=45">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">    <link rel="apple-touch-icon" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"></head>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
 <body data-page="home">
     <!-- Preloader -->
     <div id="preloader">
@@ -55,12 +55,22 @@
                 <ul class="nav-links" id="navLinks">
                     <li><a href="index.html" class="active">Home</a></li>
                     <li><a href="about.html">About</a></li>
+                    <li class="nav-dropdown nav-cliniflex-dropdown">
+                        <a href="categories.html?cat=scrub-suits" class="nav-cliniflex"><i class="fas fa-award"></i> <span class="scrub-brand-text">CliniFlex™</span> Scrubs <i class="fas fa-chevron-down nav-arrow"></i></a>
+                        <div class="cliniflex-dropdown">
+                            <span class="cliniflex-dropdown-badge"><i class="fas fa-award"></i> ★ Signature</span>
+                            <a href="categories.html?cat=scrub-suits&gender=male">Gents Scrub Suits</a>
+                            <a href="categories.html?cat=scrub-suits&gender=female">Ladies Scrub Suits</a>
+                            <a href="categories.html?cat=scrub-suits">All Scrub Suits</a>
+                        </div>
+                    </li>
                     <li class="nav-dropdown">
                         <a href="categories.html">Categories <i class="fas fa-chevron-down nav-arrow"></i></a>
                         <div class="mega-menu">
                             <div class="mega-menu-inner">
                                 <div class="mega-col">
-                                    <h4><a href="categories.html?cat=doctor-uniform"><i class="fas fa-user-md"></i> Doctor Uniform</a></h4>
+                                    <div class="mega-cat-icon" style="background:var(--primary)"><i class="fas fa-user-md"></i></div>
+                                    <h4><a href="categories.html?cat=doctor-uniform">Doctor Uniform</a></h4>
                                     <ul>
                                         <li><a href="categories.html?cat=doctor-uniform&gender=male" style="font-size:0.78rem;font-weight:700;color:var(--primary);padding:4px 0;display:block;">Male Doctor Uniform</a></li>
                                         <li><a href="categories.html?cat=doctor-uniform&gender=male&sleeve=full">Full Sleeve</a></li>
@@ -71,7 +81,8 @@
                                     </ul>
                                 </div>
                                 <div class="mega-col">
-                                    <h4><a href="categories.html?cat=staff-uniform"><i class="fas fa-tshirt"></i> Staff Uniform</a></h4>
+                                    <div class="mega-cat-icon" style="background:var(--navy)"><i class="fas fa-tshirt"></i></div>
+                                    <h4><a href="categories.html?cat=staff-uniform">Staff Uniform</a></h4>
                                     <ul>
                                         <li><a href="categories.html?cat=staff-uniform&gender=male" style="font-size:0.78rem;font-weight:700;color:var(--primary);padding:4px 0;display:block;">Male Staff Uniform</a></li>
                                         <li><a href="categories.html?cat=staff-uniform&gender=male">All Male Styles</a></li>
@@ -81,7 +92,8 @@
                                     </ul>
                                 </div>
                                 <div class="mega-col">
-                                    <h4><i class="fas fa-bed"></i> Linen & Bedsheets</h4>
+                                    <div class="mega-cat-icon" style="background:#6366f1"><i class="fas fa-bed"></i></div>
+                                    <h4><a href="categories.html?cat=hospital-linen">Linen &amp; Bedsheets</a></h4>
                                     <ul>
                                         <li><a href="categories.html?cat=bedsheets">Bedsheets & Pillow Covers</a></li>
                                         <li><a href="categories.html?cat=hospital-linen">Hospital Linen</a></li>
@@ -230,10 +242,34 @@
                     </div>
                 </div>
             </div>
-        </div>
+            <div class="hero-slide" data-slide="4">
+                <div class="hero-bg hero-gradient-4"></div>
+                <div class="hero-overlay"></div>
+                <div class="container hero-content">
+                    <div class="hero-text">
+                        <span class="hero-badge"><i class="fas fa-award"></i> &#9733; Signature Line</span>
+                        <h1 id="heroCliniTitle">The <span class="highlight scrub-brand-text">CliniFlex™</span> Experience</h1>
+                        <p>Our exclusive scrub suit collection &mdash; engineered for all-day comfort, superior fabric quality and a sharp professional look for every healthcare hero.</p>
+                        <div class="hero-btns">
+                            <a href="categories.html?cat=scrub-suits" class="btn btn-gradient btn-lg">Shop Scrub Suits <i class="fas fa-arrow-right"></i></a>
+                            <a href="contact.html" class="btn btn-glass btn-lg">Custom Order</a>
+                        </div>
+                        <div class="hero-trust">
+                            <div class="trust-item"><i class="fas fa-award"></i> Signature Quality</div>
+                            <div class="trust-item"><i class="fas fa-palette"></i> 20+ Colors</div>
+                            <div class="trust-item"><i class="fas fa-pen-nib"></i> Custom Embroidery</div>
+                        </div>
+                    </div>
+                    <div class="hero-prod-img">
+                        <img src="images/Images/OT Nighty.jpg" alt="CliniFlex Scrub Suit" loading="lazy">
+                        <span class="hero-prod-label lbl-top"><i class="fas fa-award"></i> Signature Line</span>
+                        <span class="hero-prod-label lbl-bottom"><i class="fas fa-pen-nib"></i> Embroidery Available</span>
+                    </div>
+                </div>
+            </div>
         <div class="hero-controls">
             <button class="hero-prev" aria-label="Previous"><i class="fas fa-chevron-left"></i></button>
-            <div class="hero-dots"><span class="dot active" data-slide="1"></span><span class="dot" data-slide="2"></span><span class="dot" data-slide="3"></span></div>
+            <div class="hero-dots"><span class="dot active" data-slide="1"></span><span class="dot" data-slide="2"></span><span class="dot" data-slide="3"></span><span class="dot" data-slide="4"></span></div>
             <button class="hero-next" aria-label="Next"><i class="fas fa-chevron-right"></i></button>
         </div>
     </section>
@@ -285,8 +321,19 @@
                 <p class="section-desc">Comprehensive textile solutions for healthcare and hospitality across India</p>
             </div>
             <div class="categories-grid reveal-stagger">
+                <a href="categories.html?cat=scrub-suits" class="category-tile category-tile--cliniflex">
+                    <div class="cat-tile-img" data-cat="scrub-suits" style="background-image:url('images/Images/OT%20Nighty.jpg')">
+                        <span class="cat-tile-signature-badge"><i class="fas fa-award"></i> ★ Signature Line</span>
+                    </div>
+                    <div class="cat-tile-body">
+                        <div class="cat-tile-icon"><i class="fas fa-award"></i></div>
+                        <h3><span class="scrub-brand-text">CliniFlex™</span> Scrubs</h3>
+                        <p>Our signature scrub suit line — premium comfort &amp; style for healthcare professionals</p>
+                        <span class="cat-tile-link">Shop Now <i class="fas fa-arrow-right"></i></span>
+                    </div>
+                </a>
                 <a href="categories.html?cat=doctor-uniform" class="category-tile">
-                    <div class="cat-tile-img" style="background-image:url('images/Images/Male%20Full%20Sleeve.jpg')"></div>
+                    <div class="cat-tile-img" data-cat="doctor-uniform" style="background-image:url('images/Images/Male%20Full%20Sleeve.jpg')"></div>
                     <div class="cat-tile-body">
                         <div class="cat-tile-icon"><i class="fas fa-user-md"></i></div>
                         <h3>Doctor Uniform</h3>
@@ -295,7 +342,7 @@
                     </div>
                 </a>
                 <a href="categories.html?cat=staff-uniform" class="category-tile">
-                    <div class="cat-tile-img" style="background-image:url('images/Images/Male%20Uniform%20(Blue%20Style).jpg')"></div>
+                    <div class="cat-tile-img" data-cat="staff-uniform" style="background-image:url('images/Images/Male%20Uniform%20(Blue%20Style).jpg')"></div>
                     <div class="cat-tile-body">
                         <div class="cat-tile-icon"><i class="fas fa-tshirt"></i></div>
                         <h3>Staff Uniform</h3>
@@ -304,7 +351,7 @@
                     </div>
                 </a>
                 <a href="categories.html?cat=hospital-linen" class="category-tile">
-                    <div class="cat-tile-img" style="background-image:url('images/Images/Surgeon%20Apron.jpg')"></div>
+                    <div class="cat-tile-img" data-cat="hospital-linen" style="background-image:url('images/Images/Surgeon%20Apron.jpg')"></div>
                     <div class="cat-tile-body">
                         <div class="cat-tile-icon"><i class="fas fa-notes-medical"></i></div>
                         <h3>Hospital Linen</h3>
@@ -313,7 +360,7 @@
                     </div>
                 </a>
                 <a href="categories.html?cat=bedsheets" class="category-tile">
-                    <div class="cat-tile-img" style="background-image:url('images/Images/Stripped%20Bedspread%20and%20Pillow%20Cover.jpg')"></div>
+                    <div class="cat-tile-img" data-cat="bedsheets" style="background-image:url('images/Images/Stripped%20Bedspread%20and%20Pillow%20Cover.jpg')"></div>
                     <div class="cat-tile-body">
                         <div class="cat-tile-icon"><i class="fas fa-bed"></i></div>
                         <h3>Bedsheets</h3>
@@ -322,7 +369,7 @@
                     </div>
                 </a>
                 <a href="categories.html?cat=hotel-linen" class="category-tile">
-                    <div class="cat-tile-img" style="background-image:url('images/Images/Hospital%20Towel.jpg')"></div>
+                    <div class="cat-tile-img" data-cat="hotel-linen" style="background-image:url('images/Images/Hospital%20Towel.jpg')"></div>
                     <div class="cat-tile-body">
                         <div class="cat-tile-icon"><i class="fas fa-hotel"></i></div>
                         <h3>Hotel Linen</h3>
@@ -577,15 +624,15 @@
 
     <!-- Accessibility: ARIA live region for toasts -->
     <div id="ariaToast" aria-live="polite" aria-atomic="true" class="sr-only"></div>
-    <script src="js/script.js?v=27" defer></script>
+    <script src="js/script.js?v=45" defer></script>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     
     <!-- Backend initialization -->
-    <script src="js/api.js?v=27" defer></script>
-    <script src="js/backend-config.js?v=27" defer></script>
-    <script src="js/firebase-db-init.js?v=27" defer></script>
-    <script defer src="js/firebase-integration.js?v=27"></script>
+    <script src="js/api.js?v=45" defer></script>
+    <script src="js/backend-config.js?v=45" defer></script>
+    <script src="js/db-init.js?v=45" defer></script>
+    <script defer src="js/db-integration.js?v=45"></script>
     <!-- Mobile Bottom Navigation -->
     <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
         <a href="index.html" class="mbn-item active"><i class="fas fa-home"></i><span>Home</span></a>
@@ -595,6 +642,8 @@
     </nav>
 </body>
 </html>
+
+
 
 
 

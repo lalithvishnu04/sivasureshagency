@@ -1,21 +1,6 @@
 // ===== SVG Avatar Generator =====
-function normalizeCategoryKey(category) {
-    const key = String(category || '').trim().toLowerCase();
-    const map = {
-        'cliniflex': 'scrub-suits',
-        'cliniflex-scrubs': 'scrub-suits',
-        'clini-flex': 'scrub-suits',
-        'clini-flex-scrubs': 'scrub-suits',
-        'scrubs': 'scrub-suits',
-        'scrub-suit': 'scrub-suits',
-        'doctor-coats': 'doctor-uniform',
-        'doctor-coat': 'doctor-uniform'
-    };
-    return map[key] || key;
-}
-
 function generateProductSVG(product) {
-    const category = normalizeCategoryKey(product.category);
+    const category = product.category;
     const gender = product.gender || 'male';
     const sleeve = product.sleeve || 'full';
     const bgGradients = {
@@ -131,6 +116,61 @@ function getProductColors(product) {
     return null;
 }
 
+function escapeRichText(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function applyInlineRichText(str) {
+    let s = escapeRichText(str);
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/__(.+?)__/g, '<u>$1</u>');
+    s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    return s;
+}
+
+function renderRichText(str) {
+    const input = String(str || '').replace(/\r\n?/g, '\n');
+    if (!input.trim()) return '';
+
+    const lines = input.split('\n');
+    const out = [];
+    let inList = false;
+
+    const closeList = () => {
+        if (inList) {
+            out.push('</ul>');
+            inList = false;
+        }
+    };
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+        const bullet = trimmed.match(/^[-*•]\s+(.+)$/);
+        if (bullet) {
+            if (!inList) {
+                out.push('<ul>');
+                inList = true;
+            }
+            out.push('<li>' + applyInlineRichText(bullet[1]) + '</li>');
+            continue;
+        }
+
+        closeList();
+        if (!trimmed) {
+            out.push('<br>');
+        } else {
+            out.push('<p>' + applyInlineRichText(line) + '</p>');
+        }
+    }
+    closeList();
+    return out.join('');
+}
+
 const productsData = [
     // ── Doctor Uniform > Male Doctor Uniform ──
     { id: 1, name: "Male Doctor Uniform - Full Sleeve", category: "doctor-uniform", gender: "male", sleeve: "full", price: 850, oldPrice: 1100, rating: 4.8, reviews: 124, badge: "Bestseller", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Premium full-sleeve doctor uniform for men. High-quality wrinkle-resistant cotton blend for all-day comfort.", image: "images/Images/Male Full Sleeve.jpg" },
@@ -218,9 +258,9 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     });
 })();
 
-// ===== Firestore Products Sync =====
-// Loads products from Firestore once per session and merges admin-set images/prices.
-// sessionStorage cache (10 min TTL) prevents repeated Firebase reads.
+// ===== Supabase Products Sync =====
+// Loads products from Supabase once per session and merges admin-set images/prices.
+// sessionStorage cache (10 min TTL) prevents repeated reads.
 (function _initProductSync() {
     const CACHE_KEY = '_ssa_fs_products_v2';
     const TTL = 10 * 60 * 1000; // 10 minutes
@@ -232,8 +272,8 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
             if (!fp.name) continue;
             const local = productsData.find(p => p.name === fp.name);
             if (local) {
-                // Overlay admin-editable fields (image, price, badge, description, colorVariants)
-                for (const f of ['image', 'price', 'oldPrice', 'badge', 'description', 'colorVariants']) {
+                // Overlay admin-editable fields (image, price, badge, description, colorVariants, sizes, gender, sleeve, fitSizing, fabricCare, returns)
+                for (const f of ['image', 'mainImage', 'price', 'oldPrice', 'badge', 'description', 'colorVariants', 'sizes', 'gender', 'sleeve', 'fitSizing', 'fabricCare', 'returns']) {
                     const val = fp[f];
                     if (val !== undefined && val !== null && val !== '' && val !== local[f]) {
                         local[f] = val;
@@ -245,7 +285,7 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
                 const newP = {
                     id: 10000 + productsData.length,
                     name: fp.name,
-                    category: normalizeCategoryKey(fp.category || 'hospital-linen'),
+                    category: fp.category || 'hospital-linen',
                     price: fp.price || 0,
                     oldPrice: fp.oldPrice || null,
                     gender: fp.gender || null,
@@ -253,8 +293,12 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
                     sizes: fp.sizes || ['S', 'M', 'L', 'XL', 'XXL'],
                     description: fp.description || '',
                     image: fp.image || '',
+                    mainImage: fp.mainImage || null,
                     badge: fp.badge || '',
                     colorVariants: fp.colorVariants || [],
+                    fitSizing: fp.fitSizing || '',
+                    fabricCare: fp.fabricCare || '',
+                    returns: fp.returns || '',
                     rating: 4.5, reviews: 0,
                     _fromFirestore: true
                 };
@@ -269,10 +313,9 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     function _rerender() {
         const page = document.body && document.body.dataset.page;
         if (page === 'categories') {
-            const params = new URLSearchParams(window.location.search);
-            const urlCat = normalizeCategoryKey(params.get('cat') || '');
+            // Read active filter button from DOM — always accurate, never stale
             const activeBtn = document.querySelector('.filter-btn.active');
-            const _f = window._currentFilter || activeBtn?.dataset?.filter || urlCat || 'all';
+            const _f = activeBtn?.dataset?.filter || window._currentFilter || 'all';
             const _c  = window._currentCount   || 12;
             const _g  = window._currentGender  || null;
             const _s  = window._currentSleeve  || null;
@@ -285,6 +328,9 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
                 const featured = productsData.filter(p => p.badge);
                 grid.innerHTML = featured.slice(0, 8).map(p => buildProductCard(p)).join('');
             }
+            // Refresh tile scroll pools and hero images with newly loaded product data
+            if (typeof initCategoryTileScroll === 'function') initCategoryTileScroll();
+            if (typeof initHeroDynamicImages === 'function') initHeroDynamicImages();
         }
     }
 
@@ -317,7 +363,7 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
             } catch (e) { /* storage full */ }
             if (_merge(data)) _rerender();
         } catch (e) {
-            console.warn('[products-sync] Firestore unavailable, using local data only.');
+        console.warn('[products-sync] Supabase unavailable, using local data only.');
         }
     }
 
@@ -327,6 +373,25 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     } else {
         setTimeout(_sync, 400);
     }
+})();
+
+// ===== Scrub Brand Name — Firestore sync (optional, cross-device) =====
+(function _syncBrandName() {
+    // Try to load brand name from Firestore settings/scrubBrand doc
+    // Falls back to localStorage silently
+    function _tryLoad() {
+        if (!window.db) { setTimeout(_tryLoad, 800); return; }
+        window.db.collection('settings').doc('scrubBrand').get().then(doc => {
+            if (doc && doc.exists) {
+                const d = doc.data();
+                if (d && d.name) {
+                    localStorage.setItem('ssa_scrub_brand', JSON.stringify({ name: d.name, suffix: d.suffix !== undefined ? d.suffix : '™' }));
+                    applyScrubBrandName();
+                }
+            }
+        }).catch(() => {}); // silent fail
+    }
+    setTimeout(_tryLoad, 1500);
 })();
 
 // ===== Policy Modals (Privacy, Terms, Shipping) =====
@@ -528,8 +593,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== Common Init (all pages) =====
 function initCommon() {
-    setupCliniflexNav();
-
+    // Apply scrub brand name from localStorage to all pages
+    applyScrubBrandName();
+    // Fix nav active state based on current URL (CliniFlex highlighted only on scrub-suits)
+    (function() {
+        const page = (window.location.pathname.split('/').pop() || 'index.html').replace(/\?.*$/, '');
+        const cat = new URLSearchParams(window.location.search).get('cat');
+        const isScrub = page === 'categories.html' && cat === 'scrub-suits';
+        document.querySelectorAll('a.nav-cliniflex').forEach(a => a.classList.toggle('active', isScrub));
+        document.querySelectorAll('.nav-dropdown > a').forEach(a => {
+            if (a.getAttribute('href') === 'categories.html') a.classList.toggle('active', page === 'categories.html' && !isScrub);
+        });
+    })();
     // Preloader — hide on DOMContentLoaded+300ms (don't wait for Firebase SDKs)
     const hidePreloader = () => { setTimeout(() => { const p = document.getElementById('preloader'); if (p) p.classList.add('hidden'); }, 300); };
     hidePreloader(); // DOMContentLoaded has already fired since we're inside this listener
@@ -694,35 +769,6 @@ function initCommon() {
     if (document.body.dataset.page === 'wishlist') initWishlistPage();
 }
 
-function setupCliniflexNav() {
-    const navLinks = document.getElementById('navLinks');
-    if (!navLinks) return;
-
-    const aboutLink = navLinks.querySelector('a[href="about.html"]');
-    const aboutItem = aboutLink ? aboutLink.closest('li') : null;
-
-    let cliniflexLink = navLinks.querySelector('.nav-cliniflex-link');
-    if (!cliniflexLink) {
-        const li = document.createElement('li');
-        li.className = 'nav-cliniflex';
-        li.innerHTML = '<a href="categories.html?cat=scrub-suits" class="nav-cliniflex-link"><i class="fas fa-award"></i> CliniFlex Scrubs <sup>&trade;</sup></a>';
-        if (aboutItem && aboutItem.parentNode) aboutItem.insertAdjacentElement('afterend', li);
-        else navLinks.insertAdjacentElement('afterbegin', li);
-        cliniflexLink = li.querySelector('.nav-cliniflex-link');
-    }
-
-    // CliniFlex has a dedicated top-nav link, so hide duplicate item in Categories mega menu.
-    document.querySelectorAll('.mega-col-scrubs').forEach(col => col.remove());
-
-    const page = document.body && document.body.dataset.page;
-    const params = new URLSearchParams(window.location.search);
-    const isCliniflexRoute = page === 'categories' && normalizeCategoryKey(params.get('cat')) === 'scrub-suits';
-    const categoriesLink = navLinks.querySelector('.nav-dropdown > a[href^="categories.html"]');
-
-    if (categoriesLink) categoriesLink.classList.toggle('active', page === 'categories' && !isCliniflexRoute);
-    if (cliniflexLink) cliniflexLink.classList.toggle('active', isCliniflexRoute);
-}
-
 // ===== Home Page =====
 function initHomePage() {
     initHeroSlider();
@@ -732,13 +778,17 @@ function initHomePage() {
         const featured = productsData.filter(p => p.badge);
         grid.innerHTML = featured.slice(0, 8).map(p => buildProductCard(p)).join('');
     }
+    // Start category tile image scroll and hero dynamic images (immediate)
+    initCategoryTileScroll();
+    initHeroDynamicImages();
+    applyScrubBrandName();
 }
 
 // ===== Categories Page =====
 function initCategoriesPage() {
     // Parse URL params
     const params = new URLSearchParams(window.location.search);
-    const cat = normalizeCategoryKey(params.get('cat') || '');
+    const cat = params.get('cat');
     const gender = params.get('gender');
     const sleeve = params.get('sleeve');
 
@@ -777,7 +827,7 @@ function initCategoriesPage() {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            currentFilter = normalizeCategoryKey(btn.dataset.filter);
+            currentFilter = btn.dataset.filter;
             displayedProducts = 12;
             _syncWindowState(); renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
         });
@@ -860,7 +910,7 @@ function buildProductCard(p) {
         <div class="shop-card-body" onclick="openProductDetail(${p.id})">
             <span class="shop-card-category">${p.category.replace(/-/g, ' ')}</span>
             ${p.gender ? `<span class="shop-card-tag ${p.gender}">${p.gender === 'male' ? '<i class="fas fa-mars"></i> Gents' : '<i class="fas fa-venus"></i> Ladies'}${p.sleeve ? ' • ' + p.sleeve.charAt(0).toUpperCase() + p.sleeve.slice(1) + ' Sleeve' : ''}</span>` : ''}
-            <h4>${p.name}</h4>
+            <h4 class="shop-card-name" data-base-name="${p.name}">${p.name}${colors && colors[0] ? ' \u2013 ' + colors[0].name : ''}</h4>
             ${colorSwatchesHtml}
             <div class="shop-card-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}${p.rating % 1 ? '<i class="fas fa-star-half-alt"></i>' : ''}<span>(${p.reviews})</span></div>
             <div class="shop-card-price"><span class="price">₹${p.price}</span><span class="old-price">₹${p.oldPrice}</span></div>
@@ -873,10 +923,7 @@ function buildProductCard(p) {
 }
 
 function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null, searchQuery = '') {
-    const normalizedFilter = normalizeCategoryKey(filter || 'all') || 'all';
-    let filtered = normalizedFilter === 'all'
-        ? [...productsData]
-        : productsData.filter(p => normalizeCategoryKey(p.category) === normalizedFilter);
+    let filtered = filter === 'all' ? [...productsData] : productsData.filter(p => p.category === filter);
     if (gender) filtered = filtered.filter(p => p.gender === gender);
     if (sleeve) filtered = filtered.filter(p => p.sleeve === sleeve);
     if (searchQuery) {
@@ -891,7 +938,7 @@ function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null
     const grid = document.getElementById('shopGrid');
     if (!grid) return;
     if (toShow.length === 0) {
-        const isScrubs = normalizedFilter === 'scrub-suits';
+        const isScrubs = filter === 'scrub-suits';
         grid.innerHTML = `<div class="products-empty-state">
             <i class="fas fa-${isScrubs ? 'tshirt' : 'box-open'}"></i>
             <h3>${isScrubs ? 'SSA CliniFlex™ Scrubs — Coming Soon!' : searchQuery ? 'No products match your search' : 'No products in this category yet'}</h3>
@@ -1253,6 +1300,8 @@ function openProductDetail(id) {
 
     // Image gallery
     const initImages = _pdGetImages(p, defaultColor);
+    window._lbImages = initImages;
+    window._lbIndex = 0;
     const mainImg = initImages[0] || '';
     const thumbsHtml = initImages.length > 1 ? `<div class="pd-thumbnails" id="pdThumbs-${p.id}">${initImages.map((img,i) => `<button class="pd-thumb${i===0?' active':''}" onclick="selectPdImage(this,'${img.replace(/'/g,"\\'")}',${ p.id})" style="background-image:url('${img.replace(/'/g,"\\'")}')"></button>`).join('')}</div>` : `<div class="pd-thumbnails" id="pdThumbs-${p.id}" style="display:none"></div>`;
 
@@ -1260,14 +1309,24 @@ function openProductDetail(id) {
     const colorSection = colors ? `<div class="pd-color-section"><h4>Select Color</h4><div class="pd-color-swatches">${colors.map(c => { const isDef = c.name === defaultColorObj?.name; const allOos = (p.sizes||[]).every(s => isVariantOutOfStock(p,s,c.name)); return `<button class="pd-color-swatch${isDef?' active':''}${allOos?' swatch-oos':''}" data-hex="${c.hex}" data-color-name="${c.name}" title="${c.name}${allOos?' (Out of Stock)':''}" style="background:${c.hex}${c.hex==='#FFFFFF'?';border-color:#ccc':''}" onclick="selectDetailColor(this,${p.id})"></button>`; }).join('')}</div><span class="pd-color-name">${defaultColorObj?.name||''}</span></div>` : '';
 
     // Embroidery section (scrub-suits only)
-    const embHtml = p.category === 'scrub-suits' ? `<div class="emb-section" id="embSec-${p.id}"><div class="emb-toggle" onclick="toggleEmbroidery(${p.id})"><span><i class="fas fa-pen-nib"></i> Add Embroidery <span class="emb-badge">+\u20b9299</span></span><i class="fas fa-chevron-down emb-chevron" id="embChev-${p.id}"></i></div><div class="emb-body" id="embBody-${p.id}" style="display:none"><div class="emb-field"><label>Embroidery Type *</label><div class="emb-type-row"><button type="button" class="emb-type-btn active" data-type="TEXT" onclick="selectEmbType(this,${p.id})">TEXT</button><button type="button" class="emb-type-btn" data-type="LOGO" onclick="selectEmbType(this,${p.id})">LOGO</button><button type="button" class="emb-type-btn" data-type="TEXT &amp; LOGO" onclick="selectEmbType(this,${p.id})">TEXT &amp; LOGO</button></div></div><div class="emb-text-fields" id="embTF-${p.id}"><div class="emb-row2"><div class="emb-field"><label>Line 1 *</label><div class="emb-inp-wrap"><input type="text" id="embL1-${p.id}" maxlength="100" placeholder="Enter Line 1" oninput="updateEmbCount(this,'embC1-${p.id}')"><span id="embC1-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-field"><label>Line 2</label><div class="emb-inp-wrap"><input type="text" id="embL2-${p.id}" maxlength="100" placeholder="Enter Line 2" oninput="updateEmbCount(this,'embC2-${p.id}')"><span id="embC2-${p.id}" class="emb-char-count">0/100</span></div></div></div><div class="emb-field"><label>Line 3</label><div class="emb-inp-wrap"><input type="text" id="embL3-${p.id}" maxlength="100" placeholder="Enter Line 3" oninput="updateEmbCount(this,'embC3-${p.id}')"><span id="embC3-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-row2"><div class="emb-field"><label>Text Position *</label><select id="embPos-${p.id}"><option value="">Select Position</option><option>Left Chest</option><option>Right Chest</option><option>Back Center</option><option>Left Sleeve</option><option>Right Sleeve</option></select></div><div class="emb-field"><label>Text Color</label><div class="emb-colors"><button type="button" class="emb-col active" style="background:#fff;border:2px solid #ccc" data-c="White" onclick="selectEmbColor(this)" title="White"></button><button type="button" class="emb-col" style="background:#000" data-c="Black" onclick="selectEmbColor(this)" title="Black"></button><button type="button" class="emb-col" style="background:#1A237E" data-c="Navy" onclick="selectEmbColor(this)" title="Navy"></button><button type="button" class="emb-col" style="background:#F9A825" data-c="Yellow" onclick="selectEmbColor(this)" title="Yellow"></button><button type="button" class="emb-col" style="background:#C62828" data-c="Red" onclick="selectEmbColor(this)" title="Red"></button><button type="button" class="emb-col" style="background:#E65100" data-c="Orange" onclick="selectEmbColor(this)" title="Orange"></button><button type="button" class="emb-col" style="background:#1B5E20" data-c="Green" onclick="selectEmbColor(this)" title="Green"></button></div></div></div><div class="emb-field"><label>Font Style</label><div class="emb-fonts"><button type="button" class="emb-font active" style="font-family:cursive;font-size:1rem" data-f="Cursive" onclick="selectEmbFont(this)">The Scrub Life</button><button type="button" class="emb-font" style="font-family:Georgia,serif;font-size:0.9rem" data-f="Serif" onclick="selectEmbFont(this)">The Scrub Life</button><button type="button" class="emb-font" style="font-family:sans-serif;font-weight:900;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase" data-f="Block" onclick="selectEmbFont(this)">THE SCRUB LIFE</button></div></div></div></div></div>` : '';
+    const embHtml = p.category === 'scrub-suits' ? `<div class="emb-section" id="embSec-${p.id}"><div class="emb-toggle" onclick="toggleEmbroidery(${p.id})"><span><i class="fas fa-pen-nib"></i> Add Embroidery <span class="emb-badge">+\u20b9299</span></span><i class="fas fa-chevron-down emb-chevron" id="embChev-${p.id}"></i></div><div class="emb-body" id="embBody-${p.id}" style="display:none"><div class="emb-field"><label>Embroidery Type *</label><div class="emb-type-row"><button type="button" class="emb-type-btn active" data-type="TEXT" onclick="selectEmbType(this,${p.id})">TEXT</button><button type="button" class="emb-type-btn" data-type="LOGO" onclick="selectEmbType(this,${p.id})">LOGO</button><button type="button" class="emb-type-btn" data-type="TEXT &amp; LOGO" onclick="selectEmbType(this,${p.id})">TEXT &amp; LOGO</button></div></div><div class="emb-text-fields" id="embTF-${p.id}"><div class="emb-row2"><div class="emb-field"><label>Line 1 *</label><div class="emb-inp-wrap"><input type="text" id="embL1-${p.id}" maxlength="100" placeholder="Enter Line 1" oninput="updateEmbCount(this,'embC1-${p.id}')"><span id="embC1-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-field"><label>Line 2</label><div class="emb-inp-wrap"><input type="text" id="embL2-${p.id}" maxlength="100" placeholder="Enter Line 2" oninput="updateEmbCount(this,'embC2-${p.id}')"><span id="embC2-${p.id}" class="emb-char-count">0/100</span></div></div></div><div class="emb-field"><label>Line 3</label><div class="emb-inp-wrap"><input type="text" id="embL3-${p.id}" maxlength="100" placeholder="Enter Line 3" oninput="updateEmbCount(this,'embC3-${p.id}')"><span id="embC3-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-row2"><div class="emb-field"><label>Text Position *</label><select id="embPos-${p.id}"><option value="">Select Position</option><option>Left Chest</option><option>Right Chest</option><option>Back Center</option><option>Left Sleeve</option><option>Right Sleeve</option></select></div><div class="emb-field"><label>Text Color</label><div class="emb-colors"><button type="button" class="emb-col active" style="background:#fff;border:2px solid #ccc" data-c="White" onclick="selectEmbColor(this)" title="White"></button><button type="button" class="emb-col" style="background:#000" data-c="Black" onclick="selectEmbColor(this)" title="Black"></button><button type="button" class="emb-col" style="background:#1A237E" data-c="Navy" onclick="selectEmbColor(this)" title="Navy"></button><button type="button" class="emb-col" style="background:#F9A825" data-c="Yellow" onclick="selectEmbColor(this)" title="Yellow"></button><button type="button" class="emb-col" style="background:#C62828" data-c="Red" onclick="selectEmbColor(this)" title="Red"></button><button type="button" class="emb-col" style="background:#E65100" data-c="Orange" onclick="selectEmbColor(this)" title="Orange"></button><button type="button" class="emb-col" style="background:#1B5E20" data-c="Green" onclick="selectEmbColor(this)" title="Green"></button></div></div></div><div class="emb-field"><label>Font Style</label><div class="emb-fonts"><button type="button" class="emb-font active" style="font-family:cursive;font-size:1rem" data-f="Cursive" onclick="selectEmbFont(this)">Sample</button><button type="button" class="emb-font" style="font-family:Georgia,serif;font-size:0.9rem" data-f="Serif" onclick="selectEmbFont(this)">Sample</button><button type="button" class="emb-font" style="font-family:sans-serif;font-weight:900;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase" data-f="Block" onclick="selectEmbFont(this)">SAMPLE</button></div></div></div><div class="emb-logo-fields" id="embLogoF-${p.id}" style="display:none"><div class="emb-field"><label>Upload Logo *</label><input type="file" id="embLogoFile-${p.id}" accept="image/*" onchange="previewEmbLogo(this,'${p.id}')"><div id="embLogoPreview-${p.id}" class="emb-logo-preview" style="display:none"><img id="embLogoImg-${p.id}" src="" alt="Logo preview" style="max-width:100px;max-height:80px;object-fit:contain;border-radius:6px;margin-top:6px;"><span class="emb-logo-filename" id="embLogoName-${p.id}"></span></div><p class="emb-logo-note"><i class="fas fa-info-circle"></i> Accepted: PNG, JPG, SVG (max 2MB)</p></div><div class="emb-field"><label>Logo Position *</label><select id="embLogoPos-${p.id}"><option value="">Select Position</option><option>Left Chest</option><option>Right Chest</option><option>Back Center</option><option>Left Sleeve</option><option>Right Sleeve</option></select></div></div></div></div>` : '';
 
     const modal = document.getElementById('productDetailModal');
-    modal.innerHTML = `<div class="modal product-detail-modal"><button class="modal-close pd-close" onclick="closeProductDetail()"><i class="fas fa-times"></i></button><div class="pd-grid"><div class="pd-image-gallery"><div class="pd-main-img" id="pdMainWrap-${p.id}" onclick="openImageLightbox('pdMainImg-${p.id}')">${mainImg ? `<img id="pdMainImg-${p.id}" src="${mainImg}" alt="${p.name}">` : `<div class="pd-no-img"><i class="fas fa-tshirt"></i></div>`}<button class="pd-expand-btn" onclick="event.stopPropagation();openImageLightbox('pdMainImg-${p.id}')" aria-label="Expand"><i class="fas fa-expand-alt"></i></button>${p.badge?`<span class="pd-badge">${p.badge}</span>`:''}</div>${thumbsHtml}</div><div class="pd-info"><span class="pd-category">${p.category.replace(/-/g,' ')}</span><h2 class="pd-title">${p.name}</h2><div class="pd-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}<span>(${p.reviews} reviews)</span></div><div class="pd-price"><span class="pd-current-price">\u20b9${p.price}</span>${p.oldPrice?`<span class="pd-old-price">\u20b9${p.oldPrice}</span><span class="pd-discount">${discount}% OFF</span>`:''}</div><p class="pd-description">${p.description}</p>${colorSection}<div class="pd-size-section"><h4>Select Size</h4><div class="pd-sizes" id="pdSizes-${p.id}">${p.sizes.map((s,i)=>{ const oos=isVariantOutOfStock(p,s,defaultColor); const active=firstAvailableSize?(s===firstAvailableSize):(!oos&&i===0); return `<button class="pd-size-btn${active?' active':''}${oos?' is-oos':''}" data-size="${s}" ${oos?'disabled title="Out of stock for this color"':''} onclick="selectSize(this,${p.id})">${s}</button>`; }).join('')}</div><p id="pdVariantStockMsg-${p.id}" style="display:none;color:#dc2626;font-size:0.85rem;margin-top:8px;"></p></div>${embHtml}<div class="pd-qty-section"><h4>Quantity</h4><div class="pd-qty"><button onclick="changePdQty(-1)"><i class="fas fa-minus"></i></button><span id="pdQty">1</span><button onclick="changePdQty(1)"><i class="fas fa-plus"></i></button></div></div><div class="pd-actions"><button id="pdAddBtn-${p.id}" class="btn btn-primary btn-lg" onclick="addToCartFromDetail(${p.id})"><i class="fas fa-cart-plus"></i> Add to Cart</button><button id="pdBuyBtn-${p.id}" class="btn btn-outline-dark btn-lg" onclick="buyNowFromDetail(${p.id})"><i class="fas fa-bolt"></i> Buy Now</button></div><div class="pd-features"><div class="pd-feature"><i class="fas fa-truck"></i> Free delivery above \u20b92000</div><div class="pd-feature"><i class="fas fa-undo"></i> 7-day returns</div><div class="pd-feature"><i class="fas fa-shield-alt"></i> Quality guaranteed</div></div></div></div></div>`;
+    const accordionHtml = (p.fitSizing || p.fabricCare || p.returns) ? `<div class="pd-accordion">${p.fitSizing ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Details &amp; Fit</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.fitSizing)}</div></div>` : ''}${p.fabricCare ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Fabric &amp; Care</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.fabricCare)}</div></div>` : ''}${p.returns ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Return &amp; Exchange</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.returns)}</div></div>` : ''}</div>` : '';
+    modal.innerHTML = `<div class="modal product-detail-modal"><button class="modal-close pd-close" onclick="closeProductDetail()"><i class="fas fa-times"></i></button><div class="pd-grid"><div class="pd-image-gallery">${thumbsHtml}<div class="pd-main-img" id="pdMainWrap-${p.id}" onclick="openImageLightbox('pdMainImg-${p.id}')">${mainImg ? `<img id="pdMainImg-${p.id}" src="${mainImg}" alt="${p.name}">` : `<div class="pd-no-img"><i class="fas fa-tshirt"></i></div>`}<button class="pd-expand-btn" onclick="event.stopPropagation();openImageLightbox('pdMainImg-${p.id}')" aria-label="Expand"><i class="fas fa-expand-alt"></i></button>${p.badge?`<span class="pd-badge">${p.badge}</span>`:''}</div></div><div class="pd-info"><span class="pd-category">${p.category.replace(/-/g,' ')}</span><h2 class="pd-title" id="pdTitle-${p.id}">${p.name}${defaultColor ? `<span class="pd-title-color"> — ${defaultColor}</span>` : ''}</h2><div class="pd-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}<span>(${p.reviews} reviews)</span></div><div class="pd-price"><span class="pd-current-price">\u20b9${p.price}</span>${p.oldPrice?`<span class="pd-old-price">\u20b9${p.oldPrice}</span><span class="pd-discount">${discount}% OFF</span>`:''}</div><div class="pd-description">${renderRichText(p.description)}</div>${colorSection}<div class="pd-size-section"><h4>Select Size</h4><div class="pd-sizes" id="pdSizes-${p.id}">${p.sizes.map((s,i)=>{ const oos=isVariantOutOfStock(p,s,defaultColor); const active=firstAvailableSize?(s===firstAvailableSize):(!oos&&i===0); return `<button class="pd-size-btn${active?' active':''}${oos?' is-oos':''}" data-size="${s.replace(/"/g,'&quot;')}" ${oos?'disabled title="Out of stock for this color"':''} onclick="selectSize(this,${p.id})">${s}</button>`; }).join('')}</div><p id="pdVariantStockMsg-${p.id}" style="display:none;color:#dc2626;font-size:0.85rem;margin-top:8px;"></p></div>${embHtml}<div class="pd-qty-section"><h4>Quantity</h4><div class="pd-qty"><button onclick="changePdQty(-1)"><i class="fas fa-minus"></i></button><span id="pdQty">1</span><button onclick="changePdQty(1)"><i class="fas fa-plus"></i></button></div></div><div class="pd-actions"><button id="pdAddBtn-${p.id}" class="btn btn-primary btn-lg" onclick="addToCartFromDetail(${p.id})"><i class="fas fa-cart-plus"></i> Add to Cart</button><button id="pdBuyBtn-${p.id}" class="btn btn-outline-dark btn-lg" onclick="buyNowFromDetail(${p.id})"><i class="fas fa-bolt"></i> Buy Now</button></div><div class="pd-features"><div class="pd-feature"><i class="fas fa-truck"></i> Free delivery above \u20b92000</div><div class="pd-feature"><i class="fas fa-undo"></i> 7-day returns</div><div class="pd-feature"><i class="fas fa-shield-alt"></i> Quality guaranteed</div></div>${accordionHtml}</div></div></div>`;
     modal.classList.add('active'); pdQuantity = 1;
     updateProductDetailVariantState(p.id);
 }
 function changePdQty(d) { pdQuantity = Math.max(1, pdQuantity + d); const el = document.getElementById('pdQty'); if (el) el.textContent = pdQuantity; }
+function togglePdAccordion(btn) {
+    const item = btn.parentElement;
+    const body = item.querySelector('.pd-accordion-body');
+    const icon = btn.querySelector('i');
+    const isOpen = item.classList.toggle('open');
+    if (body) { body.style.maxHeight = isOpen ? body.scrollHeight + 'px' : '0'; }
+    if (icon) { icon.className = isOpen ? 'fas fa-minus' : 'fas fa-plus'; }
+}
+window.togglePdAccordion = togglePdAccordion;
 function selectSize(btn, pid) {
     if (btn.disabled) return;
     btn.parentElement.querySelectorAll('.pd-size-btn').forEach(b => b.classList.remove('active'));
@@ -2053,6 +2112,83 @@ function placeOrder() {
 }
 
 // ===== Hero Slider =====
+// ===== Scrub Brand Name Config =====
+function getScrubBrandName(withSuffix) {
+    if (withSuffix === undefined) withSuffix = true;
+    try {
+        const cfg = JSON.parse(localStorage.getItem('ssa_scrub_brand') || '{}');
+        const name = cfg.name || 'CliniFlex';
+        const suffix = cfg.suffix !== undefined ? cfg.suffix : '™';
+        return withSuffix ? name + suffix : name;
+    } catch(e) { return withSuffix ? 'CliniFlex™' : 'CliniFlex'; }
+}
+function applyScrubBrandName() {
+    const display = getScrubBrandName();
+    document.querySelectorAll('.scrub-brand-text').forEach(el => { el.textContent = display; });
+}
+window.getScrubBrandName = getScrubBrandName;
+window.applyScrubBrandName = applyScrubBrandName;
+
+// ===== Category Tile Auto-Scroll =====
+// Pools images per category from live productsData and cycles them on .cat-tile-img[data-cat] elements.
+const _tileScrollTimers = {};
+function initCategoryTileScroll() {
+    // Build image pool per category
+    const catImages = {};
+    productsData.forEach(p => {
+        const img = p.mainImage || (p.colorVariants && p.colorVariants[0] && p.colorVariants[0].images && p.colorVariants[0].images[0]) || p.image;
+        if (!img || img.startsWith('data:') || img.startsWith('blob:')) return;
+        if (!catImages[p.category]) catImages[p.category] = [];
+        if (!catImages[p.category].includes(img)) catImages[p.category].push(img);
+    });
+
+    document.querySelectorAll('.cat-tile-img[data-cat]').forEach(tile => {
+        const cat = tile.dataset.cat;
+        const imgs = catImages[cat];
+        if (!imgs || !imgs.length) return;
+        // Set first product image immediately (overrides hardcoded)
+        tile.style.backgroundImage = `url('${imgs[0]}')`;
+        if (imgs.length < 2) return;
+        // Clear previous timer if re-initializing
+        if (_tileScrollTimers[cat]) clearInterval(_tileScrollTimers[cat]);
+        let idx = 0;
+        _tileScrollTimers[cat] = setInterval(() => {
+            idx = (idx + 1) % imgs.length;
+            tile.style.transition = 'background-image 0.6s ease';
+            tile.style.backgroundImage = `url('${imgs[idx]}')`;
+        }, 3200);
+    });
+}
+window.initCategoryTileScroll = initCategoryTileScroll;
+
+// ===== Hero Dynamic Images =====
+// Updates hero slide product images with actual product mainImage/image after sync.
+function initHeroDynamicImages() {
+    const catMap = {
+        '1': 'doctor-uniform',
+        '2': 'staff-uniform',
+        '3': 'hospital-linen',
+        '4': 'scrub-suits'
+    };
+    document.querySelectorAll('.hero-slide').forEach(slide => {
+        const slideNum = slide.dataset.slide;
+        const cat = catMap[slideNum];
+        if (!cat) return;
+        const prodImg = slide.querySelector('.hero-prod-img img');
+        if (!prodImg) return;
+        // Find a product with a real image for this category
+        const prod = productsData.find(p => p.category === cat && (p.mainImage || p.image) && !(p.mainImage || p.image).startsWith('data:'));
+        if (prod) {
+            const img = prod.mainImage || (prod.colorVariants && prod.colorVariants[0] && prod.colorVariants[0].images && prod.colorVariants[0].images[0]) || prod.image;
+            if (img) prodImg.src = img;
+        }
+    });
+    // Update CliniFlex slide title with current brand name
+    const cliniTitle = document.getElementById('heroCliniTitle');
+    if (cliniTitle) cliniTitle.innerHTML = `The <span class="highlight scrub-brand-text">${getScrubBrandName()}</span> Experience`;
+}
+window.initHeroDynamicImages = initHeroDynamicImages;
+
 function initHeroSlider() {
     const slides = document.querySelectorAll('.hero-slide');
     const dots = document.querySelectorAll('.dot');
@@ -2147,6 +2283,13 @@ function selectCardColor(btn) {
     if (label) label.textContent = btn.dataset.colorName;
     const card = btn.closest('.shop-card');
     if (card) {
+        // Update h4 to show color name
+        const h4 = card.querySelector('.shop-card-name');
+        if (h4) {
+            const base = h4.dataset.baseName || h4.textContent.split('\u2013')[0].trim();
+            h4.dataset.baseName = h4.dataset.baseName || base;
+            h4.textContent = base + (btn.dataset.colorName ? '\u2013 ' + btn.dataset.colorName : '');
+        }
         updateCardStockUI(card);
         // Swap card image to selected color's image
         const pid = Number(card.dataset.id);
@@ -2167,11 +2310,20 @@ function selectDetailColor(btn, pid) {
     btn.classList.add('active');
     const label = container.parentElement.querySelector('.pd-color-name');
     if (label) label.textContent = btn.dataset.colorName;
+    // Update modal title with selected color
+    const titleEl = pid ? document.getElementById(`pdTitle-${pid}`) : null;
+    if (titleEl) {
+        const span = titleEl.querySelector('.pd-title-color');
+        if (span) span.textContent = ` — ${btn.dataset.colorName}`;
+        else { const s = document.createElement('span'); s.className = 'pd-title-color'; s.textContent = ` — ${btn.dataset.colorName}`; titleEl.appendChild(s); }
+    }
     if (pid) {
         // Swap images for selected color
         const p = productsData.find(x => x.id === pid);
         if (p) {
             const imgs = _pdGetImages(p, btn.dataset.colorName);
+            window._lbImages = imgs;
+            window._lbIndex = 0;
             const mainImg = document.getElementById(`pdMainImg-${pid}`);
             if (mainImg && imgs[0]) mainImg.src = imgs[0];
             // Rebuild thumbnails
@@ -2194,7 +2346,13 @@ function selectDetailColor(btn, pid) {
 // ===== Image Gallery & Lightbox =====
 function selectPdImage(btn, src, pid) {
     if (!btn) return;
-    btn.closest('.pd-thumbnails')?.querySelectorAll('.pd-thumb').forEach(b => b.classList.remove('active'));
+    const thumbs = btn.closest('.pd-thumbnails');
+    if (thumbs) {
+        thumbs.querySelectorAll('.pd-thumb').forEach((b, i) => {
+            b.classList.remove('active');
+            if (b === btn) window._lbIndex = i;
+        });
+    }
     btn.classList.add('active');
     const mainImg = document.getElementById(`pdMainImg-${pid}`);
     if (mainImg) mainImg.src = src;
@@ -2205,12 +2363,45 @@ function openImageLightbox(imgIdOrSrc) {
     const src = (imgIdOrSrc && !imgIdOrSrc.startsWith('data:') && !imgIdOrSrc.startsWith('http') && !imgIdOrSrc.startsWith('images/'))
         ? (document.getElementById(imgIdOrSrc)?.src || imgIdOrSrc) : imgIdOrSrc;
     if (!src) return;
+
+    // Use product image list for navigation if available
+    const imgs = (window._lbImages && window._lbImages.length > 1) ? window._lbImages : [src];
+    let idx = window._lbIndex || 0;
+    // Sync index to current src
+    const srcIdx = imgs.indexOf(src);
+    if (srcIdx >= 0) idx = srcIdx;
+
     const lb = document.createElement('div');
     lb.id = '_imgLightbox';
     lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:99999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;animation:_pmFadeIn .18s ease';
-    lb.innerHTML = `<img src="${src}" style="max-width:92vw;max-height:92vh;border-radius:10px;object-fit:contain;box-shadow:0 24px 72px rgba(0,0,0,0.7);pointer-events:none"><button onclick="document.getElementById('_imgLightbox').remove()" style="position:absolute;top:20px;right:24px;background:rgba(255,255,255,0.15);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)">&#x2715;</button>`;
+
+    function render() {
+        const hasMulti = imgs.length > 1;
+        lb.innerHTML = `
+            <img src="${imgs[idx]}" style="max-width:92vw;max-height:88vh;border-radius:10px;object-fit:contain;box-shadow:0 24px 72px rgba(0,0,0,0.7);pointer-events:none;user-select:none">
+            <button onclick="document.getElementById('_imgLightbox').remove()" style="position:absolute;top:20px;right:24px;background:rgba(255,255,255,0.15);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)">&#x2715;</button>
+            ${hasMulti ? `
+            <button id="_lbPrev" style="position:absolute;left:20px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);border:none;color:#fff;width:48px;height:48px;border-radius:50%;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:background 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'" onclick="event.stopPropagation();_lbNav(-1)">&#8592;</button>
+            <button id="_lbNext" style="position:absolute;right:20px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);border:none;color:#fff;width:48px;height:48px;border-radius:50%;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:background 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'" onclick="event.stopPropagation();_lbNav(1)">&#8594;</button>
+            <div style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:7px">${imgs.map((_,i) => `<span style="width:8px;height:8px;border-radius:50%;background:${i===idx?'#fff':'rgba(255,255,255,0.4)'};display:inline-block;cursor:pointer" onclick="event.stopPropagation();_lbNav(${i-idx})"></span>`).join('')}</div>
+            ` : ''}
+        `;
+    }
+
+    window._lbNav = function(delta) {
+        idx = (idx + delta + imgs.length) % imgs.length;
+        window._lbIndex = idx;
+        render();
+    };
+
+    render();
     lb.addEventListener('click', e => { if (e.target === lb) lb.remove(); });
-    document.addEventListener('keydown', function esc(e) { if (e.key==='Escape') { lb.remove(); document.removeEventListener('keydown',esc); } }, {once:true});
+    document.addEventListener('keydown', function lbKey(e) {
+        if (!document.getElementById('_imgLightbox')) { document.removeEventListener('keydown', lbKey); return; }
+        if (e.key === 'Escape') { lb.remove(); document.removeEventListener('keydown', lbKey); }
+        else if (e.key === 'ArrowLeft') window._lbNav(-1);
+        else if (e.key === 'ArrowRight') window._lbNav(1);
+    });
     document.body.appendChild(lb);
 }
 window.openImageLightbox = openImageLightbox;
@@ -2229,8 +2420,11 @@ window.toggleEmbroidery = toggleEmbroidery;
 function selectEmbType(btn, pid) {
     btn.closest('.emb-type-row')?.querySelectorAll('.emb-type-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    const type = btn.dataset.type;
     const tf = document.getElementById(`embTF-${pid}`);
-    if (tf) tf.style.display = btn.dataset.type === 'LOGO' ? 'none' : '';
+    const lf = document.getElementById(`embLogoF-${pid}`);
+    if (tf) tf.style.display = type === 'LOGO' ? 'none' : '';
+    if (lf) lf.style.display = (type === 'LOGO' || type === 'TEXT & LOGO') ? '' : 'none';
 }
 window.selectEmbType = selectEmbType;
 
@@ -2252,25 +2446,44 @@ function updateEmbCount(input, countId) {
 }
 window.updateEmbCount = updateEmbCount;
 
+function previewEmbLogo(input, pid) {
+    const preview = document.getElementById(`embLogoPreview-${pid}`);
+    const img = document.getElementById(`embLogoImg-${pid}`);
+    const name = document.getElementById(`embLogoName-${pid}`);
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            if (img) img.src = e.target.result;
+            if (name) name.textContent = input.files[0].name;
+            if (preview) preview.style.display = '';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+window.previewEmbLogo = previewEmbLogo;
+
 function getEmbroideryData(pid) {
     const body = document.getElementById(`embBody-${pid}`);
     if (!body || body.style.display === 'none') return null;
     const type = body.querySelector('.emb-type-btn.active')?.dataset?.type || 'TEXT';
-    if (type !== 'LOGO') {
-        const line1 = document.getElementById(`embL1-${pid}`)?.value?.trim() || '';
-        if (!line1) return null;
-        return {
-            type,
-            line1,
-            line2: document.getElementById(`embL2-${pid}`)?.value?.trim() || '',
-            line3: document.getElementById(`embL3-${pid}`)?.value?.trim() || '',
-            position: document.getElementById(`embPos-${pid}`)?.value || '',
-            color: body.querySelector('.emb-col.active')?.dataset?.c || 'White',
-            font: body.querySelector('.emb-font.active')?.dataset?.f || 'Cursive',
-            price: 299
-        };
+    const logoPos = document.getElementById(`embLogoPos-${pid}`)?.value || '';
+    if (type === 'LOGO') {
+        return { type: 'LOGO', logoPosition: logoPos, price: 299 };
     }
-    return { type: 'LOGO', price: 299 };
+    const line1 = document.getElementById(`embL1-${pid}`)?.value?.trim() || '';
+    if (!line1) return null;
+    const data = {
+        type,
+        line1,
+        line2: document.getElementById(`embL2-${pid}`)?.value?.trim() || '',
+        line3: document.getElementById(`embL3-${pid}`)?.value?.trim() || '',
+        position: document.getElementById(`embPos-${pid}`)?.value || '',
+        color: body.querySelector('.emb-col.active')?.dataset?.c || 'White',
+        font: body.querySelector('.emb-font.active')?.dataset?.f || 'Cursive',
+        price: 299
+    };
+    if (type === 'TEXT & LOGO') { data.logoPosition = logoPos; }
+    return data;
 }
 window.getEmbroideryData = getEmbroideryData;
 
