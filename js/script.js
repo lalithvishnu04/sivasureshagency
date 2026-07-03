@@ -375,23 +375,31 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     }
 })();
 
-// ===== Scrub Brand Name — Firestore sync (optional, cross-device) =====
+// ===== Scrub Brand Name — Real-time Supabase sync (cross-device updates) =====
 (function _syncBrandName() {
-    // Try to load brand name from Firestore settings/scrubBrand doc
-    // Falls back to localStorage silently
-    function _tryLoad() {
-        if (!window.db) { setTimeout(_tryLoad, 800); return; }
-        window.db.collection('settings').doc('scrubBrand').get().then(doc => {
-            if (doc && doc.exists) {
-                const d = doc.data();
-                if (d && d.name) {
-                    localStorage.setItem('ssa_scrub_brand', JSON.stringify({ name: d.name, suffix: d.suffix !== undefined ? d.suffix : '™' }));
-                    applyScrubBrandName();
-                }
-            }
-        }).catch(() => {}); // silent fail
+    // Listen for brand name changes in real-time from Supabase
+    function _startListener() {
+        if (!window.db) { setTimeout(_startListener, 800); return; }
+        // Set up real-time listener for brand settings
+        try {
+            window.db.collection('settings').doc('scrubBrand').onSnapshot(
+                doc => {
+                    if (doc && doc.exists) {
+                        const d = doc.data();
+                        if (d && d.name) {
+                            const cfg = { name: d.name, suffix: d.suffix !== undefined ? d.suffix : '™' };
+                            localStorage.setItem('ssa_scrub_brand', JSON.stringify(cfg));
+                            applyScrubBrandName(); // Update DOM immediately when brand changes
+                        }
+                    }
+                },
+                error => console.warn('[brand-sync] listener error:', error.message)
+            );
+        } catch(e) {
+            console.log('[brand-sync] Real-time sync not available, falling back to localStorage');
+        }
     }
-    setTimeout(_tryLoad, 1500);
+    setTimeout(_startListener, 1500);
 })();
 
 // ===== Policy Modals (Privacy, Terms, Shipping) =====

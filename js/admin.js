@@ -1,4 +1,4 @@
-// SSA Admin v36 — color variants: auto-extract dominant colors from image, no native color picker
+﻿// SSA Admin v36 — color variants: auto-extract dominant colors from image, no native color picker
 // db, auth, fsServerTimestamp, fsIncrement are set by js/db-init.js
 
 // ===== State =====
@@ -636,10 +636,13 @@ async function saveProduct(e) {
         closeModal('productModal');
         loadProducts();
     } catch (err) {
-        if ((err.message || '').toLowerCase().includes('schema cache')) {
-            showAdminToast('Database schema is missing new product fields. Run tools/supabase_setup.sql once in Supabase SQL Editor, then retry.', 'error');
+        const errMsg = (err.message || '').toLowerCase();
+        if (errMsg.includes('schema') || errMsg.includes('colorvariants') || errMsg.includes('column')) {
+            showAdminToast('⚠️ Database schema mismatch. 1) Go to Supabase SQL Editor. 2) Copy & run all code from tools/supabase_setup.sql. 3) Retry saving product.', 'error');
+        } else if (errMsg.includes('permission') || errMsg.includes('policy')) {
+            showAdminToast('❌ Permission denied. Check Supabase row-level security policies allow admin writes.', 'error');
         } else {
-            showAdminToast('Error: ' + err.message, 'error');
+            showAdminToast('Error saving product: ' + err.message, 'error');
         }
     }
 }
