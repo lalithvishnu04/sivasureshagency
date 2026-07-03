@@ -621,16 +621,22 @@ async function saveProduct(e) {
         updatedAt: fsServerTimestamp()
     };
 
+    // Strip null/undefined values so missing DB columns don't cause 400 errors
+    Object.keys(data).forEach(k => { if (data[k] === null || data[k] === undefined || data[k] === '') delete data[k]; });
+
     try {
         if (docId) {
             await db.collection('products').doc(docId).update(data);
             _invalidateCache('products');
+            // Signal frontend to bypass its sessionStorage cache so new image appears immediately
+            localStorage.setItem('_ssa_products_dirty', String(Date.now()));
             showAdminToast('Product updated');
         } else {
             data.createdAt = fsServerTimestamp();
             data.totalStock = 0;
             await db.collection('products').add(data);
             _invalidateCache('products');
+            localStorage.setItem('_ssa_products_dirty', String(Date.now()));
             showAdminToast('Product added');
         }
         closeModal('productModal');

@@ -336,11 +336,14 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
 
     async function _sync() {
         // 1. Check sessionStorage cache first (zero Firebase reads if hit)
+        // But skip cache if admin just saved a product (dirty flag in localStorage)
         try {
+            const dirty = localStorage.getItem('_ssa_products_dirty');
             const raw = sessionStorage.getItem(CACHE_KEY);
             if (raw) {
-                const { data, exp } = JSON.parse(raw);
-                if (Date.now() < exp) {
+                const { data, exp, savedAt } = JSON.parse(raw);
+                const cacheStillFresh = Date.now() < exp && (!dirty || (savedAt && Number(dirty) < Number(savedAt)));
+                if (cacheStillFresh) {
                     if (_merge(data)) _rerender();
                     return;
                 }
@@ -359,7 +362,7 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
             const snap = await window.db.collection('products').get();
             const data = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
             try {
-                sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, exp: Date.now() + TTL }));
+                sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, exp: Date.now() + TTL, savedAt: Date.now() }));
             } catch (e) { /* storage full */ }
             if (_merge(data)) _rerender();
         } catch (e) {
