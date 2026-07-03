@@ -916,7 +916,7 @@ function buildProductCard(p) {
         ${outBadge}
         <button class="shop-card-wishlist" data-product-id="${p.id}" aria-label="Wishlist"><i class="${isWishlisted(p.id) ? 'fas' : 'far'} fa-heart"></i></button>
         <div class="shop-card-image" onclick="openProductDetail(${p.id})">
-            <img src="${p.mainImage || p.colorVariants?.[0]?.images?.[0] || p.image}" alt="${p.name}" loading="lazy">
+            <img src="${p.colorVariants?.[0]?.images?.[0] || p.image}" alt="${p.name}" loading="lazy">
             ${quickBtn}
         </div>
         <div class="shop-card-body" onclick="openProductDetail(${p.id})">
