@@ -227,6 +227,44 @@ console.log('[backend-init] Starting Supabase initialization...');
             const { error } = await client.from(this._col).delete().eq('id', this._id);
             if (error) throw new Error(error.message || 'Delete failed');
         }
+
+        onSnapshot(callback, errorCallback) {
+            // Implement real-time listener using polling (every 2 seconds)
+            // Returns an unsubscribe function
+            let lastData = null;
+            let unsubscribed = false;
+
+            const poll = async () => {
+                if (unsubscribed) return;
+                try {
+                    const doc = await this.get();
+                    const docData = doc.data();
+                    const currentJson = JSON.stringify(docData);
+                    const lastJson = JSON.stringify(lastData);
+                    
+                    // Only call callback if data changed
+                    if (currentJson !== lastJson) {
+                        lastData = { ...docData };
+                        callback(doc);
+                    }
+                } catch (err) {
+                    if (errorCallback) errorCallback(err);
+                }
+                
+                // Schedule next poll
+                if (!unsubscribed) {
+                    setTimeout(poll, 2000);
+                }
+            };
+
+            // Initial fetch
+            poll();
+
+            // Return unsubscribe function
+            return () => {
+                unsubscribed = true;
+            };
+        }
     }
 
     window.db = { collection: (name) => new ColRef(name) };

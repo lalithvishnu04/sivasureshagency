@@ -89,6 +89,13 @@ create table if not exists public.messages (
   "createdAt" timestamptz not null default now()
 );
 
+create table if not exists public.settings (
+  id text primary key,
+  name text,
+  suffix text,
+  "updatedAt" timestamptz not null default now()
+);
+
 create index if not exists idx_orders_customer_email on public.orders("customerEmail");
 create index if not exists idx_orders_created_at on public.orders("createdAt" desc);
 create index if not exists idx_inventory_product_size on public.inventory("productName", size);
@@ -100,6 +107,7 @@ alter table public.orders enable row level security;
 alter table public.customers enable row level security;
 alter table public.messages enable row level security;
 alter table public.admin_users enable row level security;
+alter table public.settings enable row level security;
 
 -- Drop policies if they exist (PostgreSQL doesn't support IF NOT EXISTS for policies)
 drop policy if exists products_public_read on public.products;
@@ -115,6 +123,8 @@ drop policy if exists customers_select_admin on public.customers;
 drop policy if exists messages_insert_public on public.messages;
 drop policy if exists messages_admin_read_write on public.messages;
 drop policy if exists admin_users_self_read on public.admin_users;
+drop policy if exists settings_public_read on public.settings;
+drop policy if exists settings_admin_write on public.settings;
 drop policy if exists assets_public_read on storage.objects;
 drop policy if exists assets_admin_write on storage.objects;
 
@@ -161,9 +171,20 @@ create policy messages_admin_read_write on public.messages
 create policy admin_users_self_read on public.admin_users
   for select to authenticated using (lower(email) = lower(auth.jwt() ->> 'email'));
 
+create policy settings_public_read on public.settings
+  for select to anon, authenticated using (true);
+create policy settings_admin_write on public.settings
+  for all to authenticated
+  using (exists (select 1 from public.admin_users a where lower(a.email) = lower(auth.jwt() ->> 'email')))
+  with check (exists (select 1 from public.admin_users a where lower(a.email) = lower(auth.jwt() ->> 'email')));
+
 insert into public.admin_users(email)
 values ('lalithvishnu04@gmail.com')
 on conflict (email) do nothing;
+
+insert into public.settings(id, name, suffix)
+values ('scrubBrand', 'CliniFlex', '™')
+on conflict (id) do nothing;
 
 insert into storage.buckets (id, name, public)
 values ('assets', 'assets', true)
