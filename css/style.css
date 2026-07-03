@@ -472,6 +472,10 @@ a.nav-cliniflex i { font-size: 0.75em; }
 .pd-old-price { font-size: 0.93rem; color: var(--text-faint); text-decoration: line-through; }
 .pd-discount { background: #fff7ed; color: #c2410c; font-size: 0.73rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; }
 .pd-description { font-size: 0.86rem; color: var(--text-muted); line-height: 1.72; margin-bottom: 15px; }
+.pd-description p { margin: 0 0 8px; }
+.pd-description p:last-child { margin-bottom: 0; }
+.pd-description ul { margin: 6px 0 8px 20px; padding: 0; }
+.pd-description li { margin-bottom: 4px; }
 .pd-size-section h4, .pd-qty-section h4, .pd-color-section h4 { font-size: 0.86rem; font-weight: 700; margin-bottom: 8px; }
 .pd-required { color: var(--red); }
 .pd-sizes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
@@ -498,7 +502,11 @@ a.nav-cliniflex i { font-size: 0.75em; }
 .pd-accordion-item { border-bottom: 1px solid var(--border); }
 .pd-accordion-header { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 14px 0; background: none; border: none; cursor: pointer; font-size: 0.92rem; font-weight: 600; color: var(--text); font-family: var(--font); }
 .pd-accordion-header:hover { color: var(--primary); }
-.pd-accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; font-size: 0.88rem; color: var(--text-muted); line-height: 1.7; padding-bottom: 0; white-space: pre-line; }
+.pd-accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; font-size: 0.88rem; color: var(--text-muted); line-height: 1.7; padding-bottom: 0; }
+.pd-accordion-body p { margin: 0 0 8px; }
+.pd-accordion-body p:last-child { margin-bottom: 0; }
+.pd-accordion-body ul { margin: 6px 0 8px 20px; padding: 0; }
+.pd-accordion-body li { margin-bottom: 4px; }
 .pd-accordion-item.open .pd-accordion-body { padding-bottom: 14px; }
 
 /* ── 22. Auth / Account ───────────────────────────────────────── */

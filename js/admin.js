@@ -627,7 +627,11 @@ async function saveProduct(e) {
         closeModal('productModal');
         loadProducts();
     } catch (err) {
-        showAdminToast('Error: ' + err.message, 'error');
+        if ((err.message || '').toLowerCase().includes('schema cache')) {
+            showAdminToast('Database schema is missing new product fields. Run tools/supabase_setup.sql once in Supabase SQL Editor, then retry.', 'error');
+        } else {
+            showAdminToast('Error: ' + err.message, 'error');
+        }
     }
 }
 
@@ -1308,6 +1312,55 @@ function insertNameSymbol(sym) {
     inp.focus();
 }
 window.insertNameSymbol = insertNameSymbol;
+
+function applyTextFormat(fieldId, action) {
+    const inp = document.getElementById(fieldId);
+    if (!inp) return;
+    inp.focus();
+
+    const value = inp.value || '';
+    const start = inp.selectionStart ?? value.length;
+    const end = inp.selectionEnd ?? value.length;
+
+    const wrapSelection = (left, right) => {
+        const a = Math.min(start, end);
+        const b = Math.max(start, end);
+        const selected = value.slice(a, b) || 'text';
+        inp.value = value.slice(0, a) + left + selected + right + value.slice(b);
+        inp.selectionStart = a + left.length;
+        inp.selectionEnd = a + left.length + selected.length;
+    };
+
+    if (action === 'bold') {
+        wrapSelection('**', '**');
+        return;
+    }
+    if (action === 'italic') {
+        wrapSelection('*', '*');
+        return;
+    }
+    if (action === 'underline') {
+        wrapSelection('__', '__');
+        return;
+    }
+    if (action === 'bullet') {
+        const a = Math.min(start, end);
+        const b = Math.max(start, end);
+        const lineStart = value.lastIndexOf('\n', Math.max(0, a - 1)) + 1;
+        const lineEndPos = value.indexOf('\n', b);
+        const lineEnd = lineEndPos === -1 ? value.length : lineEndPos;
+        const block = value.slice(lineStart, lineEnd);
+        const updated = block.split('\n').map(line => {
+            if (!line.trim()) return '- ';
+            if (/^\s*[-*•]\s+/.test(line)) return line;
+            return '- ' + line;
+        }).join('\n');
+        inp.value = value.slice(0, lineStart) + updated + value.slice(lineEnd);
+        inp.selectionStart = lineStart;
+        inp.selectionEnd = lineStart + updated.length;
+    }
+}
+window.applyTextFormat = applyTextFormat;
 
 // ===== Color Variants (product form) =====
 let _cvData = []; // [{name, hex, images:[dataUrl,...]}]

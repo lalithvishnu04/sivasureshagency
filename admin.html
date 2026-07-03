@@ -346,15 +346,51 @@
                         </div>
                     </div>
                     <div class="form-group"><label>Sizes (comma separated) *</label><input type="text" id="pSizes" placeholder="S,M,L,XL,XXL,XXXL" required></div>
-                    <div class="form-group"><label>Description</label><textarea id="pDescription" rows="3"></textarea></div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <div class="format-toolbar">
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pDescription','bold')"><b>B</b></button>
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pDescription','italic')"><i>I</i></button>
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pDescription','underline')"><u>U</u></button>
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pDescription','bullet')"><i class="fas fa-list-ul"></i></button>
+                        </div>
+                        <textarea id="pDescription" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-ruler"></i> Fit &amp; Sizing</label>
+                        <div class="format-toolbar">
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pFitSizing','bold')"><b>B</b></button>
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pFitSizing','italic')"><i>I</i></button>
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pFitSizing','underline')"><u>U</u></button>
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pFitSizing','bullet')"><i class="fas fa-list-ul"></i></button>
+                        </div>
+                        <textarea id="pFitSizing" rows="3" placeholder="e.g. True to size. Chest 36&quot; = Size S..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-tshirt"></i> Fabric &amp; Care</label>
+                        <div class="format-toolbar">
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pFabricCare','bold')"><b>B</b></button>
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pFabricCare','italic')"><i>I</i></button>
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pFabricCare','underline')"><u>U</u></button>
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pFabricCare','bullet')"><i class="fas fa-list-ul"></i></button>
+                        </div>
+                        <textarea id="pFabricCare" rows="3" placeholder="e.g. 65% Polyester, 35% Cotton. Machine wash cold..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-undo"></i> Returns &amp; Exchanges</label>
+                        <div class="format-toolbar">
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pReturns','bold')"><b>B</b></button>
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pReturns','italic')"><i>I</i></button>
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pReturns','underline')"><u>U</u></button>
+                            <button type="button" class="format-btn" onclick="applyTextFormat('pReturns','bullet')"><i class="fas fa-list-ul"></i></button>
+                        </div>
+                        <textarea id="pReturns" rows="2" placeholder="e.g. 7-day returns on unused items..."></textarea>
+                    </div>
                     <div class="form-group">
                         <label style="display:flex;align-items:center;justify-content:space-between">Color Variants <button type="button" class="btn-secondary btn-sm" onclick="addColorVariant()"><i class="fas fa-plus"></i> Add Color</button></label>
                         <div id="cvContainer" style="display:flex;flex-direction:column;gap:12px;margin-top:8px;"></div>
                     </div>
                     <div class="form-group"><label>Badge</label><input type="text" id="pBadge" placeholder="New, Popular, Premium, Bestseller"></div>
-                    <div class="form-group"><label><i class="fas fa-ruler"></i> Fit &amp; Sizing</label><textarea id="pFitSizing" rows="3" placeholder="e.g. True to size. Chest 36&quot; = Size S..."></textarea></div>
-                    <div class="form-group"><label><i class="fas fa-tshirt"></i> Fabric &amp; Care</label><textarea id="pFabricCare" rows="3" placeholder="e.g. 65% Polyester, 35% Cotton. Machine wash cold..."></textarea></div>
-                    <div class="form-group"><label><i class="fas fa-undo"></i> Returns &amp; Exchanges</label><textarea id="pReturns" rows="2" placeholder="e.g. 7-day returns on unused items..."></textarea></div>
                     <button type="submit" class="btn-primary btn-full"><i class="fas fa-save"></i> Save Product</button>
                 </form>
             </div>

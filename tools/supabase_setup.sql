@@ -19,11 +19,21 @@ create table if not exists public.products (
   sizes text[] not null default '{}',
   description text,
   image text,
+  "colorVariants" jsonb not null default '[]'::jsonb,
   badge text,
+  "fitSizing" text,
+  "fabricCare" text,
+  "returns" text,
   "totalStock" integer default 0,
   "createdAt" timestamptz not null default now(),
   "updatedAt" timestamptz not null default now()
 );
+
+-- Backward-compatible migration for existing projects.
+alter table public.products add column if not exists "colorVariants" jsonb not null default '[]'::jsonb;
+alter table public.products add column if not exists "fitSizing" text;
+alter table public.products add column if not exists "fabricCare" text;
+alter table public.products add column if not exists "returns" text;
 
 create table if not exists public.inventory (
   id text primary key default ('i_' || replace(gen_random_uuid()::text, '-', '')),

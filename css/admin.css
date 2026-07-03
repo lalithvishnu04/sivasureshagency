@@ -920,6 +920,22 @@ img{max-width:100%;display:block;}
 .form-group input[readonly]{background:#f1f5f9;color:var(--text-muted);cursor:not-allowed;}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .field-error{color:var(--danger);font-size:0.78rem;margin-top:5px;}
+.format-toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px;}
+.format-btn{
+  width:30px;
+  height:30px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1.5px solid var(--border);
+  border-radius:7px;
+  background:#fff;
+  color:var(--text-mid);
+  cursor:pointer;
+  font-size:0.83rem;
+  transition:var(--transition);
+}
+.format-btn:hover{border-color:var(--primary);color:var(--primary);background:#f0fdfa;}
 
 /* ── Image Upload ─────────────────────────────────────── */
 .img-upload-wrap{
