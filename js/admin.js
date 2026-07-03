@@ -1835,3 +1835,4 @@ window.updateInventoryStatus = updateInventoryStatus;
 window.openStockModal = openStockModal;
 window.saveStock = saveStock;
 
+
