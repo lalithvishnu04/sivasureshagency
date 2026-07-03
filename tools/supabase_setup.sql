@@ -112,8 +112,12 @@ alter table public.settings enable row level security;
 -- Drop policies if they exist (PostgreSQL doesn't support IF NOT EXISTS for policies)
 drop policy if exists products_public_read on public.products;
 drop policy if exists products_admin_write on public.products;
+drop policy if exists products_admin_update on public.products;
+drop policy if exists products_admin_delete on public.products;
 drop policy if exists inventory_public_read on public.inventory;
 drop policy if exists inventory_admin_write on public.inventory;
+drop policy if exists inventory_admin_update on public.inventory;
+drop policy if exists inventory_admin_delete on public.inventory;
 drop policy if exists orders_insert_public on public.orders;
 drop policy if exists orders_select_own on public.orders;
 drop policy if exists orders_admin_all on public.orders;
@@ -125,23 +129,30 @@ drop policy if exists messages_admin_read_write on public.messages;
 drop policy if exists admin_users_self_read on public.admin_users;
 drop policy if exists settings_public_read on public.settings;
 drop policy if exists settings_admin_write on public.settings;
+drop policy if exists settings_public_write on public.settings;
+drop policy if exists settings_public_update on public.settings;
+drop policy if exists settings_public_delete on public.settings;
 drop policy if exists assets_public_read on storage.objects;
 drop policy if exists assets_admin_write on storage.objects;
 
 -- Create policies
 create policy products_public_read on public.products
-  for select to anon, authenticated using (true);
+  for select using (true);
 create policy products_admin_write on public.products
-  for all to authenticated
-  using (exists (select 1 from public.admin_users a where lower(a.email) = lower(auth.jwt() ->> 'email')))
-  with check (exists (select 1 from public.admin_users a where lower(a.email) = lower(auth.jwt() ->> 'email')));
+  for insert with check (true);
+create policy products_admin_update on public.products
+  for update using (true) with check (true);
+create policy products_admin_delete on public.products
+  for delete using (true);
 
 create policy inventory_public_read on public.inventory
-  for select to anon, authenticated using (true);
+  for select using (true);
 create policy inventory_admin_write on public.inventory
-  for all to authenticated
-  using (exists (select 1 from public.admin_users a where lower(a.email) = lower(auth.jwt() ->> 'email')))
-  with check (exists (select 1 from public.admin_users a where lower(a.email) = lower(auth.jwt() ->> 'email')));
+  for insert with check (true);
+create policy inventory_admin_update on public.inventory
+  for update using (true) with check (true);
+create policy inventory_admin_delete on public.inventory
+  for delete using (true);
 
 create policy orders_insert_public on public.orders
   for insert to anon, authenticated with check (true);
@@ -172,11 +183,13 @@ create policy admin_users_self_read on public.admin_users
   for select to authenticated using (lower(email) = lower(auth.jwt() ->> 'email'));
 
 create policy settings_public_read on public.settings
-  for select to anon, authenticated using (true);
-create policy settings_admin_write on public.settings
-  for all to authenticated
-  using (exists (select 1 from public.admin_users a where lower(a.email) = lower(auth.jwt() ->> 'email')))
-  with check (exists (select 1 from public.admin_users a where lower(a.email) = lower(auth.jwt() ->> 'email')));
+  for select using (true);
+create policy settings_public_write on public.settings
+  for insert with check (true);
+create policy settings_public_update on public.settings
+  for update using (true) with check (true);
+create policy settings_public_delete on public.settings
+  for delete using (true);
 
 insert into public.admin_users(email)
 values ('lalithvishnu04@gmail.com')
