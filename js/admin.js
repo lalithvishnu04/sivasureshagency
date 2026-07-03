@@ -192,8 +192,9 @@ document.querySelectorAll('.nav-item').forEach(item => {
         if (page === 'customers') loadCustomers();
         if (page === 'messages') loadMessages();
         if (page === 'dashboard') loadDashboard();
+        if (page === 'settings') loadSettings();
         // Update subtitle
-        const subtitles = {dashboard:'Overview & analytics',orders:'Manage customer orders',products:'Product catalogue',inventory:'Stock levels',customers:'Registered users',messages:'Contact form submissions'};
+        const subtitles = {dashboard:'Overview & analytics',orders:'Manage customer orders',products:'Product catalogue',inventory:'Stock levels',customers:'Registered users',messages:'Contact form submissions',settings:'Site configuration'};
         const sub = document.getElementById('pageSubtitle');
         if (sub) { const n = document.getElementById('adminNameTop')?.textContent||'Admin'; sub.innerHTML = (subtitles[page]||page)+', <span id="adminNameTop">'+n+'</span>'; }
         // Close sidebar on mobile
@@ -579,6 +580,8 @@ function openProductModal(product = null) {
     document.getElementById('pFitSizing').value = product ? product.fitSizing || '' : '';
     document.getElementById('pFabricCare').value = product ? product.fabricCare || '' : '';
     document.getElementById('pReturns').value = product ? product.returns || '' : '';
+    document.getElementById('pMainImage').value = product ? product.mainImage || '' : '';
+    previewMainImage();
     // Load colorVariants
     _cvData = (product?.colorVariants || []).map(cv => ({ name: cv.name || '', hex: cv.hex || '#0d9488', images: [...(cv.images || [])] }));
     renderColorVariantRows();
@@ -604,6 +607,7 @@ async function saveProduct(e) {
         description: document.getElementById('pDescription').value.trim(),
         // Derive primary image from first colorVariant's first image for backward compat
         image: (_cvData[0]?.images?.[0]) || '',
+        mainImage: document.getElementById('pMainImage').value.trim() || null,
         colorVariants: _cvData.map(cv => ({ name: cv.name, hex: cv.hex, images: cv.images })),
         badge: document.getElementById('pBadge').value.trim(),
         fitSizing: document.getElementById('pFitSizing').value.trim(),
@@ -1313,7 +1317,71 @@ function insertNameSymbol(sym) {
 }
 window.insertNameSymbol = insertNameSymbol;
 
-function applyTextFormat(fieldId, action) {
+function previewMainImage() {
+    const url = document.getElementById('pMainImage')?.value?.trim();
+    const preview = document.getElementById('mainImagePreview');
+    const img = document.getElementById('mainImagePreviewImg');
+    if (url && preview && img) {
+        img.src = url;
+        preview.style.display = '';
+    } else if (preview) {
+        preview.style.display = 'none';
+    }
+}
+window.previewMainImage = previewMainImage;
+
+// ===== Settings =====
+function loadSettings() {
+    try {
+        const cfg = JSON.parse(localStorage.getItem('ssa_scrub_brand') || '{}');
+        const nameEl = document.getElementById('sScrubBrandName');
+        const suffixEl = document.getElementById('sScrubBrandSuffix');
+        if (nameEl) nameEl.value = cfg.name || 'CliniFlex';
+        if (suffixEl) suffixEl.value = cfg.suffix !== undefined ? cfg.suffix : '™';
+        updateBrandPreview();
+    } catch(e) {}
+    // Wire up live preview
+    ['sScrubBrandName','sScrubBrandSuffix'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateBrandPreview);
+    });
+}
+function updateBrandPreview() {
+    const name = document.getElementById('sScrubBrandName')?.value?.trim() || 'CliniFlex';
+    const suffix = document.getElementById('sScrubBrandSuffix')?.value || '';
+    const preview = document.getElementById('brandPreviewText');
+    if (preview) preview.textContent = name + suffix;
+}
+function insertScrubBrandSymbol(sym) {
+    const inp = document.getElementById('sScrubBrandName');
+    if (!inp) return;
+    const s = inp.selectionStart, e = inp.selectionEnd;
+    inp.value = inp.value.slice(0, s) + sym + inp.value.slice(e);
+    inp.selectionStart = inp.selectionEnd = s + sym.length;
+    inp.focus();
+    updateBrandPreview();
+}
+function saveSettings() {
+    const name = document.getElementById('sScrubBrandName')?.value?.trim() || 'CliniFlex';
+    const suffix = document.getElementById('sScrubBrandSuffix')?.value || '™';
+    const cfg = { name, suffix };
+    localStorage.setItem('ssa_scrub_brand', JSON.stringify(cfg));
+    // Optionally persist to Firestore so other devices/sessions pick it up
+    if (window.db) {
+        window.db.collection('settings').doc('scrubBrand').set(cfg)
+            .then(() => showAdminToast('Settings saved — brand name updated to "' + name + suffix + '"'))
+            .catch(() => {
+                // Firestore write failed but localStorage is saved; that's fine for single-admin use
+                showAdminToast('Settings saved locally. Brand: "' + name + suffix + '"');
+            });
+    } else {
+        showAdminToast('Settings saved locally. Brand: "' + name + suffix + '"');
+    }
+}
+window.loadSettings = loadSettings;
+window.saveSettings = saveSettings;
+window.updateBrandPreview = updateBrandPreview;
+window.insertScrubBrandSymbol = insertScrubBrandSymbol;
     const inp = document.getElementById(fieldId);
     if (!inp) return;
     inp.focus();

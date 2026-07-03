@@ -1,8 +1,8 @@
-﻿// ============================================================
+// ============================================================
 //  Siva Suresh Agency — Service Worker
 //  Auto cache-busting: bump CACHE_VERSION with each deploy
 // ============================================================
-const CACHE_VERSION = 'v41';
+const CACHE_VERSION = 'v42';
 const CACHE_NAME = `ssa-${CACHE_VERSION}`;
 
 // Install: activate immediately (skip waiting)

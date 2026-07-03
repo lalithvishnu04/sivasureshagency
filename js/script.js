@@ -273,7 +273,7 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
             const local = productsData.find(p => p.name === fp.name);
             if (local) {
                 // Overlay admin-editable fields (image, price, badge, description, colorVariants, sizes, gender, sleeve, fitSizing, fabricCare, returns)
-                for (const f of ['image', 'price', 'oldPrice', 'badge', 'description', 'colorVariants', 'sizes', 'gender', 'sleeve', 'fitSizing', 'fabricCare', 'returns']) {
+                for (const f of ['image', 'mainImage', 'price', 'oldPrice', 'badge', 'description', 'colorVariants', 'sizes', 'gender', 'sleeve', 'fitSizing', 'fabricCare', 'returns']) {
                     const val = fp[f];
                     if (val !== undefined && val !== null && val !== '' && val !== local[f]) {
                         local[f] = val;
@@ -293,6 +293,7 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
                     sizes: fp.sizes || ['S', 'M', 'L', 'XL', 'XXL'],
                     description: fp.description || '',
                     image: fp.image || '',
+                    mainImage: fp.mainImage || null,
                     badge: fp.badge || '',
                     colorVariants: fp.colorVariants || [],
                     fitSizing: fp.fitSizing || '',
@@ -327,6 +328,9 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
                 const featured = productsData.filter(p => p.badge);
                 grid.innerHTML = featured.slice(0, 8).map(p => buildProductCard(p)).join('');
             }
+            // Refresh tile scroll pools and hero images with newly loaded product data
+            if (typeof initCategoryTileScroll === 'function') initCategoryTileScroll();
+            if (typeof initHeroDynamicImages === 'function') initHeroDynamicImages();
         }
     }
 
@@ -369,6 +373,25 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     } else {
         setTimeout(_sync, 400);
     }
+})();
+
+// ===== Scrub Brand Name — Firestore sync (optional, cross-device) =====
+(function _syncBrandName() {
+    // Try to load brand name from Firestore settings/scrubBrand doc
+    // Falls back to localStorage silently
+    function _tryLoad() {
+        if (!window.db) { setTimeout(_tryLoad, 800); return; }
+        window.db.collection('settings').doc('scrubBrand').get().then(doc => {
+            if (doc && doc.exists) {
+                const d = doc.data();
+                if (d && d.name) {
+                    localStorage.setItem('ssa_scrub_brand', JSON.stringify({ name: d.name, suffix: d.suffix !== undefined ? d.suffix : '™' }));
+                    applyScrubBrandName();
+                }
+            }
+        }).catch(() => {}); // silent fail
+    }
+    setTimeout(_tryLoad, 1500);
 })();
 
 // ===== Policy Modals (Privacy, Terms, Shipping) =====
@@ -570,6 +593,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== Common Init (all pages) =====
 function initCommon() {
+    // Apply scrub brand name from localStorage to all pages
+    applyScrubBrandName();
     // Fix nav active state based on current URL (CliniFlex highlighted only on scrub-suits)
     (function() {
         const page = (window.location.pathname.split('/').pop() || 'index.html').replace(/\?.*$/, '');
@@ -753,6 +778,10 @@ function initHomePage() {
         const featured = productsData.filter(p => p.badge);
         grid.innerHTML = featured.slice(0, 8).map(p => buildProductCard(p)).join('');
     }
+    // Start category tile image scroll and hero dynamic images (immediate)
+    initCategoryTileScroll();
+    initHeroDynamicImages();
+    applyScrubBrandName();
 }
 
 // ===== Categories Page =====
@@ -2083,6 +2112,83 @@ function placeOrder() {
 }
 
 // ===== Hero Slider =====
+// ===== Scrub Brand Name Config =====
+function getScrubBrandName(withSuffix) {
+    if (withSuffix === undefined) withSuffix = true;
+    try {
+        const cfg = JSON.parse(localStorage.getItem('ssa_scrub_brand') || '{}');
+        const name = cfg.name || 'CliniFlex';
+        const suffix = cfg.suffix !== undefined ? cfg.suffix : '™';
+        return withSuffix ? name + suffix : name;
+    } catch(e) { return withSuffix ? 'CliniFlex™' : 'CliniFlex'; }
+}
+function applyScrubBrandName() {
+    const display = getScrubBrandName();
+    document.querySelectorAll('.scrub-brand-text').forEach(el => { el.textContent = display; });
+}
+window.getScrubBrandName = getScrubBrandName;
+window.applyScrubBrandName = applyScrubBrandName;
+
+// ===== Category Tile Auto-Scroll =====
+// Pools images per category from live productsData and cycles them on .cat-tile-img[data-cat] elements.
+const _tileScrollTimers = {};
+function initCategoryTileScroll() {
+    // Build image pool per category
+    const catImages = {};
+    productsData.forEach(p => {
+        const img = p.mainImage || (p.colorVariants && p.colorVariants[0] && p.colorVariants[0].images && p.colorVariants[0].images[0]) || p.image;
+        if (!img || img.startsWith('data:') || img.startsWith('blob:')) return;
+        if (!catImages[p.category]) catImages[p.category] = [];
+        if (!catImages[p.category].includes(img)) catImages[p.category].push(img);
+    });
+
+    document.querySelectorAll('.cat-tile-img[data-cat]').forEach(tile => {
+        const cat = tile.dataset.cat;
+        const imgs = catImages[cat];
+        if (!imgs || !imgs.length) return;
+        // Set first product image immediately (overrides hardcoded)
+        tile.style.backgroundImage = `url('${imgs[0]}')`;
+        if (imgs.length < 2) return;
+        // Clear previous timer if re-initializing
+        if (_tileScrollTimers[cat]) clearInterval(_tileScrollTimers[cat]);
+        let idx = 0;
+        _tileScrollTimers[cat] = setInterval(() => {
+            idx = (idx + 1) % imgs.length;
+            tile.style.transition = 'background-image 0.6s ease';
+            tile.style.backgroundImage = `url('${imgs[idx]}')`;
+        }, 3200);
+    });
+}
+window.initCategoryTileScroll = initCategoryTileScroll;
+
+// ===== Hero Dynamic Images =====
+// Updates hero slide product images with actual product mainImage/image after sync.
+function initHeroDynamicImages() {
+    const catMap = {
+        '1': 'doctor-uniform',
+        '2': 'staff-uniform',
+        '3': 'hospital-linen',
+        '4': 'scrub-suits'
+    };
+    document.querySelectorAll('.hero-slide').forEach(slide => {
+        const slideNum = slide.dataset.slide;
+        const cat = catMap[slideNum];
+        if (!cat) return;
+        const prodImg = slide.querySelector('.hero-prod-img img');
+        if (!prodImg) return;
+        // Find a product with a real image for this category
+        const prod = productsData.find(p => p.category === cat && (p.mainImage || p.image) && !(p.mainImage || p.image).startsWith('data:'));
+        if (prod) {
+            const img = prod.mainImage || (prod.colorVariants && prod.colorVariants[0] && prod.colorVariants[0].images && prod.colorVariants[0].images[0]) || prod.image;
+            if (img) prodImg.src = img;
+        }
+    });
+    // Update CliniFlex slide title with current brand name
+    const cliniTitle = document.getElementById('heroCliniTitle');
+    if (cliniTitle) cliniTitle.innerHTML = `The <span class="highlight scrub-brand-text">${getScrubBrandName()}</span> Experience`;
+}
+window.initHeroDynamicImages = initHeroDynamicImages;
+
 function initHeroSlider() {
     const slides = document.querySelectorAll('.hero-slide');
     const dots = document.querySelectorAll('.dot');
