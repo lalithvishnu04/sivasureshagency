@@ -20,6 +20,7 @@ create table if not exists public.products (
   description text,
   image text,
   "colorVariants" jsonb not null default '[]'::jsonb,
+  "mainImage" text,
   badge text,
   "fitSizing" text,
   "fabricCare" text,
@@ -31,6 +32,7 @@ create table if not exists public.products (
 
 -- Backward-compatible migration for existing projects.
 alter table public.products add column if not exists "colorVariants" jsonb not null default '[]'::jsonb;
+alter table public.products add column if not exists "mainImage" text;
 alter table public.products add column if not exists "fitSizing" text;
 alter table public.products add column if not exists "fabricCare" text;
 alter table public.products add column if not exists "returns" text;
