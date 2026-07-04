@@ -1334,7 +1334,7 @@ window.insertNameSymbol = insertNameSymbol;
 function handleMainImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
-    const MAX_W = 900, MAX_H = 900, QUALITY = 0.82;
+    const MAX_W = 600, MAX_H = 600, QUALITY = 0.65;
     const reader = new FileReader();
     reader.onload = e => {
         const img = new Image();
@@ -1709,7 +1709,7 @@ function handleProductImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const MAX_W = 900, MAX_H = 900, QUALITY = 0.82;
+    const MAX_W = 500, MAX_H = 500, QUALITY = 0.60;
     const btn = document.querySelector('#productForm button[type=submit]');
     const origText = btn?.innerHTML || '';
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...'; }

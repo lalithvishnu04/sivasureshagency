@@ -313,12 +313,13 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     function _rerender() {
         const page = document.body && document.body.dataset.page;
         if (page === 'categories') {
-            // Read active filter button from DOM — always accurate, never stale
+            // Read active filter button from DOM; fall back to URL param (fixes race before initCategoriesPage runs)
             const activeBtn = document.querySelector('.filter-btn.active');
-            const _f = activeBtn?.dataset?.filter || window._currentFilter || 'all';
+            const urlCat = new URLSearchParams(window.location.search).get('cat');
+            const _f = activeBtn?.dataset?.filter || window._currentFilter || urlCat || 'all';
             const _c  = window._currentCount   || 12;
-            const _g  = window._currentGender  || null;
-            const _s  = window._currentSleeve  || null;
+            const _g  = window._currentGender  || new URLSearchParams(window.location.search).get('gender') || null;
+            const _s  = window._currentSleeve  || new URLSearchParams(window.location.search).get('sleeve') || null;
             const _q  = window._currentSearch  || '';
             if (typeof renderProducts === 'function') renderProducts(_f, _c, _g, _s, _q);
             if (typeof updateScrubsCount === 'function') updateScrubsCount();
@@ -337,16 +338,16 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     async function _sync() {
         const dirty = localStorage.getItem('_ssa_products_dirty');
 
-        // 1. Render from cache IMMEDIATELY (stale-while-revalidate — eliminates visual flash)
-        let needsFetch = true;
+        // 1. Cache check — stale-while-revalidate ONLY when admin hasn't just saved
+        // If dirty (admin saved recently), skip cache so the old image never flashes
         try {
             const raw = sessionStorage.getItem(CACHE_KEY);
             if (raw) {
                 const { data, exp, savedAt } = JSON.parse(raw);
-                if (data) {
-                    if (_merge(data)) _rerender(); // Render right away, even if stale
-                    const cacheStillFresh = Date.now() < exp && (!dirty || (savedAt && Number(dirty) < Number(savedAt)));
-                    if (cacheStillFresh) return; // Fresh + clean — no background fetch needed
+                const adminJustSaved = dirty && (!savedAt || Number(dirty) >= Number(savedAt));
+                if (!adminJustSaved && data) {
+                    if (_merge(data)) _rerender(); // Render instantly from cache
+                    if (Date.now() < exp) return;  // Cache still fresh — no fetch needed
                 }
             }
         } catch (e) { /* ignore quota/parse errors */ }
