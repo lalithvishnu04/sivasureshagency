@@ -1331,30 +1331,58 @@ function insertNameSymbol(sym) {
 }
 window.insertNameSymbol = insertNameSymbol;
 
-function handleMainImageUpload(event) {
+// ===== Image Upload Helper =====
+// Compresses image then uploads to Supabase Storage → returns CDN URL.
+// Falls back to base64 if storage unavailable (e.g. bucket not set up).
+async function _uploadImage(file, maxW, maxH, quality) {
+    // Step 1: compress locally
+    const dataUrl = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onerror = rej;
+        r.onload = e => {
+            const img = new Image();
+            img.onerror = rej;
+            img.onload = () => {
+                let w = img.width, h = img.height;
+                if (w > maxW || h > maxH) { const ratio = Math.min(maxW/w, maxH/h); w = Math.round(w*ratio); h = Math.round(h*ratio); }
+                const c = document.createElement('canvas'); c.width = w; c.height = h;
+                c.getContext('2d').drawImage(img, 0, 0, w, h);
+                res(c.toDataURL('image/jpeg', quality));
+            };
+            img.src = e.target.result;
+        };
+        r.readAsDataURL(file);
+    });
+
+    // Step 2: try Supabase Storage (URL replaces base64 in DB — much smaller)
+    if (window.storage) {
+        try {
+            const blob = await (await fetch(dataUrl)).blob();
+            const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+            await window.storage.uploadBytes(path, blob);
+            return await window.storage.getDownloadURL(path);
+        } catch (e) {
+            console.warn('[storage] Falling back to base64:', e.message);
+        }
+    }
+    return dataUrl; // fallback: base64
+}
+
+async function handleMainImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
-    const MAX_W = 600, MAX_H = 600, QUALITY = 0.65;
-    const reader = new FileReader();
-    reader.onload = e => {
-        const img = new Image();
-        img.onload = () => {
-            let w = img.width, h = img.height;
-            if (w > MAX_W || h > MAX_H) { const r = Math.min(MAX_W/w, MAX_H/h); w = Math.round(w*r); h = Math.round(h*r); }
-            const canvas = document.createElement('canvas');
-            canvas.width = w; canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
-            document.getElementById('pMainImage').value = dataUrl;
-            const preview = document.getElementById('mainImagePreview');
-            const previewImg = document.getElementById('mainImagePreviewImg');
-            if (previewImg) previewImg.src = dataUrl;
-            if (preview) preview.style.display = '';
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
     event.target.value = '';
+    showAdminToast('Uploading image…', 'info');
+    try {
+        const src = await _uploadImage(file, 800, 800, 0.75);
+        document.getElementById('pMainImage').value = src;
+        const preview = document.getElementById('mainImagePreview');
+        const previewImg = document.getElementById('mainImagePreviewImg');
+        if (previewImg) previewImg.src = src;
+        if (preview) preview.style.display = '';
+    } catch (e) {
+        showAdminToast('Image upload failed: ' + e.message, 'error');
+    }
 }
 window.handleMainImageUpload = handleMainImageUpload;
 
@@ -1592,31 +1620,52 @@ function removeVariantImage(varIdx, imgIdx) {
 }
 window.removeVariantImage = removeVariantImage;
 
-function handleCVImageUpload(event, idx) {
+async function handleCVImageUpload(event, idx) {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
-    files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = e => {
-            if (!_cvData[idx]) return;
-            _cvData[idx].images.push(e.target.result);
-            // Extract dominant colors from this image
-            _extractDominantColors(e.target.result, 8).then(colors => {
+    event.target.value = '';
+    showAdminToast(`Uploading ${files.length} image(s)…`, 'info');
+    for (const file of files) {
+        try {
+            // Compress locally first (needed for color extraction regardless)
+            const dataUrl = await new Promise((res, rej) => {
+                const r = new FileReader(); r.onerror = rej;
+                r.onload = e => {
+                    const img = new Image(); img.onerror = rej;
+                    img.onload = () => {
+                        let w = img.width, h = img.height;
+                        if (w > 700 || h > 700) { const ratio = Math.min(700/w,700/h); w=Math.round(w*ratio); h=Math.round(h*ratio); }
+                        const c = document.createElement('canvas'); c.width=w; c.height=h;
+                        c.getContext('2d').drawImage(img,0,0,w,h);
+                        res(c.toDataURL('image/jpeg', 0.70));
+                    };
+                    img.src = e.target.result;
+                };
+                r.readAsDataURL(file);
+            });
+            if (!_cvData[idx]) break;
+            // Try storage upload; fall back to compressed base64
+            let src = dataUrl;
+            if (window.storage) {
+                try {
+                    const blob = await (await fetch(dataUrl)).blob();
+                    const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+                    await window.storage.uploadBytes(path, blob);
+                    src = await window.storage.getDownloadURL(path);
+                } catch (e) { console.warn('[storage]', e.message); }
+            }
+            _cvData[idx].images.push(src);
+            // Extract colors from local dataUrl for swatch suggestions
+            _extractDominantColors(dataUrl, 8).then(colors => {
                 if (!_cvData[idx]) return;
-                // Merge into existing suggestions, keep unique, cap at 12
-                const existing = _cvData[idx].suggestedColors || [];
-                const merged = [...new Set([...existing, ...colors])].slice(0, 12);
+                const merged = [...new Set([...(_cvData[idx].suggestedColors||[]), ...colors])].slice(0,12);
                 _cvData[idx].suggestedColors = merged;
-                // Auto-apply the top color only if no hex set yet (still default)
-                if (!_cvData[idx].hex || _cvData[idx].hex === '#0d9488') {
-                    _cvData[idx].hex = merged[0] || _cvData[idx].hex;
-                }
+                if (!_cvData[idx].hex || _cvData[idx].hex === '#0d9488') _cvData[idx].hex = merged[0] || _cvData[idx].hex;
                 renderColorVariantRows();
             });
-        };
-        reader.readAsDataURL(file);
-    });
-    event.target.value = '';
+        } catch (e) { showAdminToast('Image error: ' + e.message, 'error'); }
+    }
+    renderColorVariantRows();
 }
 window.handleCVImageUpload = handleCVImageUpload;
 

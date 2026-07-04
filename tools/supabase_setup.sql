@@ -208,15 +208,8 @@ values ('assets', 'assets', true)
 on conflict (id) do nothing;
 
 create policy assets_public_read on storage.objects
-  for select to anon, authenticated
-  using (bucket_id = 'assets');
+  for select using (bucket_id = 'assets');
 create policy assets_admin_write on storage.objects
   for all to authenticated
-  using (
-    bucket_id = 'assets'
-    and exists (select 1 from public.admin_users a where lower(a.email) = lower(auth.jwt() ->> 'email'))
-  )
-  with check (
-    bucket_id = 'assets'
-    and exists (select 1 from public.admin_users a where lower(a.email) = lower(auth.jwt() ->> 'email'))
-  );
+  using (bucket_id = 'assets')
+  with check (bucket_id = 'assets');

@@ -530,7 +530,7 @@ let cart = JSON.parse(localStorage.getItem('ssa_cart') || '[]');
 cart.forEach(item => { const p = productsData.find(x => x.id === item.id); if (p) item.image = p.image; });
 let wishlist = JSON.parse(localStorage.getItem('ssa_wishlist') || '[]');
 let displayedProducts = 12;
-let currentFilter = 'all';
+let currentFilter = new URLSearchParams(window.location.search).get('cat') || 'all'; // init from URL immediately — no race condition
 let currentSearch = '';
 // Mirror state to window so the Firestore IIFE can always read the latest values
 function _syncWindowState() {
