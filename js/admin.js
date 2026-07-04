@@ -1538,6 +1538,15 @@ window.applyTextFormat = applyTextFormat;
 let _cvData = []; // [{name, hex, images:[url|dataUrl,...]}]
 let _cvUploadsPending = 0; // count of background CV image uploads in flight
 
+// True for very light colours (e.g. white) that need a visible border on light UI.
+function _isLightHex(hex) {
+    const m = /^#?([0-9a-fA-F]{6})$/.exec((hex || '').trim());
+    if (!m) return false;
+    const n = parseInt(m[1], 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 218;
+}
+
 function renderColorVariantRows() {
     const container = document.getElementById('cvContainer');
     if (!container) return;
@@ -1568,7 +1577,7 @@ function renderColorVariantRows() {
         <div class="cv-suggested" id="cvSuggested_${idx}">
             <span class="cv-suggested-label"><i class="fas fa-wand-magic-sparkles"></i> Colors extracted from image — click to apply:</span>
             <div class="cv-suggested-swatches">
-                ${(cv.suggestedColors).map(h => `<button type="button" class="cv-sg-swatch${(cv.hex||'').toLowerCase()===h.toLowerCase()?' active':''}" style="background:${h}" title="${h}" onclick="applySuggestedColor(${idx},'${h}')"></button>`).join('')}
+                ${(cv.suggestedColors).map(h => `<button type="button" class="cv-sg-swatch${(cv.hex||'').toLowerCase()===h.toLowerCase()?' active':''}" style="background:${h}${_isLightHex(h)?';border-color:#cbd5e1':''}" title="${h}" onclick="applySuggestedColor(${idx},'${h}')"></button>`).join('')}
             </div>
         </div>` : ''}
         <div class="cv-imgs-grid" id="cvImgs_${idx}">
@@ -1755,22 +1764,50 @@ function _extractDominantColors(dataUrl, n) {
                 ctx.drawImage(img, 0, 0, SIZE, SIZE);
                 const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
 
-                // Collect pixels, skip near-white and near-black and low-saturation
+                // Collect pixels: separate saturated (chromatic) colours from
+                // neutral tones (white / grey / black) so a genuinely white or
+                // black product still surfaces its true colour instead of being skipped.
                 const pixels = [];
+                const neuBuckets = {
+                    white: { sum:[0,0,0], count:0, snap:'#ffffff' },
+                    light: { sum:[0,0,0], count:0, snap:null },
+                    grey:  { sum:[0,0,0], count:0, snap:null },
+                    dark:  { sum:[0,0,0], count:0, snap:null },
+                    black: { sum:[0,0,0], count:0, snap:'#1f2937' }
+                };
+                let totalPix = 0;
                 for (let i = 0; i < data.length; i += 4) {
                     const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
                     if (a < 128) continue;
+                    totalPix++;
                     const max = Math.max(r,g,b), min = Math.min(r,g,b);
                     const sat = max === 0 ? 0 : (max - min) / max;
                     const bri = max / 255;
-                    // Skip very white (bri>0.95,sat<0.1), very black (bri<0.06), very grey (sat<0.06)
-                    if (bri > 0.95 && sat < 0.10) continue;
-                    if (bri < 0.06) continue;
-                    if (sat < 0.06) continue;
+                    if (sat < 0.12) { // neutral / greyscale — bucket it by brightness
+                        const key = bri > 0.82 ? 'white' : bri > 0.6 ? 'light' : bri > 0.35 ? 'grey' : bri > 0.14 ? 'dark' : 'black';
+                        const nb = neuBuckets[key];
+                        nb.sum[0]+=r; nb.sum[1]+=g; nb.sum[2]+=b; nb.count++;
+                        continue;
+                    }
                     pixels.push([r, g, b]);
                 }
 
-                if (pixels.length < 10) { resolve([]); return; }
+                const _toHex = (r,g,b) => '#' + [r,g,b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2,'0')).join('');
+
+                // Determine the dominant neutral tone (if any bucket is well-populated)
+                let neutralHex = null, neutralCount = 0;
+                {
+                    let top = null;
+                    for (const k in neuBuckets) { const nb = neuBuckets[k]; if (nb.count > (top ? top.count : 0)) top = nb; }
+                    if (top && top.count >= Math.max(10, totalPix * 0.12)) {
+                        neutralCount = top.count;
+                        neutralHex = top.snap || _toHex(top.sum[0]/top.count, top.sum[1]/top.count, top.sum[2]/top.count);
+                    }
+                }
+
+                // Too few chromatic pixels (e.g. a plain white or black product) —
+                // return the neutral tone so the user can still pick it.
+                if (pixels.length < 10) { resolve(neutralHex ? [neutralHex] : []); return; }
 
                 // Seed: pick n pixels spread evenly across the array
                 let centers = [];
@@ -1813,6 +1850,16 @@ function _extractDominantColors(dataUrl, n) {
                     const [r,g,b] = x.c.map(v => Math.max(0, Math.min(255, Math.round(v))));
                     return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
                 });
+
+                // Blend in the dominant neutral tone. Only make it the primary
+                // suggestion when the product itself is predominantly neutral
+                // (e.g. a white coat); otherwise append it as an extra option so a
+                // white/grey background never hijacks a coloured product's hex.
+                if (neutralHex && !hexColors.some(h => h.toLowerCase() === neutralHex.toLowerCase())) {
+                    const predominantlyNeutral = pixels.length < 30 || neutralCount >= totalPix * 0.6;
+                    if (predominantlyNeutral) hexColors.unshift(neutralHex);
+                    else hexColors.push(neutralHex);
+                }
 
                 resolve(hexColors);
             } catch(e) {

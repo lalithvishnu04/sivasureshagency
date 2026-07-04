@@ -313,6 +313,22 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
         return changed;
     }
 
+    // Remove local/default products that were deleted from Supabase.
+    // Once Supabase has products (admin seeds the full catalogue), it becomes the
+    // single source of truth — anything not present there is treated as deleted.
+    function _reconcile(fpList) {
+        if (!fpList || !fpList.length) return false;
+        const valid = new Set(fpList.map(fp => (fp.name || '').trim()).filter(Boolean));
+        let changed = false;
+        for (let i = productsData.length - 1; i >= 0; i--) {
+            if (!valid.has((productsData[i].name || '').trim())) {
+                productsData.splice(i, 1);
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
     function _rerender() {
         const page = document.body && document.body.dataset.page;
         if (page === 'categories') {
@@ -351,7 +367,10 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
             if (raw) {
                 const { data, exp, savedAt } = JSON.parse(raw);
                 if (data) {
-                    if (_merge(data)) _rerender(); // instant display from cache (even if stale)
+                    // instant display from cache (even if stale) — merge overlays + reconcile removals
+                    const _m = _merge(data);
+                    const _r = _reconcile(data);
+                    if (_m || _r) _rerender();
                 }
                 const adminSavedSinceCache = dirty && (!savedAt || Number(dirty) > Number(savedAt));
                 if (!adminSavedSinceCache && Date.now() < exp) return; // cache fresh & clean — done
@@ -372,7 +391,9 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
             try {
                 _store.setItem(CACHE_KEY, JSON.stringify({ data, exp: Date.now() + TTL, savedAt: Date.now() }));
             } catch (e) { /* storage full */ }
-            if (_merge(data)) _rerender();
+            const _m = _merge(data);
+            const _r = _reconcile(data);
+            if (_m || _r) _rerender();
         } catch (e) {
             console.warn('[products-sync] Supabase unavailable, using local data only.');
         }
@@ -912,8 +933,12 @@ function buildProductCard(p) {
     const _cardImg = _allCvImgs.find(img => img && img !== p.mainImage)
                   || (p.image && p.image !== p.mainImage ? p.image : null)
                   || _allCvImgs[0] || p.image || '';
+    const _maxSwatches = 4;
+    const _shownColors = colors ? colors.slice(0, _maxSwatches) : [];
+    const _extraColors = colors ? colors.length - _shownColors.length : 0;
     const colorSwatchesHtml = colors ? `<div class="color-swatches" onclick="event.stopPropagation()">
-        ${colors.map((c, i) => `<button class="color-swatch${i === 0 ? ' active' : ''}" data-hex="${c.hex}" data-color-name="${c.name}" title="${c.name}" style="background:${c.hex}${c.hex === '#FFFFFF' ? ';border-color:#ccc' : ''}" onclick="selectCardColor(this)"></button>`).join('')}
+        ${_shownColors.map((c, i) => `<button class="color-swatch${i === 0 ? ' active' : ''}" data-hex="${c.hex}" data-color-name="${c.name}" title="${c.name}" style="background:${c.hex}${c.hex === '#FFFFFF' ? ';border-color:#ccc' : ''}" onclick="selectCardColor(this)"></button>`).join('')}
+        ${_extraColors > 0 ? `<button class="color-swatch-more" title="View all ${colors.length} colors" onclick="event.stopPropagation();openProductDetail(${p.id})">+${_extraColors}</button>` : ''}
         <span class="color-name">${colors[0].name}</span>
     </div>` : '';
     const defaultColor = colors?.[0]?.name || '';
@@ -1347,6 +1372,8 @@ function openProductDetail(id) {
     const accordionHtml = (p.fitSizing || p.fabricCare || p.returns) ? `<div class="pd-accordion">${p.fitSizing ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Details &amp; Fit</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.fitSizing)}</div></div>` : ''}${p.fabricCare ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Fabric &amp; Care</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.fabricCare)}</div></div>` : ''}${p.returns ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Return &amp; Exchange</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.returns)}</div></div>` : ''}</div>` : '';
     modal.innerHTML = `<div class="modal product-detail-modal"><button class="modal-close pd-close" onclick="closeProductDetail()"><i class="fas fa-times"></i></button><div class="pd-grid"><div class="pd-image-gallery">${thumbsHtml}<div class="pd-main-img" id="pdMainWrap-${p.id}" onclick="openImageLightbox('pdMainImg-${p.id}')">${mainImg ? `<img id="pdMainImg-${p.id}" src="${mainImg}" alt="${p.name}">` : `<div class="pd-no-img"><i class="fas fa-tshirt"></i></div>`}<button class="pd-expand-btn" onclick="event.stopPropagation();openImageLightbox('pdMainImg-${p.id}')" aria-label="Expand"><i class="fas fa-expand-alt"></i></button>${p.badge?`<span class="pd-badge">${p.badge}</span>`:''}</div></div><div class="pd-info"><span class="pd-category">${p.category.replace(/-/g,' ')}</span><h2 class="pd-title" id="pdTitle-${p.id}">${p.name}${defaultColor ? `<span class="pd-title-color"> — ${defaultColor}</span>` : ''}</h2><div class="pd-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}<span>(${p.reviews} reviews)</span></div><div class="pd-price"><span class="pd-current-price">\u20b9${p.price}</span>${p.oldPrice?`<span class="pd-old-price">\u20b9${p.oldPrice}</span><span class="pd-discount">${discount}% OFF</span>`:''}</div><div class="pd-description">${renderRichText(p.description)}</div>${colorSection}<div class="pd-size-section"><h4>Select Size</h4><div class="pd-sizes" id="pdSizes-${p.id}">${p.sizes.map((s,i)=>{ const oos=isVariantOutOfStock(p,s,defaultColor); const active=firstAvailableSize?(s===firstAvailableSize):(!oos&&i===0); return `<button class="pd-size-btn${active?' active':''}${oos?' is-oos':''}" data-size="${s.replace(/"/g,'&quot;')}" ${oos?'disabled title="Out of stock for this color"':''} onclick="selectSize(this,${p.id})">${s}</button>`; }).join('')}</div><p id="pdVariantStockMsg-${p.id}" style="display:none;color:#dc2626;font-size:0.85rem;margin-top:8px;"></p></div>${embHtml}<div class="pd-qty-section"><h4>Quantity</h4><div class="pd-qty"><button onclick="changePdQty(-1)"><i class="fas fa-minus"></i></button><span id="pdQty">1</span><button onclick="changePdQty(1)"><i class="fas fa-plus"></i></button></div></div><div class="pd-actions"><button id="pdAddBtn-${p.id}" class="btn btn-primary btn-lg" onclick="addToCartFromDetail(${p.id})"><i class="fas fa-cart-plus"></i> Add to Cart</button><button id="pdBuyBtn-${p.id}" class="btn btn-outline-dark btn-lg" onclick="buyNowFromDetail(${p.id})"><i class="fas fa-bolt"></i> Buy Now</button></div><div class="pd-features"><div class="pd-feature"><i class="fas fa-truck"></i> Free delivery above \u20b92000</div><div class="pd-feature"><i class="fas fa-undo"></i> 7-day returns</div><div class="pd-feature"><i class="fas fa-shield-alt"></i> Quality guaranteed</div></div>${accordionHtml}</div></div></div>`;
     modal.classList.add('active'); pdQuantity = 1;
+    document.body.classList.add('modal-open'); // lock background scroll (mobile fix)
+    modal.scrollTop = 0;
     updateProductDetailVariantState(p.id);
 }
 function changePdQty(d) { pdQuantity = Math.max(1, pdQuantity + d); const el = document.getElementById('pdQty'); if (el) el.textContent = pdQuantity; }
@@ -1384,7 +1411,7 @@ function addToCartFromDetail(id) {
     });
 }
 function buyNowFromDetail(id) { requireAuth(() => { addToCartFromDetail(id); openCheckout(); }); }
-function closeProductDetail() { document.getElementById('productDetailModal').classList.remove('active'); pdQuantity = 1; }
+function closeProductDetail() { document.getElementById('productDetailModal').classList.remove('active'); document.body.classList.remove('modal-open'); pdQuantity = 1; }
 
 // ===== Auth System =====
 let currentUser = JSON.parse(localStorage.getItem('ssa_user') || 'null');
