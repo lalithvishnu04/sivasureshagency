@@ -598,8 +598,38 @@ function editProduct(docId) {
     if (p) openProductModal(p);
 }
 
+// Migrates any base64 data-URLs in _cvData / mainImage to Supabase Storage
+// before the DB write, preventing row-size timeouts on large product edits.
+async function _migrateImagesBeforeSave() {
+    if (!window.storage) return;
+    for (const cv of _cvData) {
+        for (let i = 0; i < cv.images.length; i++) {
+            if (cv.images[i] && cv.images[i].startsWith('data:')) {
+                try {
+                    const blob = await (await fetch(cv.images[i])).blob();
+                    const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+                    await window.storage.uploadBytes(path, blob);
+                    cv.images[i] = await window.storage.getDownloadURL(path);
+                } catch (e) { console.warn('[migrate-cv]', e.message); }
+            }
+        }
+    }
+    const miEl = document.getElementById('pMainImage');
+    if (miEl && miEl.value.startsWith('data:')) {
+        try {
+            const blob = await (await fetch(miEl.value)).blob();
+            const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+            await window.storage.uploadBytes(path, blob);
+            miEl.value = await window.storage.getDownloadURL(path);
+        } catch (e) { console.warn('[migrate-main]', e.message); }
+    }
+}
+
 async function saveProduct(e) {
     e.preventDefault();
+    // Auto-migrate any old base64 images to Supabase Storage before writing
+    // (prevents statement timeout when product has many color-variant images)
+    if (window.storage) await _migrateImagesBeforeSave();
     const docId = document.getElementById('productEditId').value;
     const data = {
         name: document.getElementById('pName').value.trim(),
@@ -621,34 +651,25 @@ async function saveProduct(e) {
         updatedAt: fsServerTimestamp()
     };
 
-    // Strip null/undefined values so missing DB columns don't cause 400 errors
-    Object.keys(data).forEach(k => { if (data[k] === null || data[k] === undefined || data[k] === '') delete data[k]; });
-
     try {
         if (docId) {
             await db.collection('products').doc(docId).update(data);
             _invalidateCache('products');
-            // Signal frontend to bypass its sessionStorage cache so new image appears immediately
-            localStorage.setItem('_ssa_products_dirty', String(Date.now()));
             showAdminToast('Product updated');
         } else {
             data.createdAt = fsServerTimestamp();
             data.totalStock = 0;
             await db.collection('products').add(data);
             _invalidateCache('products');
-            localStorage.setItem('_ssa_products_dirty', String(Date.now()));
             showAdminToast('Product added');
         }
         closeModal('productModal');
         loadProducts();
     } catch (err) {
-        const errMsg = (err.message || '').toLowerCase();
-        if (errMsg.includes('schema') || errMsg.includes('colorvariants') || errMsg.includes('column')) {
-            showAdminToast('⚠️ Database schema mismatch. 1) Go to Supabase SQL Editor. 2) Copy & run all code from tools/supabase_setup.sql. 3) Retry saving product.', 'error');
-        } else if (errMsg.includes('permission') || errMsg.includes('policy')) {
-            showAdminToast('❌ Permission denied. Check Supabase row-level security policies allow admin writes.', 'error');
+        if ((err.message || '').toLowerCase().includes('schema cache')) {
+            showAdminToast('Database schema is missing new product fields. Run tools/supabase_setup.sql once in Supabase SQL Editor, then retry.', 'error');
         } else {
-            showAdminToast('Error saving product: ' + err.message, 'error');
+            showAdminToast('Error: ' + err.message, 'error');
         }
     }
 }
@@ -1331,58 +1352,30 @@ function insertNameSymbol(sym) {
 }
 window.insertNameSymbol = insertNameSymbol;
 
-// ===== Image Upload Helper =====
-// Compresses image then uploads to Supabase Storage → returns CDN URL.
-// Falls back to base64 if storage unavailable (e.g. bucket not set up).
-async function _uploadImage(file, maxW, maxH, quality) {
-    // Step 1: compress locally
-    const dataUrl = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onerror = rej;
-        r.onload = e => {
-            const img = new Image();
-            img.onerror = rej;
-            img.onload = () => {
-                let w = img.width, h = img.height;
-                if (w > maxW || h > maxH) { const ratio = Math.min(maxW/w, maxH/h); w = Math.round(w*ratio); h = Math.round(h*ratio); }
-                const c = document.createElement('canvas'); c.width = w; c.height = h;
-                c.getContext('2d').drawImage(img, 0, 0, w, h);
-                res(c.toDataURL('image/jpeg', quality));
-            };
-            img.src = e.target.result;
-        };
-        r.readAsDataURL(file);
-    });
-
-    // Step 2: try Supabase Storage (URL replaces base64 in DB — much smaller)
-    if (window.storage) {
-        try {
-            const blob = await (await fetch(dataUrl)).blob();
-            const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-            await window.storage.uploadBytes(path, blob);
-            return await window.storage.getDownloadURL(path);
-        } catch (e) {
-            console.warn('[storage] Falling back to base64:', e.message);
-        }
-    }
-    return dataUrl; // fallback: base64
-}
-
-async function handleMainImageUpload(event) {
+function handleMainImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
+    const MAX_W = 900, MAX_H = 900, QUALITY = 0.82;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+            let w = img.width, h = img.height;
+            if (w > MAX_W || h > MAX_H) { const r = Math.min(MAX_W/w, MAX_H/h); w = Math.round(w*r); h = Math.round(h*r); }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+            document.getElementById('pMainImage').value = dataUrl;
+            const preview = document.getElementById('mainImagePreview');
+            const previewImg = document.getElementById('mainImagePreviewImg');
+            if (previewImg) previewImg.src = dataUrl;
+            if (preview) preview.style.display = '';
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
     event.target.value = '';
-    showAdminToast('Uploading image…', 'info');
-    try {
-        const src = await _uploadImage(file, 800, 800, 0.75);
-        document.getElementById('pMainImage').value = src;
-        const preview = document.getElementById('mainImagePreview');
-        const previewImg = document.getElementById('mainImagePreviewImg');
-        if (previewImg) previewImg.src = src;
-        if (preview) preview.style.display = '';
-    } catch (e) {
-        showAdminToast('Image upload failed: ' + e.message, 'error');
-    }
 }
 window.handleMainImageUpload = handleMainImageUpload;
 
@@ -1620,52 +1613,31 @@ function removeVariantImage(varIdx, imgIdx) {
 }
 window.removeVariantImage = removeVariantImage;
 
-async function handleCVImageUpload(event, idx) {
+function handleCVImageUpload(event, idx) {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
-    event.target.value = '';
-    showAdminToast(`Uploading ${files.length} image(s)…`, 'info');
-    for (const file of files) {
-        try {
-            // Compress locally first (needed for color extraction regardless)
-            const dataUrl = await new Promise((res, rej) => {
-                const r = new FileReader(); r.onerror = rej;
-                r.onload = e => {
-                    const img = new Image(); img.onerror = rej;
-                    img.onload = () => {
-                        let w = img.width, h = img.height;
-                        if (w > 700 || h > 700) { const ratio = Math.min(700/w,700/h); w=Math.round(w*ratio); h=Math.round(h*ratio); }
-                        const c = document.createElement('canvas'); c.width=w; c.height=h;
-                        c.getContext('2d').drawImage(img,0,0,w,h);
-                        res(c.toDataURL('image/jpeg', 0.70));
-                    };
-                    img.src = e.target.result;
-                };
-                r.readAsDataURL(file);
-            });
-            if (!_cvData[idx]) break;
-            // Try storage upload; fall back to compressed base64
-            let src = dataUrl;
-            if (window.storage) {
-                try {
-                    const blob = await (await fetch(dataUrl)).blob();
-                    const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-                    await window.storage.uploadBytes(path, blob);
-                    src = await window.storage.getDownloadURL(path);
-                } catch (e) { console.warn('[storage]', e.message); }
-            }
-            _cvData[idx].images.push(src);
-            // Extract colors from local dataUrl for swatch suggestions
-            _extractDominantColors(dataUrl, 8).then(colors => {
+    files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            if (!_cvData[idx]) return;
+            _cvData[idx].images.push(e.target.result);
+            // Extract dominant colors from this image
+            _extractDominantColors(e.target.result, 8).then(colors => {
                 if (!_cvData[idx]) return;
-                const merged = [...new Set([...(_cvData[idx].suggestedColors||[]), ...colors])].slice(0,12);
+                // Merge into existing suggestions, keep unique, cap at 12
+                const existing = _cvData[idx].suggestedColors || [];
+                const merged = [...new Set([...existing, ...colors])].slice(0, 12);
                 _cvData[idx].suggestedColors = merged;
-                if (!_cvData[idx].hex || _cvData[idx].hex === '#0d9488') _cvData[idx].hex = merged[0] || _cvData[idx].hex;
+                // Auto-apply the top color only if no hex set yet (still default)
+                if (!_cvData[idx].hex || _cvData[idx].hex === '#0d9488') {
+                    _cvData[idx].hex = merged[0] || _cvData[idx].hex;
+                }
                 renderColorVariantRows();
             });
-        } catch (e) { showAdminToast('Image error: ' + e.message, 'error'); }
-    }
-    renderColorVariantRows();
+        };
+        reader.readAsDataURL(file);
+    });
+    event.target.value = '';
 }
 window.handleCVImageUpload = handleCVImageUpload;
 
@@ -1758,7 +1730,7 @@ function handleProductImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const MAX_W = 500, MAX_H = 500, QUALITY = 0.60;
+    const MAX_W = 900, MAX_H = 900, QUALITY = 0.82;
     const btn = document.querySelector('#productForm button[type=submit]');
     const origText = btn?.innerHTML || '';
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...'; }
@@ -1892,5 +1864,3 @@ window.printOrderInvoice = printOrderInvoice;
 window.updateInventoryStatus = updateInventoryStatus;
 window.openStockModal = openStockModal;
 window.saveStock = saveStock;
-
-
