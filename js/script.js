@@ -264,6 +264,9 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
 (function _initProductSync() {
     const CACHE_KEY = '_ssa_fs_products_v2';
     const TTL = 10 * 60 * 1000; // 10 minutes
+    // Persist across sessions so returning visitors see the correct (admin-set)
+    // images on first paint instead of the local defaults for a few seconds.
+    const _store = window.localStorage;
 
     function _merge(fpList) {
         if (!fpList || !fpList.length) return false;
@@ -316,7 +319,10 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
             // Read active filter button from DOM; fall back to URL param (fixes race before initCategoriesPage runs)
             const activeBtn = document.querySelector('.filter-btn.active');
             const urlCat = new URLSearchParams(window.location.search).get('cat');
-            const _f = activeBtn?.dataset?.filter || window._currentFilter || urlCat || 'all';
+            // Priority: explicit user/app state first, then URL param, then the active
+            // button (which defaults to "all" in HTML before initCategoriesPage runs).
+            // This prevents a flash of ALL products before the category filter applies.
+            const _f = window._currentFilter || urlCat || activeBtn?.dataset?.filter || 'all';
             const _c  = window._currentCount   || 12;
             const _g  = window._currentGender  || new URLSearchParams(window.location.search).get('gender') || null;
             const _s  = window._currentSleeve  || new URLSearchParams(window.location.search).get('sleeve') || null;
@@ -341,7 +347,7 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
         // 1. Cache check — always render stale cache instantly (zero-flash UX),
         // only skip the Supabase fetch if cache is fresh AND admin hasn't saved since it was built
         try {
-            const raw = sessionStorage.getItem(CACHE_KEY);
+            const raw = _store.getItem(CACHE_KEY);
             if (raw) {
                 const { data, exp, savedAt } = JSON.parse(raw);
                 if (data) {
@@ -364,7 +370,7 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
             const snap = await window.db.collection('products').get();
             const data = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
             try {
-                sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, exp: Date.now() + TTL, savedAt: Date.now() }));
+                _store.setItem(CACHE_KEY, JSON.stringify({ data, exp: Date.now() + TTL, savedAt: Date.now() }));
             } catch (e) { /* storage full */ }
             if (_merge(data)) _rerender();
         } catch (e) {
@@ -538,6 +544,14 @@ function _syncWindowState() {
     window._currentCount   = displayedProducts;
     window._currentSearch  = currentSearch;
 }
+// Initialise window state from the URL immediately (before any async render), so
+// the products-sync re-render honours ?cat=... instead of flashing all products.
+(function _initWindowStateFromUrl() {
+    const _p = new URLSearchParams(window.location.search);
+    window._currentGender = _p.get('gender') || null;
+    window._currentSleeve = _p.get('sleeve') || null;
+    _syncWindowState();
+})();
 
 // ===== Wishlist =====
 function isWishlisted(id) { return wishlist.includes(id); }

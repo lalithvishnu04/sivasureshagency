@@ -22,6 +22,12 @@ function _invalidateCache(...names) {
     names.forEach(n => { if (_cache[n]) _cache[n].ts = 0; });
 }
 
+// Tells the public site (script.js) that products changed, so it re-fetches
+// fresh data on the next page load instead of trusting a not-yet-expired cache.
+function _markProductsDirty() {
+    try { localStorage.setItem('_ssa_products_dirty', String(Date.now())); } catch (e) { /* ignore */ }
+}
+
 // ===== API helper — use backend API when available, else Firestore =====
 // For admin reads we use the API; writes always go direct to Firestore
 // (writes are low-volume and need the admin auth token only Firestore checks).
@@ -598,38 +604,68 @@ function editProduct(docId) {
     if (p) openProductModal(p);
 }
 
-// Migrates any base64 data-URLs in _cvData / mainImage to Supabase Storage
-// before the DB write, preventing row-size timeouts on large product edits.
+// Migrates any leftover base64 data-URLs in _cvData / mainImage to Supabase
+// Storage before the DB write. Runs all uploads in PARALLEL (not sequentially)
+// so large products with many color-variant images don't time out.
+// Most images are already uploaded in the background on selection, so this is
+// only a fallback for any that are still base64.
 async function _migrateImagesBeforeSave() {
     if (!window.storage) return;
+    const tasks = [];
     for (const cv of _cvData) {
         for (let i = 0; i < cv.images.length; i++) {
             if (cv.images[i] && cv.images[i].startsWith('data:')) {
-                try {
-                    const blob = await (await fetch(cv.images[i])).blob();
-                    const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-                    await window.storage.uploadBytes(path, blob);
-                    cv.images[i] = await window.storage.getDownloadURL(path);
-                } catch (e) { console.warn('[migrate-cv]', e.message); }
+                tasks.push((async (variant, index) => {
+                    try {
+                        const blob = await (await fetch(variant.images[index])).blob();
+                        const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+                        await window.storage.uploadBytes(path, blob);
+                        variant.images[index] = await window.storage.getDownloadURL(path);
+                    } catch (e) { console.warn('[migrate-cv]', e.message); }
+                })(cv, i));
             }
         }
     }
     const miEl = document.getElementById('pMainImage');
     if (miEl && miEl.value.startsWith('data:')) {
-        try {
-            const blob = await (await fetch(miEl.value)).blob();
-            const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-            await window.storage.uploadBytes(path, blob);
-            miEl.value = await window.storage.getDownloadURL(path);
-        } catch (e) { console.warn('[migrate-main]', e.message); }
+        tasks.push((async () => {
+            try {
+                const blob = await (await fetch(miEl.value)).blob();
+                const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+                await window.storage.uploadBytes(path, blob);
+                miEl.value = await window.storage.getDownloadURL(path);
+            } catch (e) { console.warn('[migrate-main]', e.message); }
+        })());
     }
+    await Promise.all(tasks);
 }
 
 async function saveProduct(e) {
     e.preventDefault();
-    // Auto-migrate any old base64 images to Supabase Storage before writing
-    // (prevents statement timeout when product has many color-variant images)
-    if (window.storage) await _migrateImagesBeforeSave();
+    const btn = document.querySelector('#productForm button[type=submit]');
+    const _origBtn = btn ? btn.innerHTML : '';
+    // 1. Wait for any in-flight background color-variant uploads to finish
+    //    (images upload as they're selected, so this is usually instant).
+    if (_cvUploadsPending > 0) {
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading images...'; }
+        for (let i = 0; i < 1200 && _cvUploadsPending > 0; i++) {
+            await new Promise(r => setTimeout(r, 50)); // up to ~60s
+        }
+    }
+    // 2. Fallback: migrate any images still stored as base64 (parallel upload).
+    if (window.storage) {
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...'; }
+        await _migrateImagesBeforeSave();
+    }
+    // 3. Guard: if Storage is unavailable and large base64 images remain, the DB
+    //    write would time out — warn instead of hanging.
+    const _leftoverBase64 = _cvData.some(cv => (cv.images || []).some(im => im && im.startsWith('data:')));
+    if (_leftoverBase64 && !window.storage) {
+        if (btn) { btn.disabled = false; btn.innerHTML = _origBtn; }
+        showAdminToast('Image storage is not available. Please refresh and try again.', 'error');
+        return;
+    }
+    if (btn) { btn.disabled = false; btn.innerHTML = _origBtn; }
     const docId = document.getElementById('productEditId').value;
     const data = {
         name: document.getElementById('pName').value.trim(),
@@ -655,12 +691,14 @@ async function saveProduct(e) {
         if (docId) {
             await db.collection('products').doc(docId).update(data);
             _invalidateCache('products');
+            _markProductsDirty();
             showAdminToast('Product updated');
         } else {
             data.createdAt = fsServerTimestamp();
             data.totalStock = 0;
             await db.collection('products').add(data);
             _invalidateCache('products');
+            _markProductsDirty();
             showAdminToast('Product added');
         }
         closeModal('productModal');
@@ -679,6 +717,7 @@ async function deleteProduct(docId) {
     try {
         await db.collection('products').doc(docId).delete();
         _invalidateCache('products');
+        _markProductsDirty();
         showAdminToast('Product deleted');
         loadProducts();
     } catch (err) {
@@ -1496,7 +1535,8 @@ function applyTextFormat(fieldId, action) {
 window.applyTextFormat = applyTextFormat;
 
 // ===== Color Variants (product form) =====
-let _cvData = []; // [{name, hex, images:[dataUrl,...]}]
+let _cvData = []; // [{name, hex, images:[url|dataUrl,...]}]
+let _cvUploadsPending = 0; // count of background CV image uploads in flight
 
 function renderColorVariantRows() {
     const container = document.getElementById('cvContainer');
@@ -1533,8 +1573,9 @@ function renderColorVariantRows() {
         </div>` : ''}
         <div class="cv-imgs-grid" id="cvImgs_${idx}">
             ${(cv.images||[]).map((img,ii) => `
-            <div class="cv-img-tile">
+            <div class="cv-img-tile${img && img.startsWith('data:') ? ' cv-img-uploading' : ''}">
                 <img src="${img}" class="cv-img-preview">
+                ${img && img.startsWith('data:') ? '<span class="cv-img-spinner" title="Uploading…"><i class="fas fa-spinner fa-spin"></i></span>' : ''}
                 <button type="button" class="cv-img-del" onclick="removeVariantImage(${idx},${ii})"><i class="fas fa-times"></i></button>
             </div>`).join('')}
             <button type="button" class="cv-add-tile" onclick="triggerCVImageUpload(${idx})">
@@ -1615,31 +1656,88 @@ window.removeVariantImage = removeVariantImage;
 
 function handleCVImageUpload(event, idx) {
     const files = Array.from(event.target.files || []);
+    event.target.value = '';
     if (!files.length) return;
+    // Process each file: compress → show preview instantly → upload in background.
     files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = e => {
+        _compressImageToJpeg(file, 900, 0.82).then(({ dataUrl, blob }) => {
             if (!_cvData[idx]) return;
-            _cvData[idx].images.push(e.target.result);
-            // Extract dominant colors from this image
-            _extractDominantColors(e.target.result, 8).then(colors => {
+            // Show the compressed preview immediately (small, fast).
+            _cvData[idx].images.push(dataUrl);
+            renderColorVariantRows();
+            // Extract dominant colors from the compressed image.
+            _extractDominantColors(dataUrl, 8).then(colors => {
                 if (!_cvData[idx]) return;
-                // Merge into existing suggestions, keep unique, cap at 12
                 const existing = _cvData[idx].suggestedColors || [];
                 const merged = [...new Set([...existing, ...colors])].slice(0, 12);
                 _cvData[idx].suggestedColors = merged;
-                // Auto-apply the top color only if no hex set yet (still default)
                 if (!_cvData[idx].hex || _cvData[idx].hex === '#0d9488') {
                     _cvData[idx].hex = merged[0] || _cvData[idx].hex;
                 }
                 renderColorVariantRows();
             });
-        };
-        reader.readAsDataURL(file);
+            // Upload to Supabase Storage in the background and swap base64 → URL.
+            if (window.storage && blob) _uploadCvBlobInBackground(blob, dataUrl);
+        }).catch(err => {
+            console.warn('[cv-upload] compression failed:', err);
+            showAdminToast('Could not read one of the images', 'error');
+        });
     });
-    event.target.value = '';
 }
 window.handleCVImageUpload = handleCVImageUpload;
+
+// Compresses a File (or data-URL) to a resized JPEG. Returns { dataUrl, blob }.
+function _compressImageToJpeg(fileOrDataUrl, maxDim = 900, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            let w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+                const r = Math.min(maxDim / w, maxDim / h);
+                w = Math.round(w * r); h = Math.round(h * r);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            canvas.toBlob(
+                blob => resolve({ dataUrl, blob: blob || null }),
+                'image/jpeg', quality
+            );
+        };
+        img.onerror = () => reject(new Error('image decode failed'));
+        if (typeof fileOrDataUrl === 'string') {
+            img.src = fileOrDataUrl;
+        } else {
+            const reader = new FileReader();
+            reader.onload = e => { img.src = e.target.result; };
+            reader.onerror = () => reject(new Error('file read failed'));
+            reader.readAsDataURL(fileOrDataUrl);
+        }
+    });
+}
+
+// Uploads a compressed blob to Storage, then replaces the matching base64
+// preview (identified by its data-URL) with the public URL in whichever
+// color variant currently holds it. Robust against index shifts.
+async function _uploadCvBlobInBackground(blob, dataUrl) {
+    _cvUploadsPending++;
+    try {
+        const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+        await window.storage.uploadBytes(path, blob);
+        const url = await window.storage.getDownloadURL(path);
+        for (const cv of _cvData) {
+            const i = cv.images.indexOf(dataUrl);
+            if (i !== -1) { cv.images[i] = url; break; }
+        }
+        renderColorVariantRows();
+    } catch (e) {
+        // Keep the base64 preview as a fallback; _migrateImagesBeforeSave retries on save.
+        console.warn('[cv-upload] storage upload failed, will retry on save:', e.message);
+    } finally {
+        _cvUploadsPending--;
+    }
+}
 
 /**
  * Extract N dominant colors from an image data-URL using canvas pixel sampling

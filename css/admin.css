@@ -1597,6 +1597,19 @@ img{max-width:100%;display:block;}
   backdrop-filter: blur(2px);
 }
 .cv-img-tile:hover .cv-img-del { opacity: 1; }
+/* Uploading state — dim the tile and show a spinner until the image reaches Storage */
+.cv-img-tile.cv-img-uploading .cv-img-preview { opacity: 0.5; filter: blur(1px); }
+.cv-img-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1rem;
+  background: rgba(0,0,0,0.28);
+  pointer-events: none;
+}
 .cv-add-tile {
   aspect-ratio: 1;
   border-radius: 8px;
