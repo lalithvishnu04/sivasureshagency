@@ -2325,11 +2325,17 @@ function initHeroDynamicImages() {
         if (!cat) return;
         const prodImg = slide.querySelector('.hero-prod-img img');
         if (!prodImg) return;
-        // Find a product with a real image for this category
-        const prod = productsData.find(p => p.category === cat && (p.mainImage || p.image));
-        if (prod) {
-            const img = prod.mainImage || (prod.colorVariants && prod.colorVariants[0] && prod.colorVariants[0].images && prod.colorVariants[0].images[0]) || prod.image;
-            if (img) prodImg.src = img;
+        // Use ONLY admin-uploaded (remote) images for hero slides.
+        const catProducts = productsData.filter(p => p.category === cat);
+        const heroImg = catProducts.flatMap(_collectAdminImages)[0] || '';
+        if (heroImg) {
+            prodImg.src = heroImg;
+            prodImg.style.display = '';
+        } else {
+            // If no admin image exists for this category yet, hide the image
+            // instead of showing bundled static assets.
+            prodImg.removeAttribute('src');
+            prodImg.style.display = 'none';
         }
     });
     // Update CliniFlex slide title with current brand name
