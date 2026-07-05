@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=48">
+    <link rel="stylesheet" href="css/admin.css?v=49">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -380,7 +380,7 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group"><label>Gender</label>
-                            <select id="pGender"><option value="">None</option><option value="male">Male</option><option value="female">Female</option></select>
+                            <select id="pGender"><option value="">None</option><option value="male">Male</option><option value="female">Female</option><option value="unisex">Unisex (Male &amp; Female)</option></select>
                         </div>
                         <div class="form-group"><label>Sleeve</label>
                             <select id="pSleeve"><option value="">None</option><option value="full">Full</option><option value="half">Half</option></select>
@@ -428,7 +428,7 @@
                         <textarea id="pReturns" rows="2" placeholder="e.g. 7-day returns on unused items..."></textarea>
                     </div>
                     <div class="form-group">
-                        <label style="display:flex;align-items:center;justify-content:space-between">Color Variants <button type="button" class="btn-secondary btn-sm" onclick="addColorVariant()"><i class="fas fa-plus"></i> Add Color</button></label>
+                        <div class="cv-label-row" style="display:flex;align-items:center;justify-content:space-between"><span>Color Variants</span> <button type="button" class="btn-secondary btn-sm" onclick="addColorVariant()"><i class="fas fa-plus"></i> Add Color</button></div>
                         <div id="cvContainer" style="display:flex;flex-direction:column;gap:12px;margin-top:8px;"></div>
                     </div>
                     <div class="form-group">
@@ -593,10 +593,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     
     <!-- Backend initialization -->
-    <script src="js/api.js?v=48" defer></script>
-    <script src="js/backend-config.js?v=48" defer></script>
-    <script src="js/db-init.js?v=48" defer></script>
-    <script defer src="js/admin.js?v=48"></script>
+    <script src="js/api.js?v=49" defer></script>
+    <script src="js/backend-config.js?v=49" defer></script>
+    <script src="js/db-init.js?v=49" defer></script>
+    <script defer src="js/admin.js?v=49"></script>
 </body>
 </html>
 

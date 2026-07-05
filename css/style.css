@@ -173,6 +173,23 @@ a.nav-cliniflex i.fa-award { font-size: 0.82em; color: #f59e0b; animation: cf-ba
 .mega-promo p  { font-size: 0.76rem; opacity: 0.82; margin-bottom: 0; flex: 1; position: relative; z-index: 1; }
 .mega-promo .btn { position: relative; z-index: 1; }
 
+/* Mega menu — image thumbnails per column (redesign) */
+.mega-col-thumb { display: block; height: 92px; border-radius: 13px; background-color: #0f172a; background-image: linear-gradient(150deg, #0d9488, #0f172a); background-size: cover; background-position: center 18%; margin-bottom: 13px; position: relative; overflow: hidden; box-shadow: 0 7px 20px rgba(15,23,42,0.16); transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s ease; }
+.mega-col-thumb::after { content: ''; position: absolute; inset: 0; background: linear-gradient(155deg, rgba(13,148,136,0.10) 0%, rgba(15,23,42,0.55) 100%); transition: opacity 0.4s ease; }
+.mega-col-thumb i { position: absolute; left: 9px; bottom: 9px; z-index: 1; width: 31px; height: 31px; border-radius: 9px; background: rgba(255,255,255,0.95); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.86rem; box-shadow: 0 3px 9px rgba(0,0,0,0.22); }
+.mega-col:hover .mega-col-thumb { transform: translateY(-3px) scale(1.02); box-shadow: 0 13px 28px rgba(15,23,42,0.24); }
+.mega-col:hover .mega-col-thumb::after { opacity: 0.78; }
+
+/* CliniFlex dropdown hero image (redesign) */
+.cliniflex-dropdown a.cliniflex-dd-hero { display: block; height: 98px; padding: 0; border-radius: 12px; background-color: #0f172a; background-image: linear-gradient(120deg, #0d9488, #0f172a); background-size: cover; background-position: center 22%; position: relative; overflow: hidden; margin-bottom: 8px; box-shadow: 0 7px 18px rgba(13,148,136,0.30); }
+.cliniflex-dropdown a.cliniflex-dd-hero:hover { background-color: transparent; padding: 0; transform: translateY(-2px); }
+.cliniflex-dropdown a.cliniflex-dd-hero::before { content: ''; display: none; }
+.cliniflex-dd-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(120deg, rgba(13,148,136,0.32), rgba(15,23,42,0.74)); }
+.cliniflex-dd-hero span { position: absolute; left: 13px; bottom: 10px; z-index: 1; color: #fff; display: flex; flex-direction: column; }
+.cliniflex-dd-hero strong { font-size: 0.92rem; font-weight: 800; line-height: 1.1; }
+.cliniflex-dd-hero small { font-size: 0.68rem; opacity: 0.86; margin-top: 2px; }
+@media (max-width: 1024px) { .mega-col-thumb, .cliniflex-dropdown a.cliniflex-dd-hero { display: none; } }
+
 /* ── 7. Search Overlay ────────────────────────────────────────── */
 .search-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.7); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: flex-start; justify-content: center; padding-top: 100px; opacity: 0; visibility: hidden; transition: var(--transition); }
 .search-overlay.active { opacity: 1; visibility: visible; }
@@ -268,7 +285,7 @@ a.nav-cliniflex i.fa-award { font-size: 0.82em; color: #f59e0b; animation: cf-ba
 /* CliniFlex signature tile */
 .category-tile--cliniflex { border: 2px solid var(--primary) !important; box-shadow: 0 4px 20px rgba(13,148,136,0.18) !important; position: relative; }
 @media (min-width: 580px) { .category-tile--cliniflex { grid-column: span 2; } .category-tile--cliniflex .cat-tile-img { height: 220px; } }
-.cat-tile-signature-badge { position: absolute; top: 10px; left: 10px; z-index: 2; background: var(--primary); color: #fff; padding: 4px 11px; border-radius: 50px; font-size: 0.67rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 10px rgba(13,148,136,0.4); }
+.cat-tile-signature-badge { position: absolute; top: 10px; left: 10px; z-index: 3; background: var(--primary); color: #fff; padding: 4px 11px; border-radius: 50px; font-size: 0.67rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 10px rgba(13,148,136,0.4); }
 .category-tile--cliniflex .cat-tile-body { background: linear-gradient(135deg, var(--navy) 0%, #1b4068 100%); }
 .category-tile--cliniflex .cat-tile-icon { background: rgba(13,148,136,0.2); color: #5eead4; }
 .category-tile--cliniflex .cat-tile-body h3 { color: #fff; }
@@ -278,9 +295,11 @@ a.nav-cliniflex i.fa-award { font-size: 0.82em; color: #f59e0b; animation: cf-ba
 /* New image-backed tiles */
 .category-tile { display: flex; flex-direction: column; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s ease, border-color 0.3s ease; background: var(--bg); text-decoration: none; }
 .category-tile:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); border-color: transparent; }
-.cat-tile-img { height: 185px; background-size: cover; background-position: center top; position: relative; transition: transform 0.6s cubic-bezier(0.16,1,0.3,1), filter 0.5s ease; will-change: transform; }
+.cat-tile-img { height: 185px; background-color: #0f172a; background-image: linear-gradient(150deg, #134e4a, #0f172a); background-size: cover; background-position: center top; position: relative; overflow: hidden; transition: transform 0.6s cubic-bezier(0.16,1,0.3,1), filter 0.5s ease; will-change: transform; }
 .category-tile:hover .cat-tile-img { transform: scale(1.09); filter: saturate(1.12) brightness(1.04); }
-.cat-tile-img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 40%, rgba(15,23,42,0.58) 100%); transition: opacity 0.5s ease; }
+/* Cross-fade layer for rotating category images */
+.cat-tile-img .cti-fade { position: absolute; inset: 0; background-size: cover; background-position: center top; opacity: 0; z-index: 1; transition: opacity 0.9s ease; }
+.cat-tile-img::after { content: ''; position: absolute; inset: 0; z-index: 2; background: linear-gradient(to bottom, transparent 40%, rgba(15,23,42,0.58) 100%); transition: opacity 0.5s ease; }
 .category-tile:hover .cat-tile-img::after { opacity: 0.72; }
 .cat-tile-body { padding: 17px 18px 19px; flex: 1; display: flex; flex-direction: column; }
 .cat-tile-icon { width: 36px; height: 36px; border-radius: 9px; background: var(--primary-bg); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.95rem; margin-bottom: 10px; }
@@ -326,6 +345,7 @@ a.nav-cliniflex i.fa-award { font-size: 0.82em; color: #f59e0b; animation: cf-ba
 .shop-card-tag { display: inline-block; font-size: 0.67rem; padding: 2px 8px; border-radius: 5px; margin-top: 5px; font-weight: 600; }
 .shop-card-tag.male   { background: #eff6ff; color: #1d4ed8; }
 .shop-card-tag.female { background: #fdf2f8; color: #9d174d; }
+.shop-card-tag.unisex { background: #f0fdfa; color: #0f766e; }
 .shop-card-body h4 { font-size: 0.89rem; margin: 8px 0 5px; font-weight: 600; line-height: 1.38; letter-spacing: -0.01em; }
 .shop-card-rating { display: flex; align-items: center; gap: 3px; margin-bottom: 8px; }
 .shop-card-rating i { color: var(--yellow); font-size: 0.7rem; }
@@ -525,8 +545,8 @@ body.modal-open { overflow: hidden; touch-action: none; }
 .pd-description { font-size: 0.86rem; color: var(--text-muted); line-height: 1.72; margin-bottom: 15px; }
 .pd-description p { margin: 0 0 8px; }
 .pd-description p:last-child { margin-bottom: 0; }
-.pd-description ul { margin: 6px 0 8px 20px; padding: 0; }
-.pd-description li { margin-bottom: 4px; }
+.pd-description ul { margin: 6px 0 8px; padding-left: 22px; list-style: disc; }
+.pd-description li { margin-bottom: 4px; display: list-item; }
 .pd-size-section h4, .pd-qty-section h4, .pd-color-section h4 { font-size: 0.86rem; font-weight: 700; margin-bottom: 8px; }
 .pd-required { color: var(--red); }
 .pd-sizes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
@@ -556,8 +576,8 @@ body.modal-open { overflow: hidden; touch-action: none; }
 .pd-accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; font-size: 0.88rem; color: var(--text-muted); line-height: 1.7; padding-bottom: 0; }
 .pd-accordion-body p { margin: 0 0 8px; }
 .pd-accordion-body p:last-child { margin-bottom: 0; }
-.pd-accordion-body ul { margin: 6px 0 8px 20px; padding: 0; }
-.pd-accordion-body li { margin-bottom: 4px; }
+.pd-accordion-body ul { margin: 6px 0 8px; padding-left: 22px; list-style: disc; }
+.pd-accordion-body li { margin-bottom: 4px; display: list-item; }
 .pd-accordion-item.open .pd-accordion-body { padding-bottom: 14px; }
 /* Responsive: stack on mobile */
 @media (max-width: 700px) { .product-detail-modal { overflow-y: auto; max-height: 92vh; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; } .pd-grid { grid-template-columns: 1fr; max-height: none; overflow: visible; } .pd-image-gallery { max-height: none; border-right: none; border-bottom: 1px solid var(--border); overflow: visible; } .pd-info { max-height: none; overflow: visible; } }
@@ -752,8 +772,14 @@ body.modal-open { overflow: hidden; touch-action: none; }
     .nav-links.active { display: flex; }
     .nav-links > li > a { font-size: 1.1rem; padding: 12px 22px; }
     .hamburger { display: flex; z-index: 10000; }
-    .mega-menu { position: static; width: 100%; transform: none; opacity: 1; visibility: visible; pointer-events: all; box-shadow: none; border: none; padding: 8px; display: none; }
-    .nav-dropdown:hover .mega-menu, .nav-dropdown.open .mega-menu { display: block; }
+    .mega-menu { position: static; width: 100%; max-width: 100%; transform: none; opacity: 1; visibility: visible; pointer-events: all; box-shadow: none; border: none; padding: 8px; display: none; }
+    .mega-menu::after { display: none; }
+    .nav-dropdown.open .mega-menu { display: block; }
+    /* CliniFlex dropdown becomes a tap accordion on mobile (matches Categories) */
+    .cliniflex-dropdown { position: static; width: 100%; min-width: 0; transform: none; opacity: 1; visibility: visible; pointer-events: all; box-shadow: none; border: none; padding: 8px; margin-top: 6px; display: none; }
+    .cliniflex-dropdown::after { display: none; }
+    .nav-cliniflex-dropdown.open .cliniflex-dropdown { display: block; }
+    .nav-dropdown.open > a .nav-arrow, .nav-cliniflex-dropdown.open > a .nav-arrow { transform: rotate(180deg); }
     .mega-menu-inner { grid-template-columns: 1fr 1fr; gap: 11px; }
     .mega-cta { display: none; }
     .nav-cta { display: none !important; }
@@ -1978,6 +2004,32 @@ section.section-alt { background: var(--bg-off); }
 @keyframes ss-float {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-10px); }
+}
+/* CliniFlex spotlight visual — shows admin-uploaded product image */
+.ss-visual-img {
+    position: relative;
+    width: 100%; max-width: 300px;
+    aspect-ratio: 4 / 5;
+    border-radius: 26px;
+    margin: 0 auto 26px;
+    background: linear-gradient(135deg, #0d9488, #14b8a6);
+    background-size: cover; background-position: center;
+    box-shadow: 0 20px 50px rgba(13,148,136,0.45);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    animation: ss-float 4.5s ease-in-out infinite;
+}
+.ss-visual-img i { font-size: 3rem; color: rgba(255,255,255,0.92); }
+.ss-visual-img.has-img i { display: none; }
+.ss-visual-img.has-img::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(15,23,42,0.62) 0%, transparent 55%);
+}
+.ss-visual-label {
+    position: absolute; left: 0; right: 0; bottom: 12px; z-index: 1;
+    text-align: center;
+    font-size: 0.62rem; font-weight: 800;
+    color: #fff; letter-spacing: 0.12em; text-transform: uppercase;
 }
 .ss-stats {
     display: flex; gap: 22px;

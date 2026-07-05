@@ -331,6 +331,8 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
 
     function _rerender() {
         const page = document.body && document.body.dataset.page;
+        // Mega menu exists on every page — refresh its admin-image thumbnails on any product update
+        if (typeof initMegaMenuImages === 'function') initMegaMenuImages();
         if (page === 'categories') {
             // Read active filter button from DOM; fall back to URL param (fixes race before initCategoriesPage runs)
             const activeBtn = document.querySelector('.filter-btn.active');
@@ -641,6 +643,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== Common Init (all pages) =====
 function initCommon() {
+    // Populate mega-menu thumbnails from admin-uploaded images (refreshed again after product sync)
+    if (typeof initMegaMenuImages === 'function') initMegaMenuImages();
     // Apply scrub brand name from localStorage to all pages
     applyScrubBrandName();
     // Fix nav active state based on current URL (CliniFlex highlighted only on scrub-suits)
@@ -673,8 +677,35 @@ function initCommon() {
     const hamburger = document.getElementById('hamburger');
     const navLinks = document.getElementById('navLinks');
     if (hamburger) {
-        hamburger.addEventListener('click', () => { hamburger.classList.toggle('active'); navLinks.classList.toggle('active'); });
-        navLinks.querySelectorAll('a').forEach(link => { link.addEventListener('click', () => { hamburger.classList.remove('active'); navLinks.classList.remove('active'); }); });
+        const isMobileNav = () => window.matchMedia('(max-width: 1024px)').matches;
+        const clearOpen = () => navLinks.querySelectorAll('.nav-dropdown.open, .nav-cliniflex-dropdown.open').forEach(o => o.classList.remove('open'));
+        const closeMobileNav = () => { hamburger.classList.remove('active'); navLinks.classList.remove('active'); clearOpen(); };
+        hamburger.addEventListener('click', () => {
+            const willOpen = !navLinks.classList.contains('active');
+            hamburger.classList.toggle('active', willOpen);
+            navLinks.classList.toggle('active', willOpen);
+            if (!willOpen) clearOpen();
+        });
+        // On mobile the top-level dropdown links act as expand/collapse accordions instead of navigating
+        navLinks.querySelectorAll('.nav-dropdown > a, .nav-cliniflex-dropdown > a').forEach(a => {
+            a.addEventListener('click', (e) => {
+                if (!isMobileNav()) return; // desktop keeps hover + normal navigation
+                e.preventDefault();
+                const li = a.parentElement;
+                const wasOpen = li.classList.contains('open');
+                navLinks.querySelectorAll('.nav-dropdown.open, .nav-cliniflex-dropdown.open').forEach(o => { if (o !== li) o.classList.remove('open'); });
+                li.classList.toggle('open', !wasOpen);
+            });
+        });
+        // Real navigation links close the whole menu; accordion toggles keep it open
+        navLinks.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                const li = link.closest('.nav-dropdown, .nav-cliniflex-dropdown');
+                const isToggle = li && link.parentElement === li && isMobileNav();
+                if (isToggle) return;
+                closeMobileNav();
+            });
+        });
     }
 
     // Search
@@ -877,7 +908,19 @@ function initCategoriesPage() {
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
             displayedProducts = 12;
-            _syncWindowState(); renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
+            // Selecting a top-level category clears any gender/sleeve sub-filter
+            window._currentGender = null;
+            window._currentSleeve = null;
+            // Keep the address bar in sync so a refresh/share shows the right category
+            try {
+                const url = new URL(window.location.href);
+                if (currentFilter && currentFilter !== 'all') url.searchParams.set('cat', currentFilter);
+                else url.searchParams.delete('cat');
+                url.searchParams.delete('gender');
+                url.searchParams.delete('sleeve');
+                history.replaceState({}, '', url);
+            } catch (e) { /* ignore */ }
+            _syncWindowState(); renderProducts(currentFilter, displayedProducts, null, null, currentSearch);
         });
     });
 
@@ -890,14 +933,14 @@ function initCategoriesPage() {
             else if (val === 'price-high') productsData.sort((a, b) => b.price - a.price);
             else if (val === 'newest') productsData.sort((a, b) => b.id - a.id);
             else productsData.sort((a, b) => b.reviews - a.reviews);
-            _syncWindowState(); renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
+            _syncWindowState(); renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, currentSearch);
         });
     }
 
     // Load more
     const loadMoreBtn = document.getElementById('loadMoreBtn');
     if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', () => { displayedProducts += 12; _syncWindowState(); renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch); });
+        loadMoreBtn.addEventListener('click', () => { displayedProducts += 12; _syncWindowState(); renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, currentSearch); });
     }
 
     // Store gender/sleeve for use by other callers
@@ -966,7 +1009,7 @@ function buildProductCard(p) {
         </div>
         <div class="shop-card-body" onclick="openProductDetail(${p.id})">
             <span class="shop-card-category">${p.category.replace(/-/g, ' ')}</span>
-            ${p.gender ? `<span class="shop-card-tag ${p.gender}">${p.gender === 'male' ? '<i class="fas fa-mars"></i> Gents' : '<i class="fas fa-venus"></i> Ladies'}${p.sleeve ? ' • ' + p.sleeve.charAt(0).toUpperCase() + p.sleeve.slice(1) + ' Sleeve' : ''}</span>` : ''}
+            ${p.gender ? `<span class="shop-card-tag ${p.gender}">${p.gender === 'male' ? '<i class="fas fa-mars"></i> Gents' : p.gender === 'unisex' ? '<i class="fas fa-venus-mars"></i> Unisex' : '<i class="fas fa-venus"></i> Ladies'}${p.sleeve ? ' • ' + p.sleeve.charAt(0).toUpperCase() + p.sleeve.slice(1) + ' Sleeve' : ''}</span>` : ''}
             <h4 class="shop-card-name" data-base-name="${p.name}">${p.name}${colors && colors[0] ? ' \u2013 ' + colors[0].name : ''}</h4>
             ${colorSwatchesHtml}
             <div class="shop-card-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}${p.rating % 1 ? '<i class="fas fa-star-half-alt"></i>' : ''}<span>(${p.reviews})</span></div>
@@ -981,7 +1024,7 @@ function buildProductCard(p) {
 
 function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null, searchQuery = '') {
     let filtered = filter === 'all' ? [...productsData] : productsData.filter(p => p.category === filter);
-    if (gender) filtered = filtered.filter(p => p.gender === gender);
+    if (gender) filtered = filtered.filter(p => p.gender === gender || p.gender === 'unisex');
     if (sleeve) filtered = filtered.filter(p => p.sleeve === sleeve);
     if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -1027,6 +1070,13 @@ function filterToScrubs() {
     displayedProducts = 12;
     window._currentGender = null;
     window._currentSleeve = null;
+    try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('cat', 'scrub-suits');
+        url.searchParams.delete('gender');
+        url.searchParams.delete('sleeve');
+        history.replaceState({}, '', url);
+    } catch (e) { /* ignore */ }
     _syncWindowState();
     const searchInput = document.getElementById('productSearchInput');
     if (searchInput) searchInput.value = '';
@@ -2191,34 +2241,74 @@ window.applyScrubBrandName = applyScrubBrandName;
 // ===== Category Tile Auto-Scroll =====
 // Pools images per category from live productsData and cycles them on .cat-tile-img[data-cat] elements.
 const _tileScrollTimers = {};
-function initCategoryTileScroll() {
-    // Build image pool per category
-    const catImages = {};
-    productsData.forEach(p => {
-        const img = p.mainImage || (p.colorVariants && p.colorVariants[0] && p.colorVariants[0].images && p.colorVariants[0].images[0]) || p.image;
-        if (!img || img.startsWith('blob:')) return;
-        if (!catImages[p.category]) catImages[p.category] = [];
-        if (!catImages[p.category].includes(img)) catImages[p.category].push(img);
+// Collect ONLY admin-uploaded (remote) images for a product — never bundled repo images.
+function _collectAdminImages(p) {
+    const out = [];
+    const add = (u) => { if (u && /^https?:\/\//i.test(u) && !out.includes(u)) out.push(u); };
+    add(p.mainImage);
+    (p.colorVariants || []).forEach(cv => (cv.images || []).forEach(add));
+    add(p.image);
+    return out;
+}
+
+// Build a per-category pool of admin-uploaded images (for tiles + mega menu).
+function _buildCatImagePool() {
+    const pool = {};
+    (window.productsData || productsData || []).forEach(p => {
+        const imgs = _collectAdminImages(p);
+        if (!imgs.length) return;
+        if (!pool[p.category]) pool[p.category] = [];
+        imgs.forEach(im => { if (!pool[p.category].includes(im)) pool[p.category].push(im); });
     });
+    return pool;
+}
+
+function initCategoryTileScroll() {
+    // Use only admin-uploaded product images, transitioning through all of them
+    const catImages = _buildCatImagePool();
 
     document.querySelectorAll('.cat-tile-img[data-cat]').forEach(tile => {
         const cat = tile.dataset.cat;
         const imgs = catImages[cat];
-        if (!imgs || !imgs.length) return;
-        // Set first product image immediately (overrides hardcoded)
+        if (_tileScrollTimers[cat]) { clearInterval(_tileScrollTimers[cat]); delete _tileScrollTimers[cat]; }
+        // No admin images for this category → show the CSS gradient placeholder
+        if (!imgs || !imgs.length) { tile.style.backgroundImage = ''; tile.classList.remove('has-img'); return; }
         tile.style.backgroundImage = `url('${imgs[0]}')`;
+        tile.classList.add('has-img');
         if (imgs.length < 2) return;
-        // Clear previous timer if re-initializing
-        if (_tileScrollTimers[cat]) clearInterval(_tileScrollTimers[cat]);
+        // Cross-fade layer sits above the base bg and below the gradient overlay
+        let fade = tile.querySelector('.cti-fade');
+        if (!fade) { fade = document.createElement('div'); fade.className = 'cti-fade'; tile.appendChild(fade); }
         let idx = 0;
         _tileScrollTimers[cat] = setInterval(() => {
-            idx = (idx + 1) % imgs.length;
-            tile.style.transition = 'background-image 0.6s ease';
-            tile.style.backgroundImage = `url('${imgs[idx]}')`;
-        }, 3200);
+            const next = (idx + 1) % imgs.length;
+            const pre = new Image(); pre.src = imgs[next]; // preload for a smooth fade
+            fade.style.backgroundImage = `url('${imgs[next]}')`;
+            requestAnimationFrame(() => { fade.style.opacity = '1'; });
+            setTimeout(() => {
+                tile.style.backgroundImage = `url('${imgs[next]}')`;
+                fade.style.opacity = '0';
+                idx = next;
+            }, 900);
+        }, 4000);
     });
 }
 window.initCategoryTileScroll = initCategoryTileScroll;
+
+// Populate mega-menu thumbnails + CliniFlex hero with admin-uploaded product images only.
+function initMegaMenuImages() {
+    const pool = _buildCatImagePool();
+    const fallback = { 'hospital-linen': ['hospital-linen', 'bedsheets', 'hotel-linen'], 'bedsheets': ['bedsheets', 'hospital-linen'] };
+    document.querySelectorAll('.mega-col-thumb[data-cat], .cliniflex-dd-hero[data-cat], .ss-visual-img[data-cat]').forEach(el => {
+        const cat = el.dataset.cat;
+        const cats = [cat].concat(fallback[cat] || []);
+        let imgs = null;
+        for (const c of cats) { if (pool[c] && pool[c].length) { imgs = pool[c]; break; } }
+        if (imgs && imgs.length) { el.style.backgroundImage = `url('${imgs[0]}')`; el.classList.add('has-img'); }
+        else { el.style.backgroundImage = ''; el.classList.remove('has-img'); }
+    });
+}
+window.initMegaMenuImages = initMegaMenuImages;
 
 // ===== Hero Dynamic Images =====
 // Updates hero slide product images with actual product mainImage/image after sync.

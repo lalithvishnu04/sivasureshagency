@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=48">
+    <link rel="stylesheet" href="css/style.css?v=49">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">    <link rel="apple-touch-icon" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
     <meta name="mobile-web-app-capable" content="yes">
@@ -58,7 +58,7 @@
                     <li class="nav-dropdown nav-cliniflex-dropdown">
                         <a href="categories.html?cat=scrub-suits" class="nav-cliniflex"><i class="fas fa-award"></i> <span class="scrub-brand-text">CliniFlex™</span> Scrubs <i class="fas fa-chevron-down nav-arrow"></i></a>
                         <div class="cliniflex-dropdown">
-                            <span class="cliniflex-dropdown-badge"><i class="fas fa-award"></i> ★ Signature</span>
+                            <a href="categories.html?cat=scrub-suits" class="cliniflex-dd-hero" data-cat="scrub-suits"><span><strong>CliniFlex™ Scrubs</strong><small>Premium medical scrubs</small></span></a><span class="cliniflex-dropdown-badge"><i class="fas fa-award"></i> ★ Signature</span>
                             <a href="categories.html?cat=scrub-suits&gender=male">Gents Scrub Suits</a>
                             <a href="categories.html?cat=scrub-suits&gender=female">Ladies Scrub Suits</a>
                             <a href="categories.html?cat=scrub-suits">All Scrub Suits</a>
@@ -69,7 +69,7 @@
                         <div class="mega-menu">
                             <div class="mega-menu-inner">
                                 <div class="mega-col">
-                                    <div class="mega-cat-icon" style="background:var(--primary)"><i class="fas fa-user-md"></i></div>
+                                    <a href="categories.html?cat=doctor-uniform" class="mega-col-thumb" data-cat="doctor-uniform"><i class="fas fa-user-md"></i></a>
                                     <h4><a href="categories.html?cat=doctor-uniform">Doctor Uniform</a></h4>
                                     <ul>
                                         <li><a href="categories.html?cat=doctor-uniform&gender=male" style="font-size:0.78rem;font-weight:700;color:var(--primary);padding:4px 0;display:block;">Male Doctor Uniform</a></li>
@@ -81,7 +81,7 @@
                                     </ul>
                                 </div>
                                 <div class="mega-col">
-                                    <div class="mega-cat-icon" style="background:var(--navy)"><i class="fas fa-tshirt"></i></div>
+                                    <a href="categories.html?cat=staff-uniform" class="mega-col-thumb" data-cat="staff-uniform"><i class="fas fa-tshirt"></i></a>
                                     <h4><a href="categories.html?cat=staff-uniform">Staff Uniform</a></h4>
                                     <ul>
                                         <li><a href="categories.html?cat=staff-uniform&gender=male">Male Staff Uniform</a></li>
@@ -90,7 +90,7 @@
                                     </ul>
                                 </div>
                                 <div class="mega-col">
-                                    <div class="mega-cat-icon" style="background:#6366f1"><i class="fas fa-bed"></i></div>
+                                    <a href="categories.html?cat=hospital-linen" class="mega-col-thumb" data-cat="hospital-linen"><i class="fas fa-bed"></i></a>
                                     <h4><a href="categories.html?cat=hospital-linen">Linen &amp; Bedsheets</a></h4>
                                     <ul>
                                         <li><a href="categories.html?cat=bedsheets">Bedsheets & Pillow Covers</a></li>
@@ -322,7 +322,7 @@
             </div>
             <div class="categories-grid reveal-stagger">
                 <a href="categories.html?cat=scrub-suits" class="category-tile category-tile--cliniflex">
-                    <div class="cat-tile-img" data-cat="scrub-suits" style="background-image:url('images/Images/OT%20Nighty.jpg')">
+                    <div class="cat-tile-img" data-cat="scrub-suits">
                         <span class="cat-tile-signature-badge"><i class="fas fa-award"></i> ★ Signature Line</span>
                     </div>
                     <div class="cat-tile-body">
@@ -333,7 +333,7 @@
                     </div>
                 </a>
                 <a href="categories.html?cat=doctor-uniform" class="category-tile">
-                    <div class="cat-tile-img" data-cat="doctor-uniform" style="background-image:url('images/Images/Male%20Full%20Sleeve.jpg')"></div>
+                    <div class="cat-tile-img" data-cat="doctor-uniform"></div>
                     <div class="cat-tile-body">
                         <div class="cat-tile-icon"><i class="fas fa-user-md"></i></div>
                         <h3>Doctor Uniform</h3>
@@ -342,7 +342,7 @@
                     </div>
                 </a>
                 <a href="categories.html?cat=staff-uniform" class="category-tile">
-                    <div class="cat-tile-img" data-cat="staff-uniform" style="background-image:url('images/Images/Male%20Uniform%20(Blue%20Style).jpg')"></div>
+                    <div class="cat-tile-img" data-cat="staff-uniform"></div>
                     <div class="cat-tile-body">
                         <div class="cat-tile-icon"><i class="fas fa-tshirt"></i></div>
                         <h3>Staff Uniform</h3>
@@ -351,7 +351,7 @@
                     </div>
                 </a>
                 <a href="categories.html?cat=hospital-linen" class="category-tile">
-                    <div class="cat-tile-img" data-cat="hospital-linen" style="background-image:url('images/Images/Surgeon%20Apron.jpg')"></div>
+                    <div class="cat-tile-img" data-cat="hospital-linen"></div>
                     <div class="cat-tile-body">
                         <div class="cat-tile-icon"><i class="fas fa-notes-medical"></i></div>
                         <h3>Hospital Linen</h3>
@@ -360,7 +360,7 @@
                     </div>
                 </a>
                 <a href="categories.html?cat=bedsheets" class="category-tile">
-                    <div class="cat-tile-img" data-cat="bedsheets" style="background-image:url('images/Images/Stripped%20Bedspread%20and%20Pillow%20Cover.jpg')"></div>
+                    <div class="cat-tile-img" data-cat="bedsheets"></div>
                     <div class="cat-tile-body">
                         <div class="cat-tile-icon"><i class="fas fa-bed"></i></div>
                         <h3>Bedsheets</h3>
@@ -369,7 +369,7 @@
                     </div>
                 </a>
                 <a href="categories.html?cat=hotel-linen" class="category-tile">
-                    <div class="cat-tile-img" data-cat="hotel-linen" style="background-image:url('images/Images/Hospital%20Towel.jpg')"></div>
+                    <div class="cat-tile-img" data-cat="hotel-linen"></div>
                     <div class="cat-tile-body">
                         <div class="cat-tile-icon"><i class="fas fa-hotel"></i></div>
                         <h3>Hotel Linen</h3>
@@ -624,15 +624,15 @@
 
     <!-- Accessibility: ARIA live region for toasts -->
     <div id="ariaToast" aria-live="polite" aria-atomic="true" class="sr-only"></div>
-    <script src="js/script.js?v=48" defer></script>
+    <script src="js/script.js?v=49" defer></script>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     
     <!-- Backend initialization -->
-    <script src="js/api.js?v=48" defer></script>
-    <script src="js/backend-config.js?v=48" defer></script>
-    <script src="js/db-init.js?v=48" defer></script>
-    <script defer src="js/db-integration.js?v=48"></script>
+    <script src="js/api.js?v=49" defer></script>
+    <script src="js/backend-config.js?v=49" defer></script>
+    <script src="js/db-init.js?v=49" defer></script>
+    <script defer src="js/db-integration.js?v=49"></script>
     <!-- Mobile Bottom Navigation -->
     <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
         <a href="index.html" class="mbn-item active"><i class="fas fa-home"></i><span>Home</span></a>
