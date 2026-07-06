@@ -1496,49 +1496,76 @@ window.loadCategories = loadCategories;
 function _parseCategoryDoc(d) {
     if (!d) return null;
     if (Array.isArray(d.list) && d.list.length) {
-        return d.list.filter(c => c && c.slug).map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature }));
+        return d.list.filter(c => c && c.slug).map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature, group: c.group || '' }));
     }
     if (typeof d.name === 'string' && d.name.trim().startsWith('[')) {
         try {
             const arr = JSON.parse(d.name);
-            if (Array.isArray(arr)) return arr.filter(c => c && c.slug).map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature }));
+            if (Array.isArray(arr)) return arr.filter(c => c && c.slug).map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature, group: c.group || '' }));
         } catch (e) { /* ignore */ }
     }
     return null;
 }
 window._parseCategoryDoc = _parseCategoryDoc;
 
+// Navigation groups a category can be placed under (must match the site's
+// mega-menu column data-cat values / CliniFlex dropdown).
+const ADMIN_CAT_GROUPS = [
+    { value: '', label: 'Standalone (chip only)' },
+    { value: 'scrub-suits', label: 'Under CliniFlex\u2122 Scrubs' },
+    { value: 'doctor-uniform', label: 'Under Doctor Uniform' },
+    { value: 'staff-uniform', label: 'Under Staff Uniform' },
+    { value: 'hospital-linen', label: 'Under Linen & Bedsheets' },
+];
+function _catGroupLabel(v) {
+    const g = ADMIN_CAT_GROUPS.find(x => x.value === (v || ''));
+    return g ? g.label : (v || 'Standalone');
+}
+
 function renderCategoriesList() {
     const wrap = document.getElementById('categoriesList');
     if (!wrap) return;
     const list = _adminCategories || _readCachedCategories();
     if (!list.length) { wrap.innerHTML = '<p class="empty">No categories yet. Add one above.</p>'; return; }
-    wrap.innerHTML = list.map((c, i) => `
+    wrap.innerHTML = list.map((c, i) => {
+        const isBuiltIn = ['scrub-suits','doctor-uniform','staff-uniform','bedsheets','hospital-linen','hotel-linen'].includes(c.slug);
+        const groupSelect = isBuiltIn
+            ? `<span class="cat-manage-group" title="Built-in category placement"><i class="fas fa-sitemap"></i> ${_escHtmlCat(_catGroupLabel(c.group))}</span>`
+            : `<label class="cat-group-toggle" title="Where this category appears in the site menu"><i class="fas fa-sitemap"></i>
+                    <select onchange="setCategoryGroup(${i}, this.value)">
+                        ${ADMIN_CAT_GROUPS.map(g => `<option value="${g.value}"${(c.group||'')===g.value ? ' selected' : ''}>${_escHtmlCat(g.label)}</option>`).join('')}
+                    </select>
+               </label>`;
+        return `
         <div class="cat-manage-item${c.signature ? ' is-signature' : ''}">
             <span class="cat-manage-name">${c.signature ? '<i class="fas fa-star"></i> ' : ''}${_escHtmlCat(c.label)}</span>
             <code class="cat-manage-slug">${_escHtmlCat(c.slug)}</code>
             <div class="cat-manage-actions">
+                ${groupSelect}
                 <label class="cat-sig-toggle" title="Signature (highlighted) category">
                     <input type="checkbox" ${c.signature ? 'checked' : ''} onchange="toggleCategorySignature(${i}, this.checked)"> Signature
                 </label>
                 <button type="button" class="cat-del-btn" title="Remove category" onclick="deleteCategory(${i})"><i class="fas fa-trash"></i></button>
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 }
 window.renderCategoriesList = renderCategoriesList;
 
 function addCategory() {
     const labelEl = document.getElementById('newCatLabel');
     const sigEl = document.getElementById('newCatSignature');
+    const groupEl = document.getElementById('newCatGroup');
     const label = (labelEl?.value || '').trim();
     if (!label) { showAdminToast('Enter a category name', 'error'); return; }
     const slug = _slugify(label);
     if (!slug) { showAdminToast('Category name must contain letters or numbers', 'error'); return; }
     if (!_adminCategories) _adminCategories = _readCachedCategories();
     if (_adminCategories.some(c => c.slug === slug)) { showAdminToast('That category already exists', 'error'); return; }
-    _adminCategories.push({ slug, label, signature: !!(sigEl && sigEl.checked) });
+    _adminCategories.push({ slug, label, signature: !!(sigEl && sigEl.checked), group: (groupEl && groupEl.value) || '' });
     if (labelEl) labelEl.value = '';
     if (sigEl) sigEl.checked = false;
+    if (groupEl) groupEl.value = '';
     renderCategoriesList();
     showAdminToast('Added "' + label + '". Click Save & Publish to go live.', 'info');
 }
@@ -1562,9 +1589,16 @@ function toggleCategorySignature(index, checked) {
 }
 window.toggleCategorySignature = toggleCategorySignature;
 
+function setCategoryGroup(index, value) {
+    if (!_adminCategories) _adminCategories = _readCachedCategories();
+    if (_adminCategories[index]) _adminCategories[index].group = value || '';
+    // no full re-render needed (keeps the open <select>), value is stored
+}
+window.setCategoryGroup = setCategoryGroup;
+
 async function saveCategories() {
     if (!_adminCategories) _adminCategories = _readCachedCategories();
-    const list = _adminCategories.map(c => ({ slug: c.slug, label: c.label, signature: !!c.signature }));
+    const list = _adminCategories.map(c => ({ slug: c.slug, label: c.label, signature: !!c.signature, group: c.group || '' }));
     if (!list.length) { showAdminToast('Add at least one category before saving', 'error'); return; }
     localStorage.setItem(ADMIN_CATS_CACHE_KEY, JSON.stringify(list));
     _markProductsDirty();

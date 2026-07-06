@@ -1042,6 +1042,11 @@ img{max-width:100%;display:block;}
 .cat-manage-actions { display: flex; align-items: center; gap: 14px; }
 .cat-sig-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.76rem; font-weight: 600; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
 .cat-sig-toggle input { width: auto; cursor: pointer; }
+.cat-group-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--text-muted); }
+.cat-group-toggle i { color: var(--primary); }
+.cat-group-toggle select { font-size: 0.76rem; padding: 5px 8px; border: 1px solid var(--border-light); border-radius: 7px; background: var(--surface-1); color: var(--text); cursor: pointer; max-width: 190px; }
+.cat-manage-group { display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: var(--text-muted); white-space: nowrap; }
+.cat-manage-group i { color: var(--primary); }
 .cat-del-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--surface-1); color: #ef4444; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s ease; }
 .cat-del-btn:hover { background: #fee2e2; border-color: #fca5a5; }
 @media (max-width: 640px) {

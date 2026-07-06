@@ -313,6 +313,55 @@ function renderShopFilters() {
 }
 window.renderShopFilters = renderShopFilters;
 
+// The nav mega-menu / CliniFlex dropdown are authored in HTML with fixed group
+// columns. Admin-added categories carry a `group` (the data-cat of the column they
+// belong under) so we can inject them into the site navigation in the right place.
+// Built-in slugs are already present in the HTML and must not be duplicated.
+const DEFAULT_CATEGORY_SLUGS = new Set(['scrub-suits', 'doctor-uniform', 'staff-uniform', 'bedsheets', 'hospital-linen', 'hotel-linen']);
+
+function initCustomCategoryNav() {
+    let list;
+    try { list = getCategoryList(); } catch (e) { return; }
+    if (!Array.isArray(list)) return;
+    // Idempotent: remove any previously-injected links before re-injecting.
+    document.querySelectorAll('[data-custom-cat]').forEach(el => el.remove());
+    list.forEach(c => {
+        if (!c || !c.slug || DEFAULT_CATEGORY_SLUGS.has(c.slug)) return;
+        const group = c.group || '';
+        const href = 'categories.html?cat=' + encodeURIComponent(c.slug);
+        const label = escapeRichText(c.label || c.slug);
+        if (group === 'scrub-suits') {
+            // Signature group → CliniFlex dropdown
+            document.querySelectorAll('.cliniflex-dropdown').forEach(dd => {
+                const a = document.createElement('a');
+                a.href = href; a.setAttribute('data-custom-cat', c.slug); a.innerHTML = label;
+                dd.appendChild(a);
+            });
+            return;
+        }
+        // Otherwise inject into the mega-menu column whose thumb matches the group.
+        document.querySelectorAll('.mega-menu').forEach(mm => {
+            let ul = null;
+            if (group) {
+                const thumb = mm.querySelector('.mega-col-thumb[data-cat="' + group + '"]');
+                if (thumb) { const col = thumb.closest('.mega-col'); if (col) ul = col.querySelector('ul'); }
+            }
+            if (!ul) {
+                // Standalone / unknown group → last content column
+                const cols = mm.querySelectorAll('.mega-col:not(.mega-cta)');
+                if (cols.length) ul = cols[cols.length - 1].querySelector('ul');
+            }
+            if (ul) {
+                const li = document.createElement('li');
+                li.setAttribute('data-custom-cat', c.slug);
+                li.innerHTML = '<a href="' + href + '">' + label + '</a>';
+                ul.appendChild(li);
+            }
+        });
+    });
+}
+window.initCustomCategoryNav = initCustomCategoryNav;
+
 // Load categories from Supabase settings/categories and refresh chips if changed.
 (function _initCategorySync() {
     // The live settings table has no jsonb `list` column, so the category list is
@@ -333,12 +382,13 @@ window.renderShopFilters = renderShopFilters;
             if (doc && doc.exists) {
                 const list = _parseDoc(doc.data());
                 if (list && list.length) {
-                    const normalized = list.map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature }));
+                    const normalized = list.map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature, group: c.group || '' }));
                     const prev = localStorage.getItem(_CATS_CACHE_KEY);
                     const next = JSON.stringify(normalized);
                     if (prev !== next) {
                         localStorage.setItem(_CATS_CACHE_KEY, next);
                         if (typeof renderShopFilters === 'function') renderShopFilters();
+                        if (typeof initCustomCategoryNav === 'function') initCustomCategoryNav();
                     }
                 }
             }
@@ -735,6 +785,8 @@ document.addEventListener('DOMContentLoaded', () => {
 function initCommon() {
     // Populate mega-menu thumbnails from admin-uploaded images (refreshed again after product sync)
     if (typeof initMegaMenuImages === 'function') initMegaMenuImages();
+    // Inject admin-added categories into the nav mega-menu / CliniFlex dropdown
+    if (typeof initCustomCategoryNav === 'function') initCustomCategoryNav();
     // Apply scrub brand name from localStorage to all pages
     applyScrubBrandName();
     // Fix nav active state based on current URL (CliniFlex highlighted only on scrub-suits)

@@ -780,11 +780,20 @@ body.modal-open { overflow: hidden; touch-action: none; }
     .mega-menu { position: static; width: 100%; max-width: 100%; transform: none; opacity: 1; visibility: visible; pointer-events: all; box-shadow: none; border: none; padding: 6px 8px 10px; display: none; background: var(--bg-off, #f6f8fb); border-radius: 12px; margin-top: 4px; }
     .mega-menu::after { display: none; }
     .nav-dropdown.open .mega-menu { display: block; }
+    /* Neutralise the desktop hover transform on touch devices: a tap leaves a
+       sticky :hover state whose translateX(-50%) shifts the now-static mega-menu
+       off-screen (the "only shows after opening the chat" bug). The :hover
+       selector below matches the desktop rule's specificity and, coming later,
+       wins — forcing normal in-flow positioning on mobile/tablet. */
+    .nav-dropdown:hover .mega-menu,
+    .nav-dropdown.open .mega-menu { position: static; left: auto; right: auto; transform: none; }
     /* CliniFlex dropdown becomes a tap accordion on mobile (matches Categories) */
     .cliniflex-dropdown { position: static; width: 100%; min-width: 0; transform: none; opacity: 1; visibility: visible; pointer-events: all; box-shadow: none; border: none; padding: 6px 8px 10px; margin-top: 4px; display: none; background: var(--bg-off, #f6f8fb); border-radius: 12px; }
     .cliniflex-dropdown::after { display: none; }
     .cliniflex-dropdown a { font-size: 0.98rem; padding: 12px 14px; }
     .nav-cliniflex-dropdown.open .cliniflex-dropdown { display: block; }
+    .nav-cliniflex-dropdown:hover .cliniflex-dropdown,
+    .nav-cliniflex-dropdown.open .cliniflex-dropdown { position: static; left: auto; right: auto; transform: none; }
     .nav-dropdown.open > a .nav-arrow, .nav-cliniflex-dropdown.open > a .nav-arrow { transform: rotate(180deg); }
     /* Single column so every option fits within the phone/tablet screen width */
     .mega-menu-inner { grid-template-columns: 1fr; gap: 6px; }
@@ -1240,12 +1249,16 @@ body.modal-open { overflow: hidden; touch-action: none; }
         height: calc(100vh - 12px);
         border-radius: 20px 0 0 0;
         border-left: 1px solid var(--border);
-        background: rgba(255,255,255,0.97);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        /* Opaque background (no backdrop-filter): a translucent + blurred panel
+           creates a compositing layer that fails to repaint newly-shown accordion
+           content on iOS Safari, so expanded categories appeared blank/off-screen
+           until an unrelated repaint (e.g. opening the chat) was triggered. */
+        background: #fff;
         justify-content: flex-start;
         align-items: stretch;
-        padding: 88px 16px 24px;
+        /* Extra bottom padding so the last items (Services, Contact) can scroll
+           clear of the fixed mobile bottom nav bar instead of being hidden by it. */
+        padding: 88px 16px calc(84px + env(safe-area-inset-bottom, 0px));
         gap: 8px;
         transform: translateX(105%);
         transition: transform 0.3s ease;

@@ -238,7 +238,17 @@ function _applyStockMaps(outMap, lowMap, outVariantMap, lowVariantMap) {
         });
     }
     if (typeof window.renderProducts === 'function') {
-        window.renderProducts(window.currentFilter || 'all', window.displayedProducts || 12, window._currentGender, window._currentSleeve);
+        // Use the mirrored app state (window._current*) — window.currentFilter is
+        // never set, so the old fallback to 'all' wiped the active category filter
+        // (e.g. CliniFlex Gents wrongly showed doctor/staff products instead of the
+        // empty state).
+        window.renderProducts(
+            window._currentFilter || 'all',
+            window._currentCount || 12,
+            window._currentGender,
+            window._currentSleeve,
+            window._currentSearch || ''
+        );
     }
     console.log('[stock] Applied — out:', Object.keys(outMap).length, 'low:', Object.keys(lowMap).length);
 }

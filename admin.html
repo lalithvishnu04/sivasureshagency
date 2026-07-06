@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=51">
+    <link rel="stylesheet" href="css/admin.css?v=52">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -238,7 +238,7 @@
                         <button class="btn-primary" onclick="saveCategories()"><i class="fas fa-save"></i> Save &amp; Publish</button>
                     </div>
                 </div>
-                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>Live on the site:</strong> Categories you add here appear as shop filter chips on the Categories page and in the product category dropdown. Mark one as <em>Signature</em> to give it the highlighted CliniFlex-style chip. Click <strong>Save &amp; Publish</strong> to push changes to the live site.</div></div>
+                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>Live on the site:</strong> Categories you add here appear as shop filter chips on the Categories page and in the product category dropdown. Use <strong>Menu Placement</strong> to choose which navigation group a new category shows under (e.g. under Doctor Uniform or Linen &amp; Bedsheets) &mdash; or leave it Standalone to only show as a shop chip. Mark one as <em>Signature</em> for the highlighted CliniFlex-style chip. Click <strong>Save &amp; Publish</strong> to push changes to the live site.</div></div>
                 <div class="settings-panel">
                     <div class="settings-section">
                         <h4 class="settings-section-title"><i class="fas fa-plus-circle"></i> Add New Category</h4>
@@ -246,6 +246,16 @@
                             <div class="form-group" style="flex:2">
                                 <label>Category Name</label>
                                 <input type="text" id="newCatLabel" placeholder="e.g. Lab Coats" onkeydown="if(event.key==='Enter'){event.preventDefault();addCategory();}">
+                            </div>
+                            <div class="form-group" style="flex:1.4">
+                                <label>Menu Placement</label>
+                                <select id="newCatGroup">
+                                    <option value="">Standalone (shop chip only)</option>
+                                    <option value="scrub-suits">Under CliniFlex&trade; Scrubs</option>
+                                    <option value="doctor-uniform">Under Doctor Uniform</option>
+                                    <option value="staff-uniform">Under Staff Uniform</option>
+                                    <option value="hospital-linen">Under Linen &amp; Bedsheets</option>
+                                </select>
                             </div>
                             <div class="form-group" style="flex:0 0 auto;display:flex;align-items:flex-end;gap:14px">
                                 <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;white-space:nowrap">
@@ -629,10 +639,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     
     <!-- Backend initialization -->
-    <script src="js/api.js?v=51" defer></script>
-    <script src="js/backend-config.js?v=51" defer></script>
-    <script src="js/db-init.js?v=51" defer></script>
-    <script defer src="js/admin.js?v=51"></script>
+    <script src="js/api.js?v=52" defer></script>
+    <script src="js/backend-config.js?v=52" defer></script>
+    <script src="js/db-init.js?v=52" defer></script>
+    <script defer src="js/admin.js?v=52"></script>
 </body>
 </html>
 
