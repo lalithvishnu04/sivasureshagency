@@ -194,13 +194,14 @@ document.querySelectorAll('.nav-item').forEach(item => {
         document.getElementById('pageTitle').textContent = item.textContent.trim();
         if (page === 'orders') loadOrders();
         if (page === 'products') loadProducts();
+        if (page === 'categories') loadCategories();
         if (page === 'inventory') loadInventory();
         if (page === 'customers') loadCustomers();
         if (page === 'messages') loadMessages();
         if (page === 'dashboard') loadDashboard();
         if (page === 'settings') loadSettings();
         // Update subtitle
-        const subtitles = {dashboard:'Overview & analytics',orders:'Manage customer orders',products:'Product catalogue',inventory:'Stock levels',customers:'Registered users',messages:'Contact form submissions',settings:'Site configuration'};
+        const subtitles = {dashboard:'Overview & analytics',orders:'Manage customer orders',products:'Product catalogue',categories:'Add & remove shop categories',inventory:'Stock levels',customers:'Registered users',messages:'Contact form submissions',settings:'Site configuration'};
         const sub = document.getElementById('pageSubtitle');
         if (sub) { const n = document.getElementById('adminNameTop')?.textContent||'Admin'; sub.innerHTML = (subtitles[page]||page)+', <span id="adminNameTop">'+n+'</span>'; }
         // Close sidebar on mobile
@@ -575,7 +576,7 @@ function openProductModal(product = null) {
     document.getElementById('productEditId').value = product ? product.docId : '';
     document.getElementById('productModalTitle').innerHTML = product ? '<i class="fas fa-edit"></i> Edit Product' : '<i class="fas fa-plus"></i> Add Product';
     document.getElementById('pName').value = product ? product.name : '';
-    document.getElementById('pCategory').value = product ? product.category : 'scrub-suits';
+    populateCategorySelect(product ? product.category : 'scrub-suits');
     document.getElementById('pPrice').value = product ? product.price : '';
     document.getElementById('pOldPrice').value = product ? product.oldPrice || '' : '';
     document.getElementById('pGender').value = product ? product.gender || '' : '';
@@ -1431,6 +1432,177 @@ function previewMainImage() {
     // kept for backward compat — no-op now that upload replaces URL input
 }
 window.previewMainImage = previewMainImage;
+
+// ===== Category Management =====
+// Categories are stored in settings/categories { list:[{slug,label,signature}] }
+// and cached in localStorage 'ssa_categories_v1' (shared with the public site).
+const ADMIN_DEFAULT_CATEGORIES = [
+    { slug: 'scrub-suits',    label: 'CliniFlex\u2122 Scrubs', signature: true },
+    { slug: 'doctor-uniform', label: 'Doctor Uniform',  signature: false },
+    { slug: 'staff-uniform',  label: 'Staff Uniform',   signature: false },
+    { slug: 'bedsheets',      label: 'Bedsheets',       signature: false },
+    { slug: 'hospital-linen', label: 'Hospital Linen',  signature: false },
+    { slug: 'hotel-linen',    label: 'Hotel Linen',     signature: false },
+];
+const ADMIN_CATS_CACHE_KEY = 'ssa_categories_v1';
+let _adminCategories = null; // working copy (unsaved edits live here)
+
+function _readCachedCategories() {
+    try {
+        const raw = localStorage.getItem(ADMIN_CATS_CACHE_KEY);
+        if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list) && list.length) return list;
+        }
+    } catch (e) { /* ignore */ }
+    return ADMIN_DEFAULT_CATEGORIES.map(c => ({ ...c }));
+}
+
+function _slugify(label) {
+    return String(label || '').toLowerCase().trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+function _escHtmlCat(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function loadCategories() {
+    _adminCategories = _readCachedCategories();
+    renderCategoriesList();
+    // Refresh from Supabase (authoritative) if available
+    if (window.db) {
+        try {
+            const doc = await window.db.collection('settings').doc('categories').get();
+            if (doc && doc.exists) {
+                const list = _parseCategoryDoc(doc.data());
+                if (list && list.length) {
+                    _adminCategories = list;
+                    localStorage.setItem(ADMIN_CATS_CACHE_KEY, JSON.stringify(_adminCategories));
+                    renderCategoriesList();
+                }
+            }
+        } catch (e) { /* keep cache/defaults */ }
+    }
+}
+window.loadCategories = loadCategories;
+
+// The live `settings` table only has text columns (name/suffix), so the category
+// list is stored as JSON in `name`. Support both a native `list` array (future
+// schema) and the JSON-in-name fallback.
+function _parseCategoryDoc(d) {
+    if (!d) return null;
+    if (Array.isArray(d.list) && d.list.length) {
+        return d.list.filter(c => c && c.slug).map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature }));
+    }
+    if (typeof d.name === 'string' && d.name.trim().startsWith('[')) {
+        try {
+            const arr = JSON.parse(d.name);
+            if (Array.isArray(arr)) return arr.filter(c => c && c.slug).map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature }));
+        } catch (e) { /* ignore */ }
+    }
+    return null;
+}
+window._parseCategoryDoc = _parseCategoryDoc;
+
+function renderCategoriesList() {
+    const wrap = document.getElementById('categoriesList');
+    if (!wrap) return;
+    const list = _adminCategories || _readCachedCategories();
+    if (!list.length) { wrap.innerHTML = '<p class="empty">No categories yet. Add one above.</p>'; return; }
+    wrap.innerHTML = list.map((c, i) => `
+        <div class="cat-manage-item${c.signature ? ' is-signature' : ''}">
+            <span class="cat-manage-name">${c.signature ? '<i class="fas fa-star"></i> ' : ''}${_escHtmlCat(c.label)}</span>
+            <code class="cat-manage-slug">${_escHtmlCat(c.slug)}</code>
+            <div class="cat-manage-actions">
+                <label class="cat-sig-toggle" title="Signature (highlighted) category">
+                    <input type="checkbox" ${c.signature ? 'checked' : ''} onchange="toggleCategorySignature(${i}, this.checked)"> Signature
+                </label>
+                <button type="button" class="cat-del-btn" title="Remove category" onclick="deleteCategory(${i})"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>`).join('');
+}
+window.renderCategoriesList = renderCategoriesList;
+
+function addCategory() {
+    const labelEl = document.getElementById('newCatLabel');
+    const sigEl = document.getElementById('newCatSignature');
+    const label = (labelEl?.value || '').trim();
+    if (!label) { showAdminToast('Enter a category name', 'error'); return; }
+    const slug = _slugify(label);
+    if (!slug) { showAdminToast('Category name must contain letters or numbers', 'error'); return; }
+    if (!_adminCategories) _adminCategories = _readCachedCategories();
+    if (_adminCategories.some(c => c.slug === slug)) { showAdminToast('That category already exists', 'error'); return; }
+    _adminCategories.push({ slug, label, signature: !!(sigEl && sigEl.checked) });
+    if (labelEl) labelEl.value = '';
+    if (sigEl) sigEl.checked = false;
+    renderCategoriesList();
+    showAdminToast('Added "' + label + '". Click Save & Publish to go live.', 'info');
+}
+window.addCategory = addCategory;
+
+function deleteCategory(index) {
+    if (!_adminCategories) _adminCategories = _readCachedCategories();
+    const c = _adminCategories[index];
+    if (!c) return;
+    if (!confirm(`Remove the "${c.label}" category from the shop filters?\n\nExisting products keep their data — only the filter chip is hidden.`)) return;
+    _adminCategories.splice(index, 1);
+    renderCategoriesList();
+    showAdminToast('Removed "' + c.label + '". Click Save & Publish to go live.', 'info');
+}
+window.deleteCategory = deleteCategory;
+
+function toggleCategorySignature(index, checked) {
+    if (!_adminCategories) _adminCategories = _readCachedCategories();
+    if (_adminCategories[index]) _adminCategories[index].signature = !!checked;
+    renderCategoriesList();
+}
+window.toggleCategorySignature = toggleCategorySignature;
+
+async function saveCategories() {
+    if (!_adminCategories) _adminCategories = _readCachedCategories();
+    const list = _adminCategories.map(c => ({ slug: c.slug, label: c.label, signature: !!c.signature }));
+    if (!list.length) { showAdminToast('Add at least one category before saving', 'error'); return; }
+    localStorage.setItem(ADMIN_CATS_CACHE_KEY, JSON.stringify(list));
+    _markProductsDirty();
+    if (window.db) {
+        try {
+            // Store as JSON in the `name` text column (settings table has no jsonb
+            // `list` column on the live DB) — read path parses this back.
+            await window.db.collection('settings').doc('categories').set({ name: JSON.stringify(list) });
+            showAdminToast('Categories published to the live site (' + list.length + ' total)');
+        } catch (e) {
+            showAdminToast('Saved locally. Cloud publish failed: ' + (e.message || 'unknown'), 'error');
+        }
+    } else {
+        showAdminToast('Saved locally (' + list.length + ' categories)');
+    }
+}
+window.saveCategories = saveCategories;
+
+// Fill the product-modal category <select> from the managed category list.
+function populateCategorySelect(selected) {
+    const sel = document.getElementById('pCategory');
+    if (!sel) return;
+    const list = _readCachedCategories();
+    sel.innerHTML = list.map(c =>
+        `<option value="${_escHtmlCat(c.slug)}">${c.signature ? '\u2605 ' : ''}${_escHtmlCat(c.label)}</option>`
+    ).join('');
+    if (selected) {
+        // If the product's category isn't in the list (removed), add a temporary option
+        if (!list.some(c => c.slug === selected)) {
+            const opt = document.createElement('option');
+            opt.value = selected;
+            opt.textContent = selected.replace(/-/g, ' ') + ' (removed)';
+            sel.appendChild(opt);
+        }
+        sel.value = selected;
+    }
+}
+window.populateCategorySelect = populateCategorySelect;
 
 // ===== Settings =====
 function loadSettings() {

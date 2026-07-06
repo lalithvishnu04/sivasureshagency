@@ -258,6 +258,96 @@ productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
     });
 })();
 
+// ===== Category System (admin-managed, synced to frontend) =====
+// The category list is the single source of truth for the shop filter chips and
+// the admin product-category dropdown. Admin edits write to settings/categories;
+// the public site renders chips from this list (cached in localStorage, refreshed
+// from Supabase on load). `signature` flags the CliniFlex-style highlighted chip.
+const DEFAULT_CATEGORIES = [
+    { slug: 'scrub-suits',     label: 'CliniFlex\u2122 Scrubs', signature: true },
+    { slug: 'doctor-uniform',  label: 'Doctor Uniform',  signature: false },
+    { slug: 'staff-uniform',   label: 'Staff Uniform',   signature: false },
+    { slug: 'bedsheets',       label: 'Bedsheets',       signature: false },
+    { slug: 'hospital-linen',  label: 'Hospital Linen',  signature: false },
+    { slug: 'hotel-linen',     label: 'Hotel Linen',     signature: false },
+];
+const _CATS_CACHE_KEY = 'ssa_categories_v1';
+
+function getCategoryList() {
+    try {
+        const raw = localStorage.getItem(_CATS_CACHE_KEY);
+        if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list) && list.length) return list;
+        }
+    } catch (e) { /* ignore */ }
+    return DEFAULT_CATEGORIES.slice();
+}
+window.getCategoryList = getCategoryList;
+
+function getCategoryLabel(slug) {
+    const c = getCategoryList().find(c => c.slug === slug);
+    if (c) return c.label;
+    return String(slug || '').replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
+}
+window.getCategoryLabel = getCategoryLabel;
+
+// Build the shop filter chips on categories.html from the category list.
+function renderShopFilters() {
+    const bar = document.getElementById('shopFilters');
+    if (!bar) return;
+    const list = getCategoryList();
+    const active = (window._currentFilter || currentFilter || 'all');
+    let html = `<button class="filter-btn${active === 'all' ? ' active' : ''}" data-filter="all">All Products</button>`;
+    for (const c of list) {
+        const isSig = !!c.signature;
+        const cls = 'filter-btn' + (isSig ? ' filter-btn-scrubs' : '') + (active === c.slug ? ' active' : '');
+        const label = escapeRichText(c.label);
+        html += `<button class="${cls}" data-filter="${escapeRichText(c.slug)}">`
+             + (isSig ? `<i class="fas fa-star"></i> ${label} <span class="scrubs-pill">Signature</span>` : label)
+             + `</button>`;
+    }
+    bar.innerHTML = html;
+    // Re-bind click handlers (initCategoriesPage binds on first load; rebind after re-render)
+    if (typeof bindFilterButtons === 'function') bindFilterButtons();
+}
+window.renderShopFilters = renderShopFilters;
+
+// Load categories from Supabase settings/categories and refresh chips if changed.
+(function _initCategorySync() {
+    // The live settings table has no jsonb `list` column, so the category list is
+    // stored as JSON in the `name` text column. Support both shapes.
+    function _parseDoc(d) {
+        if (!d) return null;
+        if (Array.isArray(d.list) && d.list.length) return d.list.filter(c => c && c.slug);
+        if (typeof d.name === 'string' && d.name.trim().startsWith('[')) {
+            try { const a = JSON.parse(d.name); if (Array.isArray(a)) return a.filter(c => c && c.slug); } catch (e) { /* ignore */ }
+        }
+        return null;
+    }
+    async function _sync() {
+        for (let i = 0; i < 80; i++) { if (window.db) break; await new Promise(r => setTimeout(r, 50)); }
+        if (!window.db) return;
+        try {
+            const doc = await window.db.collection('settings').doc('categories').get();
+            if (doc && doc.exists) {
+                const list = _parseDoc(doc.data());
+                if (list && list.length) {
+                    const normalized = list.map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature }));
+                    const prev = localStorage.getItem(_CATS_CACHE_KEY);
+                    const next = JSON.stringify(normalized);
+                    if (prev !== next) {
+                        localStorage.setItem(_CATS_CACHE_KEY, next);
+                        if (typeof renderShopFilters === 'function') renderShopFilters();
+                    }
+                }
+            }
+        } catch (e) { /* offline / not set — keep defaults */ }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _sync);
+    else _sync();
+})();
+
 // ===== Supabase Products Sync =====
 // Loads products from Supabase once per session and merges admin-set images/prices.
 // sessionStorage cache (10 min TTL) prevents repeated reads.
@@ -864,6 +954,55 @@ function initHomePage() {
 }
 
 // ===== Categories Page =====
+// Bind (or re-bind) click handlers to the shop filter chips. Safe to call after
+// renderShopFilters() rebuilds the chip DOM.
+function bindFilterButtons() {
+    document.querySelectorAll('#shopFilters .filter-btn').forEach(btn => {
+        if (btn._ssaBound) return;
+        btn._ssaBound = true;
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#shopFilters .filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            displayedProducts = 12;
+            // Selecting a top-level category clears any gender/sleeve sub-filter
+            window._currentGender = null;
+            window._currentSleeve = null;
+            // Keep the address bar in sync so a refresh/share shows the right category
+            try {
+                const url = new URL(window.location.href);
+                if (currentFilter && currentFilter !== 'all') url.searchParams.set('cat', currentFilter);
+                else url.searchParams.delete('cat');
+                url.searchParams.delete('gender');
+                url.searchParams.delete('sleeve');
+                history.replaceState({}, '', url);
+            } catch (e) { /* ignore */ }
+            _syncWindowState(); renderProducts(currentFilter, displayedProducts, null, null, currentSearch);
+        });
+    });
+}
+window.bindFilterButtons = bindFilterButtons;
+
+// Apply the current URL (?cat/?gender/?sleeve) as the single source of truth and
+// render. Used on first load and on bfcache restore (back/forward navigation).
+function applyUrlFilterAndRender() {
+    const params = new URLSearchParams(window.location.search);
+    currentFilter = params.get('cat') || 'all';
+    window._currentGender = params.get('gender') || null;
+    window._currentSleeve = params.get('sleeve') || null;
+    currentSearch = '';
+    displayedProducts = 12;
+    const psi = document.getElementById('productSearchInput');
+    if (psi) psi.value = '';
+    const psc = document.getElementById('productSearchClear');
+    if (psc) psc.style.display = 'none';
+    renderShopFilters(); // rebuild chips + set active + bind handlers
+    updateScrubsCount();
+    _syncWindowState();
+    renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, currentSearch);
+}
+window.applyUrlFilterAndRender = applyUrlFilterAndRender;
+
 function initCategoriesPage() {
     // Parse URL params
     const params = new URLSearchParams(window.location.search);
@@ -871,13 +1010,18 @@ function initCategoriesPage() {
     const gender = params.get('gender');
     const sleeve = params.get('sleeve');
 
-    if (cat) {
-        currentFilter = cat;
-        document.querySelectorAll('.filter-btn').forEach(b => {
-            b.classList.remove('active');
-            if (b.dataset.filter === cat) b.classList.add('active');
-        });
-    }
+    if (cat) currentFilter = cat;
+    window._currentFilter = currentFilter;
+    // Build filter chips from the (admin-managed) category list; this also binds
+    // click handlers and sets the active chip based on the current filter.
+    renderShopFilters();
+
+    // Re-apply the URL filter when the page is restored from the bfcache
+    // (mobile back/forward) so it never shows a stale category. This fixes the
+    // "shows wrong category first, correct on second click" issue.
+    window.addEventListener('pageshow', (e) => {
+        if (e.persisted) applyUrlFilterAndRender();
+    });
 
     // Product search input
     const productSearchInput = document.getElementById('productSearchInput');
@@ -901,28 +1045,7 @@ function initCategoriesPage() {
         });
     }
 
-    // Filter buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentFilter = btn.dataset.filter;
-            displayedProducts = 12;
-            // Selecting a top-level category clears any gender/sleeve sub-filter
-            window._currentGender = null;
-            window._currentSleeve = null;
-            // Keep the address bar in sync so a refresh/share shows the right category
-            try {
-                const url = new URL(window.location.href);
-                if (currentFilter && currentFilter !== 'all') url.searchParams.set('cat', currentFilter);
-                else url.searchParams.delete('cat');
-                url.searchParams.delete('gender');
-                url.searchParams.delete('sleeve');
-                history.replaceState({}, '', url);
-            } catch (e) { /* ignore */ }
-            _syncWindowState(); renderProducts(currentFilter, displayedProducts, null, null, currentSearch);
-        });
-    });
+    // Filter buttons are rendered + bound by renderShopFilters()/bindFilterButtons()
 
     // Sort
     const sortSelect = document.getElementById('sortSelect');
@@ -1008,7 +1131,7 @@ function buildProductCard(p) {
             ${quickBtn}
         </div>
         <div class="shop-card-body" onclick="openProductDetail(${p.id})">
-            <span class="shop-card-category">${p.category.replace(/-/g, ' ')}</span>
+            <span class="shop-card-category">${typeof getCategoryLabel === 'function' ? getCategoryLabel(p.category) : p.category.replace(/-/g, ' ')}</span>
             ${p.gender ? `<span class="shop-card-tag ${p.gender}">${p.gender === 'male' ? '<i class="fas fa-mars"></i> Gents' : p.gender === 'unisex' ? '<i class="fas fa-venus-mars"></i> Unisex' : '<i class="fas fa-venus"></i> Ladies'}${p.sleeve ? ' • ' + p.sleeve.charAt(0).toUpperCase() + p.sleeve.slice(1) + ' Sleeve' : ''}</span>` : ''}
             <h4 class="shop-card-name" data-base-name="${p.name}">${p.name}${colors && colors[0] ? ' \u2013 ' + colors[0].name : ''}</h4>
             ${colorSwatchesHtml}
@@ -1039,12 +1162,26 @@ function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null
     if (!grid) return;
     if (toShow.length === 0) {
         const isScrubs = filter === 'scrub-suits';
-        grid.innerHTML = `<div class="products-empty-state">
-            <i class="fas fa-${isScrubs ? 'tshirt' : 'box-open'}"></i>
-            <h3>${isScrubs ? 'SSA CliniFlex™ Scrubs — Coming Soon!' : searchQuery ? 'No products match your search' : 'No products in this category yet'}</h3>
-            <p>${isScrubs ? 'Our signature scrub collection is being set up. Check back soon or contact us for availability.' : searchQuery ? 'Try different keywords or browse all products.' : 'Products will appear here once added by the admin.'}</p>
-            ${isScrubs ? '<a href="contact.html" class="btn btn-gradient btn-sm"><i class="fas fa-phone-alt"></i> Ask About Scrubs</a>' : ''}
-        </div>`;
+        const hasSubFilter = !!(gender || sleeve);
+        const catLabel = filter && filter !== 'all'
+            ? (typeof getCategoryLabel === 'function' ? getCategoryLabel(filter) : filter.replace(/-/g, ' '))
+            : '';
+        let icon = 'box-open', title = 'No items found', msg = 'No products in this category yet. Please check back soon.', cta = '';
+        if (searchQuery) {
+            title = 'No products match your search';
+            msg = 'Try different keywords or browse all products.';
+        } else if (hasSubFilter) {
+            // e.g. CliniFlex Gents with no products created yet → No items found
+            title = 'No items found';
+            msg = `We don\u2019t have any ${catLabel} products in this selection yet. Please check back soon or contact us.`;
+            cta = '<a href="contact.html" class="btn btn-gradient btn-sm"><i class="fas fa-phone-alt"></i> Enquire Now</a>';
+        } else if (isScrubs) {
+            icon = 'tshirt';
+            title = 'SSA CliniFlex\u2122 Scrubs — Coming Soon!';
+            msg = 'Our signature scrub collection is being set up. Check back soon or contact us for availability.';
+            cta = '<a href="contact.html" class="btn btn-gradient btn-sm"><i class="fas fa-phone-alt"></i> Ask About Scrubs</a>';
+        }
+        grid.innerHTML = `<div class="products-empty-state"><i class="fas fa-${icon}"></i><h3>${title}</h3><p>${msg}</p>${cta}</div>`;
     } else {
         grid.innerHTML = toShow.map(p => buildProductCard(p)).join('');
         grid.querySelectorAll('.shop-card').forEach(updateCardStockUI);
