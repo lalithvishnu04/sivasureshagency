@@ -525,15 +525,20 @@ function _buildMenuFromTaxonomy() {
     // The first signature heading owns the dedicated CliniFlex dropdown, so it's not
     // shown as a column. Any OTHER signature headings appear as highlighted columns.
     const firstSig = tax.find(h => h && h.signature);
-    return tax.filter(h => h && h.slug && h !== firstSig).map(h => ({
-        title: h.label, icon: h.icon || iconFor[h.slug] || 'th-large',
-        href: 'categories.html?heading=' + encodeURIComponent(h.slug),
-        signature: !!h.signature,
-        items: (h.cats || []).map(cat => ({
-            label: cat.label, bold: true, href: _filterHref(_resolveCatFilter(cat)),
-            children: (cat.subs || []).map(sub => ({ label: sub.label, href: _filterHref(_resolveSubFilter(cat, sub)) }))
-        }))
-    }));
+    return tax.filter(h => h && h.slug && h !== firstSig).map(h => {
+        const catSlugs = Array.from(_headingCatSet(h)).filter(Boolean);
+        return {
+            title: h.label, icon: h.icon || iconFor[h.slug] || 'th-large',
+            href: 'categories.html?heading=' + encodeURIComponent(h.slug),
+            cat: catSlugs[0] || '',
+            cats: catSlugs,
+            signature: !!h.signature,
+            items: (h.cats || []).map(cat => ({
+                label: cat.label, bold: true, href: _filterHref(_resolveCatFilter(cat)),
+                children: (cat.subs || []).map(sub => ({ label: sub.label, href: _filterHref(_resolveSubFilter(cat, sub)) }))
+            }))
+        };
+    });
 }
 window._buildMenuFromTaxonomy = _buildMenuFromTaxonomy;
 
@@ -578,7 +583,7 @@ function renderMegaMenu() {
             const cls = it.bold ? ' class="mega-main-item"' : '';
             return `<li><a href="${_megaHref(it)}"${cls}>${esc(it.label)}</a></li>` + kids;
         }).join('');
-        return `<div class="mega-col${col.signature ? ' mega-col-signature' : ''}"><a href="${_megaHref(col)}" class="mega-col-thumb" data-cat="${esc(col.cat || '')}"><i class="fas fa-${esc(col.signature ? 'award' : (col.icon || 'th-large'))}"></i></a><h4><a href="${_megaHref(col)}">${esc(col.title)}${col.signature ? ' <span class="mega-sig-pill"><i class=\"fas fa-star\"></i> Signature</span>' : ''}</a></h4><ul>${items}</ul></div>`;
+        return `<div class="mega-col${col.signature ? ' mega-col-signature' : ''}"><a href="${_megaHref(col)}" class="mega-col-thumb" data-cat="${esc(col.cat || '')}" data-cats="${esc((col.cats || []).join(','))}"><i class="fas fa-${esc(col.signature ? 'award' : (col.icon || 'th-large'))}"></i></a><h4><a href="${_megaHref(col)}">${esc(col.title)}${col.signature ? ' <span class="mega-sig-pill"><i class=\"fas fa-star\"></i> Signature</span>' : ''}</a></h4><ul>${items}</ul></div>`;
     }).join('');
     inners.forEach(inner => {
         const cta = inner.querySelector('.mega-cta');
@@ -2933,23 +2938,23 @@ function initMegaMenuImages() {
     const mainPool = _buildCatMainImagePool();
     const fallback = { 'hospital-linen': ['hospital-linen', 'bedsheets', 'hotel-linen'], 'bedsheets': ['bedsheets', 'hospital-linen'] };
     const pick = (obj, cat) => { const cats = [cat].concat(fallback[cat] || []); for (const c of cats) { if (obj[c] && obj[c].length) return obj[c]; } return null; };
-    // Static image targets (CliniFlex hero, spotlight visual)
-    document.querySelectorAll('.cliniflex-dd-hero[data-cat], .ss-visual-img[data-cat]').forEach(el => {
-        const imgs = pick(pool, el.dataset.cat);
-        if (imgs && imgs.length) { el.style.backgroundImage = `url('${imgs[0]}')`; el.classList.add('has-img'); }
-        else { el.style.backgroundImage = ''; el.classList.remove('has-img'); }
-    });
-    // Cross-fading category column thumbnails
-    document.querySelectorAll('.mega-col-thumb[data-cat]').forEach(el => {
+    // Union the image pool across all product categories a heading spans (data-cats),
+    // falling back to a single data-cat.
+    const gather = (obj, el) => {
+        const list = (el.dataset.cats || el.dataset.cat || '').split(',').map(s => s.trim()).filter(Boolean);
+        const out = [];
+        list.forEach(c => { const imgs = pick(obj, c); if (imgs) imgs.forEach(im => { if (!out.includes(im)) out.push(im); }); });
+        return out;
+    };
+    // Shared cross-fade: sets the first image and, when there are 2+, fades through them.
+    const applyCrossfade = (el, imgs) => {
         if (el._megaTimer) { clearInterval(el._megaTimer); el._megaTimer = null; }
-        const imgs = pick(mainPool, el.dataset.cat) || pick(pool, el.dataset.cat);
-        const fadeEl = el.querySelector('.mct-fade');
-        if (!imgs || !imgs.length) { el.style.backgroundImage = ''; el.classList.remove('has-img'); if (fadeEl) fadeEl.remove(); return; }
+        let fade = el.querySelector('.mct-fade');
+        if (!imgs || !imgs.length) { el.style.backgroundImage = ''; el.classList.remove('has-img'); if (fade) fade.remove(); return; }
         el.style.backgroundImage = `url('${imgs[0]}')`;
         el.classList.add('has-img');
-        if (imgs.length < 2) { if (fadeEl) fadeEl.remove(); return; }
-        let fade = fadeEl;
-        if (!fade) { fade = document.createElement('div'); fade.className = 'mct-fade'; el.appendChild(fade); }
+        if (imgs.length < 2) { if (fade) fade.remove(); return; }
+        if (!fade) { fade = document.createElement('div'); fade.className = 'mct-fade'; el.insertBefore(fade, el.firstChild); }
         let idx = 0;
         el._megaTimer = setInterval(() => {
             const next = (idx + 1) % imgs.length;
@@ -2958,6 +2963,16 @@ function initMegaMenuImages() {
             requestAnimationFrame(() => { fade.style.opacity = '1'; });
             setTimeout(() => { el.style.backgroundImage = `url('${imgs[next]}')`; fade.style.opacity = '0'; idx = next; }, 700);
         }, 3000);
+    };
+    // CliniFlex hero + spotlight visual — now cross-fade too.
+    document.querySelectorAll('.cliniflex-dd-hero[data-cat], .ss-visual-img[data-cat]').forEach(el => {
+        let imgs = gather(mainPool, el); if (!imgs.length) imgs = gather(pool, el);
+        applyCrossfade(el, imgs);
+    });
+    // Category column thumbnails.
+    document.querySelectorAll('.mega-col-thumb[data-cat], .mega-col-thumb[data-cats]').forEach(el => {
+        let imgs = gather(mainPool, el); if (!imgs.length) imgs = gather(pool, el);
+        applyCrossfade(el, imgs);
     });
 }
 window.initMegaMenuImages = initMegaMenuImages;
