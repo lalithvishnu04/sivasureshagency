@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=59">
+    <link rel="stylesheet" href="css/admin.css?v=60">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -238,7 +238,7 @@
                         <button class="btn-primary btn-publish-all" onclick="publishCategoryConfig(this)"><i class="fas fa-cloud-upload-alt"></i> Save &amp; Publish</button>
                     </div>
                 </div>
-                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>One place, one button.</strong> Manage your shop categories (filter chips + product tags) and the header navigation dropdown here, then click <strong>Save &amp; Publish</strong> once to push <em>both</em> to the live site. Tip: a category's <em>chip label</em> and a navigation <em>heading</em> are separate texts &mdash; edit the label in <strong>Current Categories</strong> to rename the shop chip, or the heading in <strong>Navigation Menu</strong> to rename the dropdown text.</div></div>
+                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>One tree runs the whole site.</strong> Your categories here are the shop filter chips, the header navigation dropdown, <em>and</em> the product tags &mdash; all from one place. Add <strong>Sub-categories</strong> under a category to create dropdown sub-links (e.g. <em>Surgeon Aprons</em>) and file products under them. Click <strong>Save &amp; Publish</strong> once to push everything live.</div></div>
                 <div class="settings-panel">
                     <div class="settings-section">
                         <h4 class="settings-section-title"><i class="fas fa-plus-circle"></i> Add New Category</h4>
@@ -266,20 +266,9 @@
                         </div>
                     </div>
                     <div class="settings-section">
-                        <h4 class="settings-section-title"><i class="fas fa-list"></i> Current Categories <span class="section-hint">shop filter chips &amp; product tags</span></h4>
-                        <p class="settings-section-desc">Edit a label to rename the shop chip, mark one as <em>Signature</em> to highlight it, or remove it with the trash icon. Expand <strong>Sub-categories</strong> under any category to add sub-groups (e.g. <em>Surgeon Aprons</em>, <em>OT Accessories</em>) with their own image &mdash; then assign products to them from the product form. Changes go live when you click <strong>Save &amp; Publish</strong> at the top.</p>
+                        <h4 class="settings-section-title"><i class="fas fa-list"></i> Current Categories <span class="section-hint">shop chips, header menu &amp; product tags</span></h4>
+                        <p class="settings-section-desc">This one tree powers everything: each category is a shop chip <em>and</em> a header-menu column. Rename a label to rename it everywhere. Expand <strong>Sub-categories</strong> to add sub-groups (e.g. <em>Surgeon Aprons</em>, <em>Male Doctor Uniform</em>) &mdash; they appear in the header dropdown and let you file products precisely. Use <strong>Menu Placement</strong> to nest a category under another. Changes go live when you click <strong>Save &amp; Publish</strong> at the top.</p>
                         <div id="categoriesList" class="cat-manage-list"><p class="empty">Loading...</p></div>
-                    </div>
-                    <div class="settings-section">
-                        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-                            <h4 class="settings-section-title" style="margin:0"><i class="fas fa-sitemap"></i> Navigation Menu <span class="section-hint">header dropdown headings</span></h4>
-                            <div style="display:flex;gap:8px">
-                                <button type="button" class="btn-secondary btn-sm" onclick="addMegaColumn()"><i class="fas fa-plus"></i> Add Column</button>
-                                <button type="button" class="btn-secondary btn-sm" onclick="resetMegaMenu()"><i class="fas fa-undo"></i> Reset to Default</button>
-                            </div>
-                        </div>
-                        <p class="settings-section-desc">This is the <strong>Categories</strong> dropdown in the site header. Each <strong>column</strong> has a heading; inside it add <strong>bold main headings</strong> (e.g. “Male Doctor Uniform”) and <strong>sub-items</strong> (e.g. “Full Sleeve”). Each links to a category, optionally filtered by gender/sleeve. Changes go live when you click <strong>Save &amp; Publish</strong> at the top.</p>
-                        <div id="megaMenuEditor" class="mega-editor"><p class="empty">Loading...</p></div>
                     </div>
                 </div>
             </div>
@@ -668,10 +657,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     
     <!-- Backend initialization -->
-    <script src="js/api.js?v=59" defer></script>
-    <script src="js/backend-config.js?v=59" defer></script>
-    <script src="js/db-init.js?v=59" defer></script>
-    <script defer src="js/admin.js?v=59"></script>
+    <script src="js/api.js?v=60" defer></script>
+    <script src="js/backend-config.js?v=60" defer></script>
+    <script src="js/db-init.js?v=60" defer></script>
+    <script defer src="js/admin.js?v=60"></script>
 </body>
 </html>
 

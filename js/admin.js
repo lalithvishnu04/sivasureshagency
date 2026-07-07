@@ -198,7 +198,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         document.getElementById('pageTitle').textContent = item.textContent.trim();
         if (page === 'orders') loadOrders();
         if (page === 'products') loadProducts();
-        if (page === 'categories') { loadCategories(); loadMegaMenu(); }
+        if (page === 'categories') { loadCategories(); }
         if (page === 'inventory') loadInventory();
         if (page === 'customers') loadCustomers();
         if (page === 'messages') loadMessages();
@@ -1543,9 +1543,9 @@ const ADMIN_CATS_CACHE_KEY = 'ssa_categories_v1';
 let _adminCategories = null; // working copy (unsaved edits live here)
 const _openSubCats = new Set(); // slugs whose sub-category panel is expanded
 
-// Normalize a category's sub-category array to { slug, label, image }.
+// Normalize a category's sub-category array to { slug, label, image, gender, sleeve }.
 function _normSubs(subs) {
-    return Array.isArray(subs) ? subs.filter(s => s && s.slug).map(s => ({ slug: s.slug, label: s.label || s.slug, image: s.image || '' })) : [];
+    return Array.isArray(subs) ? subs.filter(s => s && s.slug).map(s => ({ slug: s.slug, label: s.label || s.slug, image: s.image || '', gender: s.gender || '', sleeve: s.sleeve || '' })) : [];
 }
 
 function _readCachedCategories() {
@@ -1588,8 +1588,53 @@ async function loadCategories() {
             }
         } catch (e) { /* keep cache/defaults */ }
     }
+    // One-time: convert the old Navigation Menu into Sub-categories (if none yet).
+    try { await _maybeMigrateMenuToSubs(); } catch (e) { /* ignore */ }
 }
 window.loadCategories = loadCategories;
+
+// Convert the previously-authored Navigation Menu (settings/megamenu) into
+// sub-categories on each category — runs once, only when no sub-categories exist.
+// Populates the working copy; the admin still clicks Save & Publish to persist.
+async function _maybeMigrateMenuToSubs() {
+    if (!Array.isArray(_adminCategories) || !_adminCategories.length) return;
+    if (_adminCategories.some(c => Array.isArray(c.subs) && c.subs.length)) return; // already migrated
+    let mega = null;
+    if (window.db) {
+        try { const d = await window.db.collection('settings').doc('megamenu').get(); if (d && d.exists) mega = _parseMegaDoc(d.data()); } catch (e) { /* ignore */ }
+    }
+    if (!Array.isArray(mega) || !mega.length) { try { mega = _readMega(); } catch (e) { mega = null; } }
+    if (!Array.isArray(mega) || !mega.length) return;
+    const catBySlug = {};
+    _adminCategories.forEach(c => { c.subs = c.subs || []; catBySlug[c.slug] = c; });
+    const pushSub = (catSlug, label, gender, sleeve, sub) => {
+        const cat = catBySlug[catSlug];
+        if (!cat || !label) return;
+        const slug = sub || _slugify(label);
+        if (!slug) return;
+        if (cat.subs.some(s => s.slug === slug)) return;
+        // Skip a redundant sub that just repeats the category's own name with no filter.
+        if (!gender && !sleeve && !sub && label.trim().toLowerCase() === (cat.label || '').trim().toLowerCase()) return;
+        cat.subs.push({ slug, label: label.trim(), image: '', gender: gender || '', sleeve: sleeve || '' });
+    };
+    mega.forEach(col => {
+        const colCat = col.cat;
+        (col.items || []).forEach(it => {
+            const itCat = it.cat || colCat;
+            if (itCat) pushSub(itCat, it.label, it.gender, it.sleeve, it.sub);
+            (it.children || []).forEach(ch => {
+                const chCat = ch.cat || itCat;
+                const label = (it.gender || it.sleeve) ? (it.label + ' \u2014 ' + ch.label) : ch.label;
+                pushSub(chCat, label, ch.gender || it.gender, ch.sleeve, ch.sub);
+            });
+        });
+    });
+    localStorage.setItem(ADMIN_CATS_CACHE_KEY, JSON.stringify(_adminCategories));
+    renderCategoriesList();
+    if (typeof refreshProductSubSelect === 'function') refreshProductSubSelect();
+    showAdminToast('Old navigation menu converted into Sub-categories \u2014 review, then Save & Publish.', 'info');
+}
+window._maybeMigrateMenuToSubs = _maybeMigrateMenuToSubs;
 
 // The live `settings` table only has text columns (name/suffix), so the category
 // list is stored as JSON in `name`. Support both a native `list` array (future
@@ -1646,6 +1691,12 @@ function renderCategoriesList() {
                             <input type="file" accept="image/*" onchange="handleSubImage(${i},${si},this)" hidden>
                         </label>
                         <input type="text" class="cat-sub-name" value="${_escHtmlCat(s.label)}" placeholder="Sub-category name" oninput="setSubLabel(${i},${si},this.value)">
+                        <select class="cat-sub-sel" title="Optional: link this sub to a gender filter" onchange="setSubGender(${i},${si},this.value)">
+                            ${['', 'male', 'female', 'unisex'].map(g => `<option value="${g}"${(s.gender || '') === g ? ' selected' : ''}>${g ? g : '\u2014 gender \u2014'}</option>`).join('')}
+                        </select>
+                        <select class="cat-sub-sel" title="Optional: link this sub to a sleeve filter" onchange="setSubSleeve(${i},${si},this.value)">
+                            ${['', 'full', 'half'].map(v => `<option value="${v}"${(s.sleeve || '') === v ? ' selected' : ''}>${v ? v + ' sleeve' : '\u2014 sleeve \u2014'}</option>`).join('')}
+                        </select>
                         <code class="cat-sub-slug" title="Internal ID (fixed)">${_escHtmlCat(s.slug)}</code>
                         <button type="button" class="cat-del-btn" title="Remove sub-category" onclick="deleteSubCategory(${i},${si})"><i class="fas fa-trash"></i></button>
                     </div>`).join('') : '<p class="cat-subs-empty">No sub-categories yet — add one below (e.g. Surgeon Aprons).</p>';
@@ -1780,6 +1831,20 @@ function setSubLabel(catIndex, subIndex, value) {
     // No re-render — keep the input focused while typing.
 }
 window.setSubLabel = setSubLabel;
+
+function setSubGender(catIndex, subIndex, value) {
+    if (!_adminCategories) _adminCategories = _readCachedCategories();
+    const cat = _adminCategories[catIndex];
+    if (cat && cat.subs && cat.subs[subIndex]) cat.subs[subIndex].gender = value || '';
+}
+window.setSubGender = setSubGender;
+
+function setSubSleeve(catIndex, subIndex, value) {
+    if (!_adminCategories) _adminCategories = _readCachedCategories();
+    const cat = _adminCategories[catIndex];
+    if (cat && cat.subs && cat.subs[subIndex]) cat.subs[subIndex].sleeve = value || '';
+}
+window.setSubSleeve = setSubSleeve;
 
 function deleteSubCategory(catIndex, subIndex) {
     if (!_adminCategories) _adminCategories = _readCachedCategories();
