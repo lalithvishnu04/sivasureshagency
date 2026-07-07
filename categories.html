@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=52">
+    <link rel="stylesheet" href="css/style.css?v=55">
     <link rel="icon" type="image/jpeg" href="images/Images/SSA Logo.png">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
 <body data-page="categories">
@@ -83,57 +83,21 @@
     <div class="cart-overlay" id="cartOverlay"></div>
     <div class="cart-drawer" id="cartDrawer"><div class="cart-header"><h3><i class="fas fa-shopping-cart"></i> Your Cart</h3><button class="cart-close" id="cartClose"><i class="fas fa-times"></i></button></div><div class="cart-items" id="cartItems"><div class="cart-empty"><i class="fas fa-shopping-bag"></i><p>Your cart is empty</p><a href="categories.html" class="btn btn-gradient btn-sm">Start Shopping</a></div></div><div class="cart-footer" id="cartFooter" style="display:none;"><div class="cart-total"><span>Total:</span><span id="cartTotal">&#8377;0</span></div><button class="btn btn-gradient btn-full" id="checkoutBtn">Proceed to Checkout <i class="fas fa-arrow-right"></i></button><button class="btn btn-outline-dark btn-full" onclick="closeCart()">Continue Shopping</button></div></div>
 
-    <!-- Page Hero -->
-    <section class="page-hero">
+    <!-- Page Hero (compact, dynamic per category) -->
+    <section class="page-hero page-hero--compact" id="catPageHero">
         <div class="page-hero-bg categories-hero-bg"></div>
         <div class="container">
             <div class="page-hero-content">
-                <span class="page-hero-tag"><i class="fas fa-th-large"></i> Browse & Shop</span>
-                <h1>Our <span class="gradient-text">Categories</span></h1>
-                <p>Discover our complete range of hospital linen, uniforms, and textiles</p>
-                <div class="breadcrumb"><a href="index.html">Home</a> <i class="fas fa-chevron-right"></i> <span>Categories</span></div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Scrubs Spotlight -->
-    <section class="scrubs-spotlight">
-        <div class="container">
-            <div class="ss-inner">
-                <div class="ss-content">
-                    <span class="ss-badge"><i class="fas fa-award"></i> Signature Collection</span>
-                    <h2>SSA CliniFlex™ <span>Scrubs</span></h2>
-                    <p>Our flagship medical scrub suits — engineered for healthcare professionals who demand comfort, durability, and style through every shift.</p>
-                    <ul class="ss-features">
-                        <li><i class="fas fa-check-circle"></i> 2-Way Stretch Premium Fabric</li>
-                        <li><i class="fas fa-check-circle"></i> Moisture-Wicking Technology</li>
-                        <li><i class="fas fa-check-circle"></i> Anti-Microbial Treatment</li>
-                        <li><i class="fas fa-check-circle"></i> Available in Multiple Colors</li>
-                    </ul>
-                    <div class="ss-actions">
-                        <button class="btn btn-ss-white btn-lg" onclick="filterToScrubs()"><i class="fas fa-tshirt"></i> Shop Scrubs</button>
-                        <a href="contact.html" class="btn btn-ss-glass btn-lg">Bulk Order <i class="fas fa-arrow-right"></i></a>
-                    </div>
-                </div>
-                <div class="ss-visual">
-                    <div class="ss-card-wrap">
-                        <div class="ss-visual-img" id="ssScrubVisual" data-cat="scrub-suits">
-                            <i class="fas fa-tshirt"></i>
-                            <span class="ss-visual-label">CliniFlex™</span>
-                        </div>
-                        <div class="ss-stats">
-                            <div class="ss-stat"><span id="scrubsCount">—</span><small>Products</small></div>
-                            <div class="ss-stat"><span>★ 4.9</span><small>Rating</small></div>
-                            <div class="ss-stat"><span>1000+</span><small>Customers</small></div>
-                        </div>
-                    </div>
-                </div>
+                <div class="breadcrumb" id="catBreadcrumb"><a href="index.html">Home</a> <i class="fas fa-chevron-right"></i> <span id="catCrumbLast">Categories</span></div>
+                <h1 id="catHeroTitle">Our <span class="gradient-text">Categories</span></h1>
+                <p id="catHeroSub" class="ph-sub">Browse our complete range of hospital linen, uniforms &amp; textiles.</p>
+                <span class="ph-signature-badge" id="catHeroBadge" style="display:none;"><i class="fas fa-award"></i> Signature Collection</span>
             </div>
         </div>
     </section>
 
     <!-- Shop Section -->
-    <section class="shop-section section-pad">
+    <section class="shop-section section-pad shop-section--tight">
         <div class="container">
             <!-- Product Search -->
             <div class="product-search-bar">
@@ -208,14 +172,14 @@
 
     <button id="backToTop" class="back-to-top"><i class="fas fa-chevron-up"></i></button>
     <a href="https://wa.me/919366640050" class="whatsapp-float" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i></a>
-    <script src="js/script.js?v=52" defer></script>
+    <script src="js/script.js?v=55" defer></script>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <!-- Backend initialization -->
-    <script src="js/api.js?v=52" defer></script>
-    <script src="js/backend-config.js?v=52" defer></script>
-    <script src="js/db-init.js?v=52" defer></script>
-    <script defer src="js/db-integration.js?v=52"></script>
+    <script src="js/api.js?v=55" defer></script>
+    <script src="js/backend-config.js?v=55" defer></script>
+    <script src="js/db-init.js?v=55" defer></script>
+    <script defer src="js/db-integration.js?v=55"></script>
     <!-- Mobile Bottom Navigation -->
     <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
         <a href="index.html" class="mbn-item"><i class="fas fa-home"></i><span>Home</span></a>

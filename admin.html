@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=52">
+    <link rel="stylesheet" href="css/admin.css?v=55">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -270,6 +270,18 @@
                         <p class="settings-section-desc">The order shown is the order used on the site. Remove a category with the trash icon (existing products keep their data, but the chip is hidden). Remember to <strong>Save &amp; Publish</strong>.</p>
                         <div id="categoriesList" class="cat-manage-list"><p class="empty">Loading...</p></div>
                     </div>
+                    <div class="settings-section">
+                        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                            <h4 class="settings-section-title" style="margin:0"><i class="fas fa-sitemap"></i> Navigation Menu (Main &amp; Sub Headings)</h4>
+                            <div style="display:flex;gap:8px">
+                                <button type="button" class="btn-secondary btn-sm" onclick="addMegaColumn()"><i class="fas fa-plus"></i> Add Column</button>
+                                <button type="button" class="btn-secondary btn-sm" onclick="resetMegaMenu()"><i class="fas fa-undo"></i> Reset to Default</button>
+                                <button type="button" class="btn-primary btn-sm" onclick="saveMegaMenu()"><i class="fas fa-save"></i> Save &amp; Publish Menu</button>
+                            </div>
+                        </div>
+                        <p class="settings-section-desc">Edit the <strong>Categories</strong> dropdown that appears in the site header. Each <strong>column</strong> has a heading; inside it you can add <strong>bold main headings</strong> (e.g. “Male Doctor Uniform”) and <strong>sub-items</strong> (e.g. “Full Sleeve”). Links point to a category, optionally filtered by gender/sleeve. Click <strong>Save &amp; Publish Menu</strong> to go live.</p>
+                        <div id="megaMenuEditor" class="mega-editor"><p class="empty">Loading...</p></div>
+                    </div>
                 </div>
             </div>
 
@@ -432,7 +444,21 @@
                             <select id="pSleeve"><option value="">None</option><option value="full">Full</option><option value="half">Half</option></select>
                         </div>
                     </div>
-                    <div class="form-group"><label>Sizes (comma separated) *</label><input type="text" id="pSizes" placeholder="S,M,L,XL,XXL,XXXL" required></div>
+                    <div class="form-group"><label>Sizes (comma separated) *</label><input type="text" id="pSizes" placeholder="S,M,L,XL,XXL,XXXL" required oninput="rebuildSizePricingRows()"></div>
+                    <div class="form-group" id="sizePricingGroup">
+                        <label><i class="fas fa-tags"></i> Per-Size Pricing <small style="color:var(--text-muted);font-weight:400">(optional — leave a size blank to use the base Price above)</small></label>
+                        <div id="sizePricingContainer" class="size-pricing-container"></div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-pen-nib"></i> Embroidery Add-on</label>
+                        <label class="emb-admin-toggle"><input type="checkbox" id="pEmbEnabled" onchange="toggleEmbFields()"> <span>Offer embroidery on this product</span></label>
+                        <div id="pEmbPriceWrap" class="emb-admin-prices" style="display:none;">
+                            <p class="emb-admin-hint">Set a price for each embroidery type. <b>0 = Free</b> → front-end shows a “Limited Time Offer – Free Embroidery” highlight.</p>
+                            <div class="emb-price-row"><span class="emb-price-label">TEXT</span><span class="emb-price-cur">₹</span><input type="number" id="pEmbPriceText" min="0" placeholder="0"></div>
+                            <div class="emb-price-row"><span class="emb-price-label">LOGO</span><span class="emb-price-cur">₹</span><input type="number" id="pEmbPriceLogo" min="0" placeholder="0"></div>
+                            <div class="emb-price-row"><span class="emb-price-label">TEXT &amp; LOGO</span><span class="emb-price-cur">₹</span><input type="number" id="pEmbPriceTextLogo" min="0" placeholder="0"></div>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label>Description</label>
                         <div class="format-toolbar">
@@ -639,10 +665,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     
     <!-- Backend initialization -->
-    <script src="js/api.js?v=52" defer></script>
-    <script src="js/backend-config.js?v=52" defer></script>
-    <script src="js/db-init.js?v=52" defer></script>
-    <script defer src="js/admin.js?v=52"></script>
+    <script src="js/api.js?v=55" defer></script>
+    <script src="js/backend-config.js?v=55" defer></script>
+    <script src="js/db-init.js?v=55" defer></script>
+    <script defer src="js/admin.js?v=55"></script>
 </body>
 </html>
 

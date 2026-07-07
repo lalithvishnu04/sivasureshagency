@@ -25,6 +25,10 @@ create table if not exists public.products (
   "fitSizing" text,
   "fabricCare" text,
   "returns" text,
+  "sizePrices" jsonb not null default '{}'::jsonb,
+  "embroideryEnabled" boolean not null default false,
+  "embroideryPrice" numeric,
+  "embroideryPrices" jsonb,
   "totalStock" integer default 0,
   "createdAt" timestamptz not null default now(),
   "updatedAt" timestamptz not null default now()
@@ -36,6 +40,10 @@ alter table public.products add column if not exists "mainImage" text;
 alter table public.products add column if not exists "fitSizing" text;
 alter table public.products add column if not exists "fabricCare" text;
 alter table public.products add column if not exists "returns" text;
+alter table public.products add column if not exists "sizePrices" jsonb not null default '{}'::jsonb;
+alter table public.products add column if not exists "embroideryEnabled" boolean not null default false;
+alter table public.products add column if not exists "embroideryPrice" numeric;
+alter table public.products add column if not exists "embroideryPrices" jsonb;
 
 create table if not exists public.inventory (
   id text primary key default ('i_' || replace(gen_random_uuid()::text, '-', '')),

@@ -194,7 +194,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         document.getElementById('pageTitle').textContent = item.textContent.trim();
         if (page === 'orders') loadOrders();
         if (page === 'products') loadProducts();
-        if (page === 'categories') loadCategories();
+        if (page === 'categories') { loadCategories(); loadMegaMenu(); }
         if (page === 'inventory') loadInventory();
         if (page === 'customers') loadCustomers();
         if (page === 'messages') loadMessages();
@@ -597,8 +597,94 @@ function openProductModal(product = null) {
     // Load colorVariants
     _cvData = (product?.colorVariants || []).map(cv => ({ name: cv.name || '', hex: cv.hex || '#0d9488', images: [...(cv.images || [])] }));
     renderColorVariantRows();
+    // Per-size pricing: seed the draft from the product, then build rows fresh
+    const _spCont = document.getElementById('sizePricingContainer');
+    if (_spCont) _spCont.innerHTML = '';
+    _sizePricesDraft = product && product.sizePrices ? JSON.parse(JSON.stringify(product.sizePrices)) : {};
+    rebuildSizePricingRows();
+    // Embroidery add-on (per type)
+    const _embEnabled = product ? (product.embroideryEnabled !== undefined && product.embroideryEnabled !== null ? !!product.embroideryEnabled : (product.category === 'scrub-suits')) : false;
+    const _ep = _readEmbPrices(product);
+    const _embEnEl = document.getElementById('pEmbEnabled');
+    if (_embEnEl) _embEnEl.checked = _embEnabled;
+    const _setEmb = (id, v) => { const el = document.getElementById(id); if (el) el.value = (v === 0 || v) ? v : ''; };
+    _setEmb('pEmbPriceText', _ep['TEXT']);
+    _setEmb('pEmbPriceLogo', _ep['LOGO']);
+    _setEmb('pEmbPriceTextLogo', _ep['TEXT & LOGO']);
+    toggleEmbFields();
     openModal('productModal');
 }
+
+// Read a product's per-type embroidery prices, tolerating the legacy single-price
+// shape and defaulting scrub-suits to 299.
+function _readEmbPrices(product) {
+    const ep = product && product.embroideryPrices;
+    if (ep && typeof ep === 'object') {
+        return { 'TEXT': ep['TEXT'], 'LOGO': ep['LOGO'], 'TEXT & LOGO': ep['TEXT & LOGO'] };
+    }
+    let legacy = '';
+    if (product && product.embroideryPrice !== undefined && product.embroideryPrice !== null && product.embroideryPrice !== '') legacy = product.embroideryPrice;
+    else if (product && product.category === 'scrub-suits') legacy = 299;
+    return { 'TEXT': legacy, 'LOGO': legacy, 'TEXT & LOGO': legacy };
+}
+
+// ===== Per-size pricing + embroidery admin controls =====
+let _sizePricesDraft = {}; // { size: { price, oldPrice } }
+
+// Rebuild the per-size price rows from the Sizes input, preserving typed values.
+function rebuildSizePricingRows() {
+    const cont = document.getElementById('sizePricingContainer');
+    if (!cont) return;
+    cont.querySelectorAll('[data-sp-size]').forEach(row => {
+        const sz = row.getAttribute('data-sp-size');
+        _sizePricesDraft[sz] = {
+            price: row.querySelector('[data-sp-field="price"]').value,
+            oldPrice: row.querySelector('[data-sp-field="old"]').value
+        };
+    });
+    const sizes = (document.getElementById('pSizes').value || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!sizes.length) { cont.innerHTML = '<p class="sp-empty">Enter sizes above to set per-size prices.</p>'; return; }
+    cont.innerHTML = sizes.map(sz => {
+        const d = _sizePricesDraft[sz] || {};
+        const price = (d.price != null ? d.price : '');
+        const oldP = (d.oldPrice != null ? d.oldPrice : '');
+        return `<div class="sp-row" data-sp-size="${_escHtmlCat(sz)}">
+            <span class="sp-size">${_escHtmlCat(sz)}</span>
+            <input type="number" min="0" data-sp-field="price" placeholder="Base price" value="${_escHtmlCat(price)}">
+            <input type="number" min="0" data-sp-field="old" placeholder="Old price" value="${_escHtmlCat(oldP)}">
+        </div>`;
+    }).join('');
+}
+window.rebuildSizePricingRows = rebuildSizePricingRows;
+
+function _collectSizePrices() {
+    const cont = document.getElementById('sizePricingContainer');
+    const out = {};
+    if (!cont) return out;
+    cont.querySelectorAll('[data-sp-size]').forEach(row => {
+        const sz = row.getAttribute('data-sp-size');
+        const price = row.querySelector('[data-sp-field="price"]').value.trim();
+        const oldP = row.querySelector('[data-sp-field="old"]').value.trim();
+        if (price !== '' || oldP !== '') {
+            out[sz] = {};
+            if (price !== '') out[sz].price = parseInt(price);
+            if (oldP !== '') out[sz].oldPrice = parseInt(oldP);
+        }
+    });
+    return out;
+}
+
+function _collectEmbPrices() {
+    const num = id => { const v = (document.getElementById(id)?.value || '').trim(); return v === '' ? 0 : Math.max(0, parseInt(v) || 0); };
+    return { 'TEXT': num('pEmbPriceText'), 'LOGO': num('pEmbPriceLogo'), 'TEXT & LOGO': num('pEmbPriceTextLogo') };
+}
+
+function toggleEmbFields() {
+    const on = document.getElementById('pEmbEnabled')?.checked;
+    const wrap = document.getElementById('pEmbPriceWrap');
+    if (wrap) wrap.style.display = on ? 'block' : 'none';
+}
+window.toggleEmbFields = toggleEmbFields;
 
 function editProduct(docId) {
     const p = allProducts.find(x => x.docId === docId);
@@ -676,6 +762,9 @@ async function saveProduct(e) {
         gender: document.getElementById('pGender').value || null,
         sleeve: document.getElementById('pSleeve').value || null,
         sizes: document.getElementById('pSizes').value.split(',').map(s => s.trim()).filter(Boolean),
+        sizePrices: _collectSizePrices(),
+        embroideryEnabled: document.getElementById('pEmbEnabled').checked,
+        embroideryPrices: document.getElementById('pEmbEnabled').checked ? _collectEmbPrices() : null,
         description: document.getElementById('pDescription').value.trim(),
         // Derive primary image from first colorVariant's first image for backward compat
         image: (_cvData[0]?.images?.[0]) || '',
@@ -1616,6 +1705,151 @@ async function saveCategories() {
     }
 }
 window.saveCategories = saveCategories;
+
+// ===== Navigation Mega-Menu editor (main / sub headings) =====
+const ADMIN_MEGA_CACHE = 'ssa_megamenu_v1';
+const ADMIN_DEFAULT_MEGA = [
+    { title: 'Doctor Uniform', cat: 'doctor-uniform', icon: 'user-md', items: [
+        { label: 'Male Doctor Uniform', bold: true, cat: 'doctor-uniform', gender: 'male', children: [
+            { label: 'Full Sleeve', cat: 'doctor-uniform', gender: 'male', sleeve: 'full' },
+            { label: 'Half Sleeve', cat: 'doctor-uniform', gender: 'male', sleeve: 'half' } ] },
+        { label: 'Female Doctor Uniform', bold: true, cat: 'doctor-uniform', gender: 'female', children: [
+            { label: 'Full Sleeve', cat: 'doctor-uniform', gender: 'female', sleeve: 'full' },
+            { label: 'Half Sleeve', cat: 'doctor-uniform', gender: 'female', sleeve: 'half' } ] } ] },
+    { title: 'Staff Uniform', cat: 'staff-uniform', icon: 'tshirt', items: [
+        { label: 'Male Staff Uniform', bold: false, cat: 'staff-uniform', gender: 'male', children: [] },
+        { label: 'Female Staff Uniform', bold: false, cat: 'staff-uniform', gender: 'female', children: [] },
+        { label: 'All Staff Uniforms', bold: false, cat: 'staff-uniform', children: [] } ] },
+    { title: 'Linen & Bedsheets', cat: 'hospital-linen', icon: 'bed', items: [
+        { label: 'Bedsheets & Pillow Covers', bold: false, cat: 'bedsheets', children: [] },
+        { label: 'Hospital Linen', bold: true, cat: 'hospital-linen', children: [
+            { label: 'Surgeon Aprons', cat: 'hospital-linen' },
+            { label: 'OT Accessories', cat: 'hospital-linen' },
+            { label: 'Patient Wear', cat: 'hospital-linen' } ] },
+        { label: 'Hotel Linen', bold: true, cat: 'hotel-linen', children: [] } ] },
+];
+let _adminMega = null;
+
+function _readMega() {
+    try { const raw = localStorage.getItem(ADMIN_MEGA_CACHE); if (raw) { const m = JSON.parse(raw); if (Array.isArray(m) && m.length) return m; } } catch (e) { /* ignore */ }
+    return JSON.parse(JSON.stringify(ADMIN_DEFAULT_MEGA));
+}
+function _parseMegaDoc(d) {
+    if (!d) return null;
+    if (Array.isArray(d.list) && d.list.length) return d.list;
+    if (typeof d.name === 'string' && d.name.trim().startsWith('[')) { try { const a = JSON.parse(d.name); if (Array.isArray(a) && a.length) return a; } catch (e) { /* ignore */ } }
+    return null;
+}
+async function loadMegaMenu() {
+    _adminMega = _readMega();
+    renderMegaEditor();
+    if (window.db) {
+        try {
+            const doc = await window.db.collection('settings').doc('megamenu').get();
+            if (doc && doc.exists) {
+                const list = _parseMegaDoc(doc.data());
+                if (list && list.length) { _adminMega = list; localStorage.setItem(ADMIN_MEGA_CACHE, JSON.stringify(list)); renderMegaEditor(); }
+            }
+        } catch (e) { /* keep cache/default */ }
+    }
+}
+window.loadMegaMenu = loadMegaMenu;
+
+function _megaCatOptions(sel) {
+    return _readCachedCategories().map(c => `<option value="${_escHtmlCat(c.slug)}"${sel === c.slug ? ' selected' : ''}>${_escHtmlCat(c.label)}</option>`).join('');
+}
+function _megaGenderOptions(sel) {
+    return ['', 'male', 'female', 'unisex'].map(g => `<option value="${g}"${(sel || '') === g ? ' selected' : ''}>${g ? g : '\u2014 gender \u2014'}</option>`).join('');
+}
+function _megaSleeveOptions(sel) {
+    return ['', 'full', 'half'].map(s => `<option value="${s}"${(sel || '') === s ? ' selected' : ''}>${s ? s + ' sleeve' : '\u2014 sleeve \u2014'}</option>`).join('');
+}
+function renderMegaEditor() {
+    const wrap = document.getElementById('megaMenuEditor');
+    if (!wrap) return;
+    if (!_adminMega) _adminMega = _readMega();
+    if (!_adminMega.length) { wrap.innerHTML = '<p class="empty">No columns yet. Click \u201cAdd Column\u201d.</p>'; return; }
+    wrap.innerHTML = _adminMega.map((col, ci) => `
+        <div class="mega-col-edit">
+            <div class="mce-head">
+                <input class="mce-title" type="text" value="${_escHtmlCat(col.title || '')}" placeholder="Column heading" oninput="megaSet(${ci},null,null,'title',this.value)">
+                <select class="mce-link" onchange="megaSet(${ci},null,null,'cat',this.value)"><option value="">\u2014 link category \u2014</option>${_megaCatOptions(col.cat)}</select>
+                <button type="button" class="cat-del-btn" title="Remove column" onclick="deleteMegaColumn(${ci})"><i class="fas fa-trash"></i></button>
+            </div>
+            <div class="mce-items">
+                ${(col.items || []).map((it, ii) => `
+                    <div class="mce-item">
+                        <div class="mce-item-row">
+                            <label class="mce-bold" title="Show as a bold main heading"><input type="checkbox" ${it.bold ? 'checked' : ''} onchange="megaSetBold(${ci},${ii},this.checked)"> Bold</label>
+                            <input type="text" value="${_escHtmlCat(it.label || '')}" placeholder="Heading / item label" oninput="megaSet(${ci},${ii},null,'label',this.value)">
+                            <select onchange="megaSet(${ci},${ii},null,'cat',this.value)"><option value="">\u2014 category \u2014</option>${_megaCatOptions(it.cat)}</select>
+                            <select onchange="megaSet(${ci},${ii},null,'gender',this.value)">${_megaGenderOptions(it.gender)}</select>
+                            <select onchange="megaSet(${ci},${ii},null,'sleeve',this.value)">${_megaSleeveOptions(it.sleeve)}</select>
+                            <button type="button" class="cat-del-btn" title="Remove item" onclick="deleteMegaItem(${ci},${ii})"><i class="fas fa-trash"></i></button>
+                        </div>
+                        <div class="mce-children">
+                            ${(it.children || []).map((ch, chi) => `
+                                <div class="mce-child-row">
+                                    <span class="mce-tick">\u21b3</span>
+                                    <input type="text" value="${_escHtmlCat(ch.label || '')}" placeholder="Sub-item label" oninput="megaSet(${ci},${ii},${chi},'label',this.value)">
+                                    <select onchange="megaSet(${ci},${ii},${chi},'cat',this.value)"><option value="">\u2014 category \u2014</option>${_megaCatOptions(ch.cat)}</select>
+                                    <select onchange="megaSet(${ci},${ii},${chi},'gender',this.value)">${_megaGenderOptions(ch.gender)}</select>
+                                    <select onchange="megaSet(${ci},${ii},${chi},'sleeve',this.value)">${_megaSleeveOptions(ch.sleeve)}</select>
+                                    <button type="button" class="cat-del-btn" title="Remove sub-item" onclick="deleteMegaChild(${ci},${ii},${chi})"><i class="fas fa-trash"></i></button>
+                                </div>`).join('')}
+                            <button type="button" class="mce-add" onclick="addMegaChild(${ci},${ii})"><i class="fas fa-plus"></i> Add sub-item</button>
+                        </div>
+                    </div>`).join('')}
+                <button type="button" class="mce-add mce-add-item" onclick="addMegaItem(${ci})"><i class="fas fa-plus"></i> Add heading / item</button>
+            </div>
+        </div>`).join('');
+}
+window.renderMegaEditor = renderMegaEditor;
+
+function _megaTarget(ci, ii, chi) {
+    const col = _adminMega[ci]; if (!col) return null;
+    if (ii == null) return col;
+    const it = (col.items = col.items || [])[ii]; if (!it) return null;
+    if (chi == null) return it;
+    return (it.children = it.children || [])[chi] || null;
+}
+function megaSet(ci, ii, chi, field, value) { const t = _megaTarget(ci, ii, chi); if (t) t[field] = value; }
+window.megaSet = megaSet;
+function megaSetBold(ci, ii, checked) { const t = _megaTarget(ci, ii, null); if (t) t.bold = !!checked; }
+window.megaSetBold = megaSetBold;
+function addMegaColumn() { if (!_adminMega) _adminMega = _readMega(); _adminMega.push({ title: 'New Column', cat: '', icon: 'th-large', items: [] }); renderMegaEditor(); }
+window.addMegaColumn = addMegaColumn;
+function deleteMegaColumn(ci) { if (!confirm('Remove this whole column?')) return; _adminMega.splice(ci, 1); renderMegaEditor(); }
+window.deleteMegaColumn = deleteMegaColumn;
+function addMegaItem(ci) { const c = _adminMega[ci]; if (!c) return; (c.items = c.items || []).push({ label: 'New Item', bold: false, cat: c.cat || '', gender: '', sleeve: '', children: [] }); renderMegaEditor(); }
+window.addMegaItem = addMegaItem;
+function deleteMegaItem(ci, ii) { _adminMega[ci].items.splice(ii, 1); renderMegaEditor(); }
+window.deleteMegaItem = deleteMegaItem;
+function addMegaChild(ci, ii) { const it = _adminMega[ci].items[ii]; (it.children = it.children || []).push({ label: 'Sub-item', cat: it.cat || '', gender: '', sleeve: '' }); renderMegaEditor(); }
+window.addMegaChild = addMegaChild;
+function deleteMegaChild(ci, ii, chi) { _adminMega[ci].items[ii].children.splice(chi, 1); renderMegaEditor(); }
+window.deleteMegaChild = deleteMegaChild;
+function resetMegaMenu() { if (!confirm('Reset the navigation menu to the default layout? Unsaved edits will be lost.')) return; _adminMega = JSON.parse(JSON.stringify(ADMIN_DEFAULT_MEGA)); renderMegaEditor(); }
+window.resetMegaMenu = resetMegaMenu;
+
+async function saveMegaMenu() {
+    if (!_adminMega) _adminMega = _readMega();
+    const clean = _adminMega.map(col => ({
+        title: (col.title || '').trim(), cat: col.cat || '', icon: col.icon || 'th-large',
+        items: (col.items || []).filter(it => (it.label || '').trim()).map(it => ({
+            label: it.label.trim(), bold: !!it.bold, cat: it.cat || '', gender: it.gender || '', sleeve: it.sleeve || '',
+            children: (it.children || []).filter(ch => (ch.label || '').trim()).map(ch => ({ label: ch.label.trim(), cat: ch.cat || '', gender: ch.gender || '', sleeve: ch.sleeve || '' }))
+        }))
+    })).filter(col => col.title);
+    if (!clean.length) { showAdminToast('Add at least one column before saving', 'error'); return; }
+    localStorage.setItem(ADMIN_MEGA_CACHE, JSON.stringify(clean));
+    if (typeof _markProductsDirty === 'function') _markProductsDirty();
+    if (window.db) {
+        try { await window.db.collection('settings').doc('megamenu').set({ name: JSON.stringify(clean) }); showAdminToast('Navigation menu published to the live site'); }
+        catch (e) { showAdminToast('Saved locally. Cloud publish failed: ' + (e.message || 'unknown'), 'error'); }
+    } else { showAdminToast('Saved locally (' + clean.length + ' columns)'); }
+}
+window.saveMegaMenu = saveMegaMenu;
 
 // Fill the product-modal category <select> from the managed category list.
 function populateCategorySelect(selected) {

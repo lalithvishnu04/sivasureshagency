@@ -362,6 +362,159 @@ function initCustomCategoryNav() {
 }
 window.initCustomCategoryNav = initCustomCategoryNav;
 
+// ===== Editable Mega Menu (main / sub category headings) =====
+// The nav "Categories" mega-menu is data-driven: columns → items (optionally bold
+// main headings) → children (sub-items). Admin edits are stored in Supabase
+// settings/megamenu (JSON in `name`) + localStorage, and rendered on every page.
+const _MEGA_CACHE_KEY = 'ssa_megamenu_v1';
+const DEFAULT_MEGA_MENU = [
+    { title: 'Doctor Uniform', cat: 'doctor-uniform', icon: 'user-md', items: [
+        { label: 'Male Doctor Uniform', bold: true, cat: 'doctor-uniform', gender: 'male', children: [
+            { label: 'Full Sleeve', cat: 'doctor-uniform', gender: 'male', sleeve: 'full' },
+            { label: 'Half Sleeve', cat: 'doctor-uniform', gender: 'male', sleeve: 'half' },
+        ] },
+        { label: 'Female Doctor Uniform', bold: true, cat: 'doctor-uniform', gender: 'female', children: [
+            { label: 'Full Sleeve', cat: 'doctor-uniform', gender: 'female', sleeve: 'full' },
+            { label: 'Half Sleeve', cat: 'doctor-uniform', gender: 'female', sleeve: 'half' },
+        ] },
+    ] },
+    { title: 'Staff Uniform', cat: 'staff-uniform', icon: 'tshirt', items: [
+        { label: 'Male Staff Uniform', bold: false, cat: 'staff-uniform', gender: 'male', children: [] },
+        { label: 'Female Staff Uniform', bold: false, cat: 'staff-uniform', gender: 'female', children: [] },
+        { label: 'All Staff Uniforms', bold: false, cat: 'staff-uniform', children: [] },
+    ] },
+    { title: 'Linen & Bedsheets', cat: 'hospital-linen', icon: 'bed', items: [
+        { label: 'Bedsheets & Pillow Covers', bold: false, cat: 'bedsheets', children: [] },
+        { label: 'Hospital Linen', bold: true, cat: 'hospital-linen', children: [
+            { label: 'Surgeon Aprons', cat: 'hospital-linen' },
+            { label: 'OT Accessories', cat: 'hospital-linen' },
+            { label: 'Patient Wear', cat: 'hospital-linen' },
+        ] },
+        { label: 'Hotel Linen', bold: true, cat: 'hotel-linen', children: [] },
+    ] },
+];
+
+function getMegaMenu() {
+    try {
+        const raw = localStorage.getItem(_MEGA_CACHE_KEY);
+        if (raw) { const m = JSON.parse(raw); if (Array.isArray(m) && m.length) return m; }
+    } catch (e) { /* ignore */ }
+    return DEFAULT_MEGA_MENU;
+}
+window.getMegaMenu = getMegaMenu;
+
+function _megaHref(o) {
+    if (o && o.href) return o.href;
+    if (!o || !o.cat) return 'categories.html';
+    let u = 'categories.html?cat=' + encodeURIComponent(o.cat);
+    if (o.gender) u += '&gender=' + encodeURIComponent(o.gender);
+    if (o.sleeve) u += '&sleeve=' + encodeURIComponent(o.sleeve);
+    return u;
+}
+
+// Rebuild every .mega-menu-inner from the stored structure (desktop + mobile share
+// the same DOM). The promo CTA column is preserved.
+function renderMegaMenu() {
+    let menu;
+    try { menu = getMegaMenu(); } catch (e) { return; }
+    if (!Array.isArray(menu) || !menu.length) return;
+    const inners = document.querySelectorAll('.mega-menu-inner');
+    if (!inners.length) return;
+    const esc = (typeof escapeRichText === 'function') ? escapeRichText : (s => String(s == null ? '' : s));
+    const colsHtml = menu.map(col => {
+        const items = (col.items || []).map(it => {
+            const kids = (it.children || []).map(ch => `<li><a href="${_megaHref(ch)}">${esc(ch.label)}</a></li>`).join('');
+            const cls = it.bold ? ' class="mega-main-item"' : '';
+            return `<li><a href="${_megaHref(it)}"${cls}>${esc(it.label)}</a></li>` + kids;
+        }).join('');
+        return `<div class="mega-col"><a href="${_megaHref(col)}" class="mega-col-thumb" data-cat="${esc(col.cat || '')}"><i class="fas fa-${esc(col.icon || 'th-large')}"></i></a><h4><a href="${_megaHref(col)}">${esc(col.title)}</a></h4><ul>${items}</ul></div>`;
+    }).join('');
+    inners.forEach(inner => {
+        const cta = inner.querySelector('.mega-cta');
+        inner.innerHTML = colsHtml + (cta ? cta.outerHTML : '');
+    });
+    if (typeof initMegaMenuImages === 'function') initMegaMenuImages();
+}
+window.renderMegaMenu = renderMegaMenu;
+
+// Load the mega-menu structure from Supabase (settings/megamenu) and re-render.
+(function _initMegaMenuSync() {
+    function _parse(d) {
+        if (!d) return null;
+        if (Array.isArray(d.list) && d.list.length) return d.list;
+        if (typeof d.name === 'string' && d.name.trim().startsWith('[')) {
+            try { const a = JSON.parse(d.name); if (Array.isArray(a) && a.length) return a; } catch (e) { /* ignore */ }
+        }
+        return null;
+    }
+    async function _sync() {
+        for (let i = 0; i < 80; i++) { if (window.db) break; await new Promise(r => setTimeout(r, 50)); }
+        if (!window.db) return;
+        try {
+            const doc = await window.db.collection('settings').doc('megamenu').get();
+            if (doc && doc.exists) {
+                const list = _parse(doc.data());
+                if (list && list.length) {
+                    const next = JSON.stringify(list);
+                    if (localStorage.getItem(_MEGA_CACHE_KEY) !== next) {
+                        localStorage.setItem(_MEGA_CACHE_KEY, next);
+                    }
+                    if (typeof renderMegaMenu === 'function') renderMegaMenu();
+                    if (typeof initCustomCategoryNav === 'function') initCustomCategoryNav();
+                }
+            }
+        } catch (e) { /* offline / not set — keep default */ }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _sync);
+    else _sync();
+})();
+
+
+// ===== Product tile image hover auto-scroll =====
+// On mouse hover over a product tile, cycle through that product's images one by
+// one (no click needed). Single-image tiles stay static. Uses event delegation so
+// it keeps working after the grid re-renders.
+let _hoverCycleTimer = null;
+let _hoverCycleCard = null;
+function _startCardCycle(card) {
+    const imgs = window._cardHoverImgs && window._cardHoverImgs[card.dataset.id];
+    if (!imgs || imgs.length < 2) return;
+    const imgEl = card.querySelector('.shop-card-image img');
+    if (!imgEl) return;
+    const dots = card.querySelectorAll('.card-img-dots i');
+    let idx = 0;
+    _hoverCycleCard = card;
+    _hoverCycleTimer = setInterval(() => {
+        idx = (idx + 1) % imgs.length;
+        imgEl.src = imgs[idx];
+        dots.forEach((d, i) => d.classList.toggle('on', i === idx));
+    }, 850);
+}
+function _stopCardCycle() {
+    if (_hoverCycleTimer) { clearInterval(_hoverCycleTimer); _hoverCycleTimer = null; }
+    if (_hoverCycleCard) {
+        const imgs = window._cardHoverImgs && window._cardHoverImgs[_hoverCycleCard.dataset.id];
+        const imgEl = _hoverCycleCard.querySelector('.shop-card-image img');
+        if (imgEl && imgs && imgs[0]) imgEl.src = imgs[0];
+        _hoverCycleCard.querySelectorAll('.card-img-dots i').forEach((d, i) => d.classList.toggle('on', i === 0));
+        _hoverCycleCard = null;
+    }
+}
+function initCardHoverCycle() {
+    if (window._cardHoverBound) return;
+    window._cardHoverBound = true;
+    document.addEventListener('mouseover', e => {
+        const card = e.target.closest && e.target.closest('.shop-card');
+        if (card && card !== _hoverCycleCard) { _stopCardCycle(); _startCardCycle(card); }
+    });
+    document.addEventListener('mouseout', e => {
+        const card = e.target.closest && e.target.closest('.shop-card');
+        const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('.shop-card');
+        if (card && to !== card) _stopCardCycle();
+    });
+}
+window.initCardHoverCycle = initCardHoverCycle;
+
 // Load categories from Supabase settings/categories and refresh chips if changed.
 (function _initCategorySync() {
     // The live settings table has no jsonb `list` column, so the category list is
@@ -416,7 +569,7 @@ window.initCustomCategoryNav = initCustomCategoryNav;
             const local = productsData.find(p => p.name === fp.name);
             if (local) {
                 // Overlay admin-editable fields (image, price, badge, description, colorVariants, sizes, gender, sleeve, fitSizing, fabricCare, returns)
-                for (const f of ['image', 'mainImage', 'price', 'oldPrice', 'badge', 'description', 'colorVariants', 'sizes', 'gender', 'sleeve', 'fitSizing', 'fabricCare', 'returns']) {
+                for (const f of ['image', 'mainImage', 'price', 'oldPrice', 'badge', 'description', 'colorVariants', 'sizes', 'gender', 'sleeve', 'fitSizing', 'fabricCare', 'returns', 'sizePrices', 'embroideryEnabled', 'embroideryPrices', 'embroideryPrice']) {
                     const val = fp[f];
                     if (val !== undefined && val !== null && val !== '' && val !== local[f]) {
                         local[f] = val;
@@ -442,6 +595,10 @@ window.initCustomCategoryNav = initCustomCategoryNav;
                     fitSizing: fp.fitSizing || '',
                     fabricCare: fp.fabricCare || '',
                     returns: fp.returns || '',
+                    sizePrices: fp.sizePrices || {},
+                    embroideryEnabled: (fp.embroideryEnabled !== undefined && fp.embroideryEnabled !== null) ? fp.embroideryEnabled : (fp.category === 'scrub-suits'),
+                    embroideryPrices: fp.embroideryPrices || null,
+                    embroideryPrice: (fp.embroideryPrice !== undefined && fp.embroideryPrice !== null) ? fp.embroideryPrice : null,
                     rating: 4.5, reviews: 0,
                     _fromFirestore: true
                 };
@@ -785,8 +942,12 @@ document.addEventListener('DOMContentLoaded', () => {
 function initCommon() {
     // Populate mega-menu thumbnails from admin-uploaded images (refreshed again after product sync)
     if (typeof initMegaMenuImages === 'function') initMegaMenuImages();
+    // Rebuild the nav mega-menu from the admin-editable structure (main/sub headings)
+    if (typeof renderMegaMenu === 'function') renderMegaMenu();
     // Inject admin-added categories into the nav mega-menu / CliniFlex dropdown
     if (typeof initCustomCategoryNav === 'function') initCustomCategoryNav();
+    // Enable hover auto-scroll of product tile images
+    if (typeof initCardHoverCycle === 'function') initCardHoverCycle();
     // Apply scrub brand name from localStorage to all pages
     applyScrubBrandName();
     // Fix nav active state based on current URL (CliniFlex highlighted only on scrub-suits)
@@ -1006,6 +1167,35 @@ function initHomePage() {
 }
 
 // ===== Categories Page =====
+// Update the compact category hero (title, breadcrumb, tagline) to match the
+// active category. CliniFlex gets its own branding + signature badge; the generic
+// Categories view keeps "Home > Categories".
+function updateCategoryHero(cat) {
+    const titleEl = document.getElementById('catHeroTitle');
+    const crumbEl = document.getElementById('catCrumbLast');
+    const subEl = document.getElementById('catHeroSub');
+    const badgeEl = document.getElementById('catHeroBadge');
+    if (!titleEl) return;
+    if (cat === 'scrub-suits') {
+        if (crumbEl) crumbEl.textContent = 'CliniFlex\u2122';
+        titleEl.innerHTML = 'SSA CliniFlex\u2122 <span class="gradient-text">Scrubs</span>';
+        if (subEl) subEl.textContent = 'Premium medical scrub suits \u2014 comfort, durability & style through every shift.';
+        if (badgeEl) badgeEl.style.display = '';
+    } else if (cat && cat !== 'all') {
+        const label = (typeof getCategoryLabel === 'function' ? getCategoryLabel(cat) : cat.replace(/-/g, ' '));
+        if (crumbEl) crumbEl.textContent = label;
+        titleEl.innerHTML = '<span class="gradient-text">' + escapeRichText(label) + '</span>';
+        if (subEl) subEl.textContent = 'Browse our ' + label + ' collection.';
+        if (badgeEl) badgeEl.style.display = 'none';
+    } else {
+        if (crumbEl) crumbEl.textContent = 'Categories';
+        titleEl.innerHTML = 'Our <span class="gradient-text">Categories</span>';
+        if (subEl) subEl.textContent = 'Browse our complete range of hospital linen, uniforms & textiles.';
+        if (badgeEl) badgeEl.style.display = 'none';
+    }
+}
+window.updateCategoryHero = updateCategoryHero;
+
 // Bind (or re-bind) click handlers to the shop filter chips. Safe to call after
 // renderShopFilters() rebuilds the chip DOM.
 function bindFilterButtons() {
@@ -1030,6 +1220,7 @@ function bindFilterButtons() {
                 history.replaceState({}, '', url);
             } catch (e) { /* ignore */ }
             _syncWindowState(); renderProducts(currentFilter, displayedProducts, null, null, currentSearch);
+            if (typeof updateCategoryHero === 'function') updateCategoryHero(currentFilter);
         });
     });
 }
@@ -1050,6 +1241,7 @@ function applyUrlFilterAndRender() {
     if (psc) psc.style.display = 'none';
     renderShopFilters(); // rebuild chips + set active + bind handlers
     updateScrubsCount();
+    if (typeof updateCategoryHero === 'function') updateCategoryHero(currentFilter);
     _syncWindowState();
     renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, currentSearch);
 }
@@ -1124,6 +1316,7 @@ function initCategoriesPage() {
 
     updateScrubsCount();
     _syncWindowState();
+    if (typeof updateCategoryHero === 'function') updateCategoryHero(currentFilter);
     renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
 }
 
@@ -1151,6 +1344,27 @@ function buildProductCard(p) {
     const _cardImg = _allCvImgs.find(img => img && img !== p.mainImage)
                   || (p.image && p.image !== p.mainImage ? p.image : null)
                   || _allCvImgs[0] || p.image || '';
+    // Collect images for the tile's hover auto-scroll. Prefer one representative
+    // image per colour (so hovering previews the colour range); for a single-colour
+    // product, cycle that colour's own images. Capped so the loop stays snappy.
+    const _hoverImgs = (() => {
+        const cvs = p.colorVariants || [];
+        let out = [];
+        if (cvs.length > 1) {
+            cvs.forEach(cv => { const im = (cv.images || []).find(x => x && x !== p.mainImage); if (im && !out.includes(im)) out.push(im); });
+        } else {
+            (cvs[0] && cvs[0].images || []).forEach(im => { if (im && im !== p.mainImage && !out.includes(im)) out.push(im); });
+        }
+        if (!out.length) _allCvImgs.forEach(im => { if (im && im !== p.mainImage && !out.includes(im)) out.push(im); });
+        if (p.image && p.image !== p.mainImage && !out.includes(p.image)) out.push(p.image);
+        if (!out.length && _cardImg) out.push(_cardImg);
+        return out.slice(0, 8);
+    })();
+    if (!window._cardHoverImgs) window._cardHoverImgs = {};
+    window._cardHoverImgs[p.id] = _hoverImgs;
+    const _dotsHtml = _hoverImgs.length > 1
+        ? `<span class="card-img-dots" aria-hidden="true">${_hoverImgs.map((_, i) => `<i class="${i === 0 ? 'on' : ''}"></i>`).join('')}</span>`
+        : '';
     const _maxSwatches = 4;
     const _shownColors = colors ? colors.slice(0, _maxSwatches) : [];
     const _extraColors = colors ? colors.length - _shownColors.length : 0;
@@ -1178,8 +1392,9 @@ function buildProductCard(p) {
     return `<div class="shop-card${p.badge || isOut || isLow ? ' has-badge' : ''} reveal active${isOut ? ' out-of-stock-card' : isLow ? ' low-stock-card' : ''}" data-category="${p.category}" data-id="${p.id}">
         ${outBadge}
         <button class="shop-card-wishlist" data-product-id="${p.id}" aria-label="Wishlist"><i class="${isWishlisted(p.id) ? 'fas' : 'far'} fa-heart"></i></button>
-        <div class="shop-card-image" onclick="openProductDetail(${p.id})">
+        <div class="shop-card-image${_hoverImgs.length > 1 ? ' has-hover-cycle' : ''}" onclick="openProductDetail(${p.id})">
             <img src="${_cardImg}" alt="${p.name}" loading="lazy">
+            ${_dotsHtml}
             ${quickBtn}
         </div>
         <div class="shop-card-body" onclick="openProductDetail(${p.id})">
@@ -1275,6 +1490,7 @@ function filterToScrubs() {
         b.classList.toggle('active', b.dataset.filter === 'scrub-suits');
     });
     renderProducts('scrub-suits', displayedProducts, null, null, '');
+    if (typeof updateCategoryHero === 'function') updateCategoryHero('scrub-suits');
     const shopSection = document.querySelector('.shop-section');
     if (shopSection) shopSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -1460,6 +1676,8 @@ function updateProductDetailVariantState(pid) {
             msgEl.style.display = 'none';
         }
     }
+    // Keep the price in sync with the active size (per-size pricing)
+    if (typeof updatePdPriceDisplay === 'function') updatePdPriceDisplay(pid);
 }
 
 // ===== Cart Functions =====
@@ -1604,12 +1822,23 @@ function openProductDetail(id) {
     // Color swatches
     const colorSection = colors ? `<div class="pd-color-section"><h4>Select Color</h4><div class="pd-color-swatches">${colors.map(c => { const isDef = c.name === defaultColorObj?.name; const allOos = (p.sizes||[]).every(s => isVariantOutOfStock(p,s,c.name)); return `<button class="pd-color-swatch${isDef?' active':''}${allOos?' swatch-oos':''}" data-hex="${c.hex}" data-color-name="${c.name}" title="${c.name}${allOos?' (Out of Stock)':''}" style="background:${c.hex}${c.hex==='#FFFFFF'?';border-color:#ccc':''}" onclick="selectDetailColor(this,${p.id})"></button>`; }).join('')}</div><span class="pd-color-name">${defaultColorObj?.name||''}</span></div>` : '';
 
-    // Embroidery section (scrub-suits only)
-    const embHtml = p.category === 'scrub-suits' ? `<div class="emb-section" id="embSec-${p.id}"><div class="emb-toggle" onclick="toggleEmbroidery(${p.id})"><span><i class="fas fa-pen-nib"></i> Add Embroidery <span class="emb-badge">+\u20b9299</span></span><i class="fas fa-chevron-down emb-chevron" id="embChev-${p.id}"></i></div><div class="emb-body" id="embBody-${p.id}" style="display:none"><div class="emb-field"><label>Embroidery Type *</label><div class="emb-type-row"><button type="button" class="emb-type-btn active" data-type="TEXT" onclick="selectEmbType(this,${p.id})">TEXT</button><button type="button" class="emb-type-btn" data-type="LOGO" onclick="selectEmbType(this,${p.id})">LOGO</button><button type="button" class="emb-type-btn" data-type="TEXT &amp; LOGO" onclick="selectEmbType(this,${p.id})">TEXT &amp; LOGO</button></div></div><div class="emb-text-fields" id="embTF-${p.id}"><div class="emb-row2"><div class="emb-field"><label>Line 1 *</label><div class="emb-inp-wrap"><input type="text" id="embL1-${p.id}" maxlength="100" placeholder="Enter Line 1" oninput="updateEmbCount(this,'embC1-${p.id}')"><span id="embC1-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-field"><label>Line 2</label><div class="emb-inp-wrap"><input type="text" id="embL2-${p.id}" maxlength="100" placeholder="Enter Line 2" oninput="updateEmbCount(this,'embC2-${p.id}')"><span id="embC2-${p.id}" class="emb-char-count">0/100</span></div></div></div><div class="emb-field"><label>Line 3</label><div class="emb-inp-wrap"><input type="text" id="embL3-${p.id}" maxlength="100" placeholder="Enter Line 3" oninput="updateEmbCount(this,'embC3-${p.id}')"><span id="embC3-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-row2"><div class="emb-field"><label>Text Position *</label><select id="embPos-${p.id}"><option value="">Select Position</option><option>Left Chest</option><option>Right Chest</option><option>Back Center</option><option>Left Sleeve</option><option>Right Sleeve</option></select></div><div class="emb-field"><label>Text Color</label><div class="emb-colors"><button type="button" class="emb-col active" style="background:#fff;border:2px solid #ccc" data-c="White" onclick="selectEmbColor(this)" title="White"></button><button type="button" class="emb-col" style="background:#000" data-c="Black" onclick="selectEmbColor(this)" title="Black"></button><button type="button" class="emb-col" style="background:#1A237E" data-c="Navy" onclick="selectEmbColor(this)" title="Navy"></button><button type="button" class="emb-col" style="background:#F9A825" data-c="Yellow" onclick="selectEmbColor(this)" title="Yellow"></button><button type="button" class="emb-col" style="background:#C62828" data-c="Red" onclick="selectEmbColor(this)" title="Red"></button><button type="button" class="emb-col" style="background:#E65100" data-c="Orange" onclick="selectEmbColor(this)" title="Orange"></button><button type="button" class="emb-col" style="background:#1B5E20" data-c="Green" onclick="selectEmbColor(this)" title="Green"></button></div></div></div><div class="emb-field"><label>Font Style</label><div class="emb-fonts"><button type="button" class="emb-font active" style="font-family:cursive;font-size:1rem" data-f="Cursive" onclick="selectEmbFont(this)">Sample</button><button type="button" class="emb-font" style="font-family:Georgia,serif;font-size:0.9rem" data-f="Serif" onclick="selectEmbFont(this)">Sample</button><button type="button" class="emb-font" style="font-family:sans-serif;font-weight:900;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase" data-f="Block" onclick="selectEmbFont(this)">SAMPLE</button></div></div></div><div class="emb-logo-fields" id="embLogoF-${p.id}" style="display:none"><div class="emb-field"><label>Upload Logo *</label><input type="file" id="embLogoFile-${p.id}" accept="image/*" onchange="previewEmbLogo(this,'${p.id}')"><div id="embLogoPreview-${p.id}" class="emb-logo-preview" style="display:none"><img id="embLogoImg-${p.id}" src="" alt="Logo preview" style="max-width:100px;max-height:80px;object-fit:contain;border-radius:6px;margin-top:6px;"><span class="emb-logo-filename" id="embLogoName-${p.id}"></span></div><p class="emb-logo-note"><i class="fas fa-info-circle"></i> Accepted: PNG, JPG, SVG (max 2MB)</p></div><div class="emb-field"><label>Logo Position *</label><select id="embLogoPos-${p.id}"><option value="">Select Position</option><option>Left Chest</option><option>Right Chest</option><option>Back Center</option><option>Left Sleeve</option><option>Right Sleeve</option></select></div></div></div></div>` : '';
+    // Embroidery section (admin-configurable per type; body hidden until "Add Embroidery")
+    const embEnabled = isEmbEnabled(p);
+    const embPrices = getEmbPrices(p);
+    const _embTag = (t) => embPrices[t] === 0
+        ? '<small class="emb-type-price emb-type-free">FREE</small>'
+        : `<small class="emb-type-price">+\u20b9${embPrices[t]}</small>`;
+    const _embVals = [embPrices['TEXT'], embPrices['LOGO'], embPrices['TEXT & LOGO']];
+    const _embMin = Math.min(..._embVals);
+    const embAllFree = _embVals.every(v => v === 0);
+    const embToggleBadge = _embMin === 0
+        ? '<span class="emb-badge emb-free"><i class="fas fa-gift"></i> ' + (embAllFree ? 'FREE' : 'FREE option') + '</span>'
+        : `<span class="emb-badge">from +\u20b9${_embMin}</span>`;
+    const embHtml = embEnabled ? `<div class="emb-section${_embMin === 0 ? ' emb-section-free' : ''}" id="embSec-${p.id}"><div class="emb-toggle" onclick="toggleEmbroidery(${p.id})"><span><i class="fas fa-pen-nib"></i> Add Embroidery ${embToggleBadge}</span><i class="fas fa-chevron-down emb-chevron" id="embChev-${p.id}"></i></div><div class="emb-body" id="embBody-${p.id}" style="display:none"><div class="emb-field"><label>Embroidery Type *</label><div class="emb-type-row"><button type="button" class="emb-type-btn active" data-type="TEXT" data-emb-price="${embPrices['TEXT']}" onclick="selectEmbType(this,${p.id})">TEXT ${_embTag('TEXT')}</button><button type="button" class="emb-type-btn" data-type="LOGO" data-emb-price="${embPrices['LOGO']}" onclick="selectEmbType(this,${p.id})">LOGO ${_embTag('LOGO')}</button><button type="button" class="emb-type-btn" data-type="TEXT &amp; LOGO" data-emb-price="${embPrices['TEXT & LOGO']}" onclick="selectEmbType(this,${p.id})">TEXT &amp; LOGO ${_embTag('TEXT & LOGO')}</button></div></div><div class="emb-text-fields" id="embTF-${p.id}"><div class="emb-row2"><div class="emb-field"><label>Line 1 *</label><div class="emb-inp-wrap"><input type="text" id="embL1-${p.id}" maxlength="100" placeholder="Enter Line 1" oninput="updateEmbCount(this,'embC1-${p.id}')"><span id="embC1-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-field"><label>Line 2</label><div class="emb-inp-wrap"><input type="text" id="embL2-${p.id}" maxlength="100" placeholder="Enter Line 2" oninput="updateEmbCount(this,'embC2-${p.id}')"><span id="embC2-${p.id}" class="emb-char-count">0/100</span></div></div></div><div class="emb-field"><label>Line 3</label><div class="emb-inp-wrap"><input type="text" id="embL3-${p.id}" maxlength="100" placeholder="Enter Line 3" oninput="updateEmbCount(this,'embC3-${p.id}')"><span id="embC3-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-row2"><div class="emb-field"><label>Text Position *</label><select id="embPos-${p.id}"><option value="">Select Position</option><option>Left Chest</option><option>Right Chest</option><option>Back Center</option><option>Left Sleeve</option><option>Right Sleeve</option></select></div><div class="emb-field"><label>Text Color</label><div class="emb-colors"><button type="button" class="emb-col active" style="background:#fff;border:2px solid #ccc" data-c="White" onclick="selectEmbColor(this)" title="White"></button><button type="button" class="emb-col" style="background:#000" data-c="Black" onclick="selectEmbColor(this)" title="Black"></button><button type="button" class="emb-col" style="background:#1A237E" data-c="Navy" onclick="selectEmbColor(this)" title="Navy"></button><button type="button" class="emb-col" style="background:#F9A825" data-c="Yellow" onclick="selectEmbColor(this)" title="Yellow"></button><button type="button" class="emb-col" style="background:#C62828" data-c="Red" onclick="selectEmbColor(this)" title="Red"></button><button type="button" class="emb-col" style="background:#E65100" data-c="Orange" onclick="selectEmbColor(this)" title="Orange"></button><button type="button" class="emb-col" style="background:#1B5E20" data-c="Green" onclick="selectEmbColor(this)" title="Green"></button></div></div></div><div class="emb-field"><label>Font Style</label><div class="emb-fonts"><button type="button" class="emb-font active" style="font-family:cursive;font-size:1rem" data-f="Cursive" onclick="selectEmbFont(this)">Sample</button><button type="button" class="emb-font" style="font-family:Georgia,serif;font-size:0.9rem" data-f="Serif" onclick="selectEmbFont(this)">Sample</button><button type="button" class="emb-font" style="font-family:sans-serif;font-weight:900;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase" data-f="Block" onclick="selectEmbFont(this)">SAMPLE</button></div></div></div><div class="emb-logo-fields" id="embLogoF-${p.id}" style="display:none"><div class="emb-field"><label>Upload Logo *</label><input type="file" id="embLogoFile-${p.id}" accept="image/*" onchange="previewEmbLogo(this,'${p.id}')"><div id="embLogoPreview-${p.id}" class="emb-logo-preview" style="display:none"><img id="embLogoImg-${p.id}" src="" alt="Logo preview" style="max-width:100px;max-height:80px;object-fit:contain;border-radius:6px;margin-top:6px;"><span class="emb-logo-filename" id="embLogoName-${p.id}"></span></div><p class="emb-logo-note"><i class="fas fa-info-circle"></i> Accepted: PNG, JPG, SVG (max 2MB)</p></div><div class="emb-field"><label>Logo Position *</label><select id="embLogoPos-${p.id}"><option value="">Select Position</option><option>Left Chest</option><option>Right Chest</option><option>Back Center</option><option>Left Sleeve</option><option>Right Sleeve</option></select></div></div></div></div>` : '';
 
     const modal = document.getElementById('productDetailModal');
     const accordionHtml = (p.fitSizing || p.fabricCare || p.returns) ? `<div class="pd-accordion">${p.fitSizing ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Details &amp; Fit</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.fitSizing)}</div></div>` : ''}${p.fabricCare ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Fabric &amp; Care</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.fabricCare)}</div></div>` : ''}${p.returns ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Return &amp; Exchange</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.returns)}</div></div>` : ''}</div>` : '';
-    modal.innerHTML = `<div class="modal product-detail-modal"><button class="modal-close pd-close" onclick="closeProductDetail()"><i class="fas fa-times"></i></button><div class="pd-grid"><div class="pd-image-gallery">${thumbsHtml}<div class="pd-main-img" id="pdMainWrap-${p.id}" onclick="openImageLightbox('pdMainImg-${p.id}')">${mainImg ? `<img id="pdMainImg-${p.id}" src="${mainImg}" alt="${p.name}">` : `<div class="pd-no-img"><i class="fas fa-tshirt"></i></div>`}<button class="pd-expand-btn" onclick="event.stopPropagation();openImageLightbox('pdMainImg-${p.id}')" aria-label="Expand"><i class="fas fa-expand-alt"></i></button>${p.badge?`<span class="pd-badge">${p.badge}</span>`:''}</div></div><div class="pd-info"><span class="pd-category">${p.category.replace(/-/g,' ')}</span><h2 class="pd-title" id="pdTitle-${p.id}">${p.name}${defaultColor ? `<span class="pd-title-color"> — ${defaultColor}</span>` : ''}</h2><div class="pd-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}<span>(${p.reviews} reviews)</span></div><div class="pd-price"><span class="pd-current-price">\u20b9${p.price}</span>${p.oldPrice?`<span class="pd-old-price">\u20b9${p.oldPrice}</span><span class="pd-discount">${discount}% OFF</span>`:''}</div><div class="pd-description">${renderRichText(p.description)}</div>${colorSection}<div class="pd-size-section"><h4>Select Size</h4><div class="pd-sizes" id="pdSizes-${p.id}">${p.sizes.map((s,i)=>{ const oos=isVariantOutOfStock(p,s,defaultColor); const active=firstAvailableSize?(s===firstAvailableSize):(!oos&&i===0); return `<button class="pd-size-btn${active?' active':''}${oos?' is-oos':''}" data-size="${s.replace(/"/g,'&quot;')}" ${oos?'disabled title="Out of stock for this color"':''} onclick="selectSize(this,${p.id})">${s}</button>`; }).join('')}</div><p id="pdVariantStockMsg-${p.id}" style="display:none;color:#dc2626;font-size:0.85rem;margin-top:8px;"></p></div>${embHtml}<div class="pd-qty-section"><h4>Quantity</h4><div class="pd-qty"><button onclick="changePdQty(-1)"><i class="fas fa-minus"></i></button><span id="pdQty">1</span><button onclick="changePdQty(1)"><i class="fas fa-plus"></i></button></div></div><div class="pd-actions"><button id="pdAddBtn-${p.id}" class="btn btn-primary btn-lg" onclick="addToCartFromDetail(${p.id})"><i class="fas fa-cart-plus"></i> Add to Cart</button><button id="pdBuyBtn-${p.id}" class="btn btn-outline-dark btn-lg" onclick="buyNowFromDetail(${p.id})"><i class="fas fa-bolt"></i> Buy Now</button></div><div class="pd-features"><div class="pd-feature"><i class="fas fa-truck"></i> Free delivery above \u20b92000</div><div class="pd-feature"><i class="fas fa-undo"></i> 7-day returns</div><div class="pd-feature"><i class="fas fa-shield-alt"></i> Quality guaranteed</div></div>${accordionHtml}</div></div></div>`;
+    modal.innerHTML = `<div class="modal product-detail-modal"><button class="modal-close pd-close" onclick="closeProductDetail()"><i class="fas fa-times"></i></button><div class="pd-grid"><div class="pd-image-gallery">${thumbsHtml}<div class="pd-main-img" id="pdMainWrap-${p.id}" onclick="openImageLightbox('pdMainImg-${p.id}')">${mainImg ? `<img id="pdMainImg-${p.id}" src="${mainImg}" alt="${p.name}">` : `<div class="pd-no-img"><i class="fas fa-tshirt"></i></div>`}<button class="pd-expand-btn" onclick="event.stopPropagation();openImageLightbox('pdMainImg-${p.id}')" aria-label="Expand"><i class="fas fa-expand-alt"></i></button>${p.badge?`<span class="pd-badge">${p.badge}</span>`:''}</div></div><div class="pd-info"><span class="pd-category">${p.category.replace(/-/g,' ')}</span><h2 class="pd-title" id="pdTitle-${p.id}">${p.name}${defaultColor ? `<span class="pd-title-color"> — ${defaultColor}</span>` : ''}</h2><div class="pd-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}<span>(${p.reviews} reviews)</span></div><div class="pd-price"><span class="pd-current-price" id="pdCurPrice-${p.id}">\u20b9${p.price}</span><span class="pd-old-price" id="pdOldPrice-${p.id}"${p.oldPrice?'':' style="display:none"'}>\u20b9${p.oldPrice||''}</span><span class="pd-discount" id="pdDiscount-${p.id}"${p.oldPrice?'':' style="display:none"'}>${discount}% OFF</span><span class="pd-emb-note" id="pdEmbNote-${p.id}" style="display:none"></span></div><div class="pd-description">${renderRichText(p.description)}</div>${colorSection}<div class="pd-size-section"><h4>Select Size</h4><div class="pd-sizes" id="pdSizes-${p.id}">${p.sizes.map((s,i)=>{ const oos=isVariantOutOfStock(p,s,defaultColor); const active=firstAvailableSize?(s===firstAvailableSize):(!oos&&i===0); return `<button class="pd-size-btn${active?' active':''}${oos?' is-oos':''}" data-size="${s.replace(/"/g,'&quot;')}" ${oos?'disabled title="Out of stock for this color"':''} onclick="selectSize(this,${p.id})">${s}</button>`; }).join('')}</div><p id="pdVariantStockMsg-${p.id}" style="display:none;color:#dc2626;font-size:0.85rem;margin-top:8px;"></p></div>${embHtml}<div class="pd-qty-section"><h4>Quantity</h4><div class="pd-qty"><button onclick="changePdQty(-1)"><i class="fas fa-minus"></i></button><span id="pdQty">1</span><button onclick="changePdQty(1)"><i class="fas fa-plus"></i></button></div></div><div class="pd-actions"><button id="pdAddBtn-${p.id}" class="btn btn-primary btn-lg" onclick="addToCartFromDetail(${p.id})"><i class="fas fa-cart-plus"></i> Add to Cart</button><button id="pdBuyBtn-${p.id}" class="btn btn-outline-dark btn-lg" onclick="buyNowFromDetail(${p.id})"><i class="fas fa-bolt"></i> Buy Now</button></div><div class="pd-features"><div class="pd-feature"><i class="fas fa-truck"></i> Free delivery above \u20b92000</div><div class="pd-feature"><i class="fas fa-undo"></i> 7-day returns</div><div class="pd-feature"><i class="fas fa-shield-alt"></i> Quality guaranteed</div></div>${accordionHtml}</div></div></div>`;
     modal.classList.add('active'); pdQuantity = 1;
     document.body.classList.add('modal-open'); // lock background scroll (mobile fix)
     modal.scrollTop = 0;
@@ -1630,6 +1859,7 @@ function selectSize(btn, pid) {
     btn.parentElement.querySelectorAll('.pd-size-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     updateProductDetailVariantState(pid);
+    if (typeof updatePdPriceDisplay === 'function') updatePdPriceDisplay(pid);
 }
 function getSelectedSize(pid) { const c = document.getElementById(`pdSizes-${pid}`); if (!c) return null; const a = c.querySelector('.pd-size-btn.active'); return a ? a.dataset.size : null; }
 function getSelectedColor(pid) { const c = document.querySelector('.pd-color-swatch.active'); return c ? c.dataset.colorName : null; }
@@ -1640,7 +1870,8 @@ function addToCartFromDetail(id) {
         if (size && isVariantOutOfStock(p, size, color)) { showToast(`${size}${color ? ' / ' + color : ''} is out of stock!`); return; }
         if (p.outOfStock) { showToast('This product is currently out of stock!'); return; }
         const emb = getEmbroideryData(id);
-        const effectivePrice = p.price + (emb ? emb.price : 0);
+        const base = typeof getSizePrice === 'function' ? getSizePrice(p, size) : { price: p.price };
+        const effectivePrice = base.price + (emb ? emb.price : 0);
         const existing = cart.find(i => i.id === id && i.selectedSize === size && i.selectedColor === color && !i.embroidery);
         if (existing && !emb) { existing.qty += pdQuantity; } else { cart.push({ ...p, price: effectivePrice, qty: pdQuantity, selectedSize: size, selectedColor: color || getProductColors(p)?.[0]?.name || null, embroidery: emb || null }); }
         saveCart(); updateCartUI();
@@ -2754,10 +2985,14 @@ window.openImageLightbox = openImageLightbox;
 function toggleEmbroidery(pid) {
     const body = document.getElementById(`embBody-${pid}`);
     const chev = document.getElementById(`embChev-${pid}`);
+    const sec = document.getElementById(`embSec-${pid}`);
     if (!body) return;
     const open = body.style.display !== 'none';
     body.style.display = open ? 'none' : '';
     if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+    if (sec) sec.classList.toggle('emb-open', !open);
+    // Recalculate the displayed price (base + embroidery add-on for the selected type)
+    if (typeof updatePdPriceDisplay === 'function') updatePdPriceDisplay(pid);
 }
 window.toggleEmbroidery = toggleEmbroidery;
 
@@ -2769,6 +3004,8 @@ function selectEmbType(btn, pid) {
     const lf = document.getElementById(`embLogoF-${pid}`);
     if (tf) tf.style.display = type === 'LOGO' ? 'none' : '';
     if (lf) lf.style.display = (type === 'LOGO' || type === 'TEXT & LOGO') ? '' : 'none';
+    // Each type can have its own admin-set price → repaint the total
+    if (typeof updatePdPriceDisplay === 'function') updatePdPriceDisplay(pid);
 }
 window.selectEmbType = selectEmbType;
 
@@ -2809,10 +3046,12 @@ window.previewEmbLogo = previewEmbLogo;
 function getEmbroideryData(pid) {
     const body = document.getElementById(`embBody-${pid}`);
     if (!body || body.style.display === 'none') return null;
-    const type = body.querySelector('.emb-type-btn.active')?.dataset?.type || 'TEXT';
+    const typeBtn = body.querySelector('.emb-type-btn.active');
+    const type = typeBtn?.dataset?.type || 'TEXT';
+    const price = typeBtn ? (Number(typeBtn.dataset.embPrice) || 0) : 0;
     const logoPos = document.getElementById(`embLogoPos-${pid}`)?.value || '';
     if (type === 'LOGO') {
-        return { type: 'LOGO', logoPosition: logoPos, price: 299 };
+        return { type: 'LOGO', logoPosition: logoPos, price };
     }
     const line1 = document.getElementById(`embL1-${pid}`)?.value?.trim() || '';
     if (!line1) return null;
@@ -2824,12 +3063,97 @@ function getEmbroideryData(pid) {
         position: document.getElementById(`embPos-${pid}`)?.value || '',
         color: body.querySelector('.emb-col.active')?.dataset?.c || 'White',
         font: body.querySelector('.emb-font.active')?.dataset?.f || 'Cursive',
-        price: 299
+        price
     };
     if (type === 'TEXT & LOGO') { data.logoPosition = logoPos; }
     return data;
 }
 window.getEmbroideryData = getEmbroideryData;
+
+// ===== Pricing helpers: per-size price + per-type embroidery add-on =====
+// Effective {price, oldPrice} for a product, honouring admin per-size overrides
+// (product.sizePrices[size]) when present, else the base price.
+function getSizePrice(p, size) {
+    if (p && p.sizePrices && size && p.sizePrices[size]) {
+        const sp = p.sizePrices[size];
+        const price = (sp.price !== undefined && sp.price !== null && sp.price !== '') ? Number(sp.price) : null;
+        if (price !== null && !isNaN(price)) {
+            const oldPrice = (sp.oldPrice !== undefined && sp.oldPrice !== null && sp.oldPrice !== '') ? Number(sp.oldPrice) : null;
+            return { price, oldPrice: (oldPrice && !isNaN(oldPrice)) ? oldPrice : null };
+        }
+    }
+    return { price: Number(p.price) || 0, oldPrice: (p.oldPrice ? Number(p.oldPrice) : null) };
+}
+window.getSizePrice = getSizePrice;
+
+// Per-type embroidery prices {TEXT, LOGO, 'TEXT & LOGO'} (0 = free). Reads
+// product.embroideryPrices; falls back to a legacy single price / scrub default.
+function getEmbPrices(p) {
+    if (!p) return { 'TEXT': 0, 'LOGO': 0, 'TEXT & LOGO': 0 };
+    const ep = p.embroideryPrices;
+    if (ep && typeof ep === 'object') {
+        return {
+            'TEXT': Math.max(0, Number(ep['TEXT']) || 0),
+            'LOGO': Math.max(0, Number(ep['LOGO']) || 0),
+            'TEXT & LOGO': Math.max(0, Number(ep['TEXT & LOGO']) || 0),
+        };
+    }
+    const legacy = (p.embroideryPrice !== undefined && p.embroideryPrice !== null && p.embroideryPrice !== '')
+        ? Math.max(0, Number(p.embroideryPrice) || 0)
+        : (p.category === 'scrub-suits' ? 299 : 0);
+    return { 'TEXT': legacy, 'LOGO': legacy, 'TEXT & LOGO': legacy };
+}
+window.getEmbPrices = getEmbPrices;
+
+function isEmbEnabled(p) {
+    if (!p) return false;
+    if (p.embroideryEnabled !== undefined && p.embroideryEnabled !== null) return !!p.embroideryEnabled;
+    return p.category === 'scrub-suits';
+}
+function isEmbActive(pid) {
+    const body = document.getElementById(`embBody-${pid}`);
+    return !!(body && body.style.display !== 'none');
+}
+function getSelectedEmbPrice(pid) {
+    const body = document.getElementById(`embBody-${pid}`);
+    const btn = body && body.querySelector('.emb-type-btn.active');
+    return btn ? (Number(btn.dataset.embPrice) || 0) : 0;
+}
+
+// Repaint the product-detail price from the selected size + (if the embroidery
+// section is open) the selected embroidery type's add-on price.
+function updatePdPriceDisplay(pid) {
+    const p = productsData.find(x => x.id === pid); if (!p) return;
+    const size = getSelectedSize(pid);
+    const base = getSizePrice(p, size);
+    const embActive = isEmbActive(pid);
+    const emb = embActive ? getSelectedEmbPrice(pid) : 0;
+    const total = base.price + emb;
+    const curEl = document.getElementById(`pdCurPrice-${pid}`);
+    const oldEl = document.getElementById(`pdOldPrice-${pid}`);
+    const discEl = document.getElementById(`pdDiscount-${pid}`);
+    const embNoteEl = document.getElementById(`pdEmbNote-${pid}`);
+    if (curEl) curEl.textContent = '\u20b9' + total;
+    if (oldEl && discEl) {
+        const oldTotal = base.oldPrice ? base.oldPrice + emb : null;
+        if (oldTotal && oldTotal > total) {
+            oldEl.textContent = '\u20b9' + oldTotal; oldEl.style.display = '';
+            discEl.textContent = Math.round((1 - total / oldTotal) * 100) + '% OFF'; discEl.style.display = '';
+        } else { oldEl.style.display = 'none'; discEl.style.display = 'none'; }
+    }
+    if (embNoteEl) {
+        if (embActive && emb > 0) {
+            embNoteEl.textContent = `incl. \u20b9${emb} embroidery`;
+            embNoteEl.className = 'pd-emb-note'; embNoteEl.style.display = '';
+        } else if (embActive && emb === 0) {
+            embNoteEl.innerHTML = '<i class="fas fa-gift"></i> Limited Time Offer \u2013 FREE Embroidery';
+            embNoteEl.className = 'pd-emb-note pd-emb-note-free'; embNoteEl.style.display = '';
+        } else {
+            embNoteEl.style.display = 'none';
+        }
+    }
+}
+window.updatePdPriceDisplay = updatePdPriceDisplay;
 
 // ===== Utilities =====
 function showToast(msg) {
