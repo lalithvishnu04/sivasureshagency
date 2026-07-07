@@ -95,6 +95,10 @@ function waitForDbThenLoad(attempts) {
     if (window.db && window._firebaseReady) {
         console.log('[admin.js] Firestore ready — loading dashboard');
         loadDashboard();
+        // Refresh the category list from Supabase up-front so the product
+        // category dropdown reflects live categories even before the Categories
+        // tab is opened.
+        if (typeof loadCategories === 'function') { try { loadCategories(); } catch (e) { /* ignore */ } }
     } else if (attempts > 60) {
         console.error('[admin.js] Firestore not ready after 3s');
         showAdminToast('Database connection failed. Please refresh.', 'error');
@@ -1821,7 +1825,7 @@ function addMegaColumn() { if (!_adminMega) _adminMega = _readMega(); _adminMega
 window.addMegaColumn = addMegaColumn;
 function deleteMegaColumn(ci) { if (!confirm('Remove this whole column?')) return; _adminMega.splice(ci, 1); renderMegaEditor(); }
 window.deleteMegaColumn = deleteMegaColumn;
-function addMegaItem(ci) { const c = _adminMega[ci]; if (!c) return; (c.items = c.items || []).push({ label: 'New Item', bold: false, cat: c.cat || '', gender: '', sleeve: '', children: [] }); renderMegaEditor(); }
+function addMegaItem(ci) { const c = _adminMega[ci]; if (!c) return; (c.items = c.items || []).push({ label: 'New Item', bold: false, cat: '', gender: '', sleeve: '', children: [] }); renderMegaEditor(); }
 window.addMegaItem = addMegaItem;
 function deleteMegaItem(ci, ii) { _adminMega[ci].items.splice(ii, 1); renderMegaEditor(); }
 window.deleteMegaItem = deleteMegaItem;

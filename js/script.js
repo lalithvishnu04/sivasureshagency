@@ -405,6 +405,13 @@ window.getMegaMenu = getMegaMenu;
 
 function _megaHref(o) {
     if (o && o.href) return o.href;
+    // No category chosen → give the heading its own URL from its label (so a
+    // standalone heading like "New Product" links to ?cat=new-product and shows
+    // an empty state instead of borrowing the column's products).
+    if (o && !o.cat && o.label) {
+        const slug = String(o.label).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        if (slug) return 'categories.html?cat=' + encodeURIComponent(slug);
+    }
     if (!o || !o.cat) return 'categories.html';
     let u = 'categories.html?cat=' + encodeURIComponent(o.cat);
     if (o.gender) u += '&gender=' + encodeURIComponent(o.gender);
@@ -2715,17 +2722,53 @@ function initCategoryTileScroll() {
 }
 window.initCategoryTileScroll = initCategoryTileScroll;
 
-// Populate mega-menu thumbnails + CliniFlex hero with admin-uploaded product images only.
+// Build a pool of MAIN product images (admin-uploaded) per category, preferring
+// each product's mainImage. Used to cross-fade the mega-menu column thumbnails.
+function _buildCatMainImagePool() {
+    const pool = {};
+    (window.productsData || productsData || []).forEach(p => {
+        let im = (p.mainImage && /^https?:/.test(p.mainImage)) ? p.mainImage : null;
+        if (!im) { const a = _collectAdminImages(p); im = a[0] || null; }
+        if (!im) return;
+        (pool[p.category] = pool[p.category] || []);
+        if (!pool[p.category].includes(im)) pool[p.category].push(im);
+    });
+    return pool;
+}
+
+// Populate mega-menu thumbnails + CliniFlex hero with admin-uploaded product images.
+// The Categories column thumbnails cross-fade through that category's main product
+// images (admin-uploaded) so they feel alive.
 function initMegaMenuImages() {
     const pool = _buildCatImagePool();
+    const mainPool = _buildCatMainImagePool();
     const fallback = { 'hospital-linen': ['hospital-linen', 'bedsheets', 'hotel-linen'], 'bedsheets': ['bedsheets', 'hospital-linen'] };
-    document.querySelectorAll('.mega-col-thumb[data-cat], .cliniflex-dd-hero[data-cat], .ss-visual-img[data-cat]').forEach(el => {
-        const cat = el.dataset.cat;
-        const cats = [cat].concat(fallback[cat] || []);
-        let imgs = null;
-        for (const c of cats) { if (pool[c] && pool[c].length) { imgs = pool[c]; break; } }
+    const pick = (obj, cat) => { const cats = [cat].concat(fallback[cat] || []); for (const c of cats) { if (obj[c] && obj[c].length) return obj[c]; } return null; };
+    // Static image targets (CliniFlex hero, spotlight visual)
+    document.querySelectorAll('.cliniflex-dd-hero[data-cat], .ss-visual-img[data-cat]').forEach(el => {
+        const imgs = pick(pool, el.dataset.cat);
         if (imgs && imgs.length) { el.style.backgroundImage = `url('${imgs[0]}')`; el.classList.add('has-img'); }
         else { el.style.backgroundImage = ''; el.classList.remove('has-img'); }
+    });
+    // Cross-fading category column thumbnails
+    document.querySelectorAll('.mega-col-thumb[data-cat]').forEach(el => {
+        if (el._megaTimer) { clearInterval(el._megaTimer); el._megaTimer = null; }
+        const imgs = pick(mainPool, el.dataset.cat) || pick(pool, el.dataset.cat);
+        const fadeEl = el.querySelector('.mct-fade');
+        if (!imgs || !imgs.length) { el.style.backgroundImage = ''; el.classList.remove('has-img'); if (fadeEl) fadeEl.remove(); return; }
+        el.style.backgroundImage = `url('${imgs[0]}')`;
+        el.classList.add('has-img');
+        if (imgs.length < 2) { if (fadeEl) fadeEl.remove(); return; }
+        let fade = fadeEl;
+        if (!fade) { fade = document.createElement('div'); fade.className = 'mct-fade'; el.appendChild(fade); }
+        let idx = 0;
+        el._megaTimer = setInterval(() => {
+            const next = (idx + 1) % imgs.length;
+            const pre = new Image(); pre.src = imgs[next];
+            fade.style.backgroundImage = `url('${imgs[next]}')`;
+            requestAnimationFrame(() => { fade.style.opacity = '1'; });
+            setTimeout(() => { el.style.backgroundImage = `url('${imgs[next]}')`; fade.style.opacity = '0'; idx = next; }, 700);
+        }, 3000);
     });
 }
 window.initMegaMenuImages = initMegaMenuImages;
