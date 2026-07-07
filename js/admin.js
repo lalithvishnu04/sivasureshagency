@@ -1631,8 +1631,11 @@ function renderCategoriesList() {
                </label>`;
         return `
         <div class="cat-manage-item${c.signature ? ' is-signature' : ''}">
-            <span class="cat-manage-name">${c.signature ? '<i class="fas fa-star"></i> ' : ''}${_escHtmlCat(c.label)}</span>
-            <code class="cat-manage-slug">${_escHtmlCat(c.slug)}</code>
+            <span class="cat-name-wrap">
+                ${c.signature ? '<i class="fas fa-star cat-sig-star" title="Signature category"></i>' : ''}
+                <input type="text" class="cat-name-input" value="${_escHtmlCat(c.label)}" title="Shop chip label — edit to rename" oninput="setCategoryLabel(${i}, this.value)">
+            </span>
+            <code class="cat-manage-slug" title="Internal ID (fixed — keeps product tags intact)">${_escHtmlCat(c.slug)}</code>
             <div class="cat-manage-actions">
                 ${groupSelect}
                 <label class="cat-sig-toggle" title="Signature (highlighted) category">
@@ -1689,6 +1692,22 @@ function toggleCategorySignature(index, checked) {
 }
 window.toggleCategorySignature = toggleCategorySignature;
 
+// Rename a category's display label (the shop filter chip). The slug/ID stays
+// fixed so existing product tags keep working. No re-render — keeps the input focused.
+function setCategoryLabel(index, value) {
+    if (!_adminCategories) _adminCategories = _readCachedCategories();
+    if (_adminCategories[index]) _adminCategories[index].label = value;
+    // Refresh dependent dropdowns so the new label shows immediately.
+    populateCategorySelect(document.getElementById('pCategory')?.value || 'scrub-suits');
+    if (Array.isArray(_adminMega)) {
+        // Preserve focus on the label input across the menu re-render.
+        renderMegaEditor();
+        const el = document.querySelectorAll('#categoriesList .cat-name-input')[index];
+        if (el) { const p = el.value.length; el.focus(); try { el.setSelectionRange(p, p); } catch (e) {} }
+    }
+}
+window.setCategoryLabel = setCategoryLabel;
+
 function setCategoryGroup(index, value) {
     if (!_adminCategories) _adminCategories = _readCachedCategories();
     if (_adminCategories[index]) _adminCategories[index].group = value || '';
@@ -1696,10 +1715,10 @@ function setCategoryGroup(index, value) {
 }
 window.setCategoryGroup = setCategoryGroup;
 
-async function saveCategories() {
+async function saveCategories(silent) {
     if (!_adminCategories) _adminCategories = _readCachedCategories();
     const list = _adminCategories.map(c => ({ slug: c.slug, label: c.label, signature: !!c.signature, group: c.group || '' }));
-    if (!list.length) { showAdminToast('Add at least one category before saving', 'error'); return; }
+    if (!list.length) { showAdminToast('Add at least one category before saving', 'error'); return false; }
     localStorage.setItem(ADMIN_CATS_CACHE_KEY, JSON.stringify(list));
     _markProductsDirty();
     if (window.db) {
@@ -1707,15 +1726,36 @@ async function saveCategories() {
             // Store as JSON in the `name` text column (settings table has no jsonb
             // `list` column on the live DB) — read path parses this back.
             await window.db.collection('settings').doc('categories').set({ name: JSON.stringify(list) });
-            showAdminToast('Categories published to the live site (' + list.length + ' total)');
+            if (!silent) showAdminToast('Categories published to the live site (' + list.length + ' total)');
+            return true;
         } catch (e) {
-            showAdminToast('Saved locally. Cloud publish failed: ' + (e.message || 'unknown'), 'error');
+            if (!silent) showAdminToast('Saved locally. Cloud publish failed: ' + (e.message || 'unknown'), 'error');
+            return false;
         }
     } else {
-        showAdminToast('Saved locally (' + list.length + ' categories)');
+        if (!silent) showAdminToast('Saved locally (' + list.length + ' categories)');
+        return true;
     }
 }
 window.saveCategories = saveCategories;
+
+// Unified publish — saves both the shop categories and the header navigation
+// menu in one action, with a single toast. Wired to the page's Save & Publish button.
+async function publishCategoryConfig(btn) {
+    let restore = null;
+    if (btn) { restore = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing…'; }
+    const okCats = await saveCategories(true);
+    const okMenu = await saveMegaMenu(true);
+    if (btn) { btn.disabled = false; btn.innerHTML = restore; }
+    if (okCats === false && okMenu === false) {
+        showAdminToast('Nothing to publish — add a category and menu column first.', 'error');
+    } else if (okCats && okMenu) {
+        showAdminToast('Published to the live site — categories & navigation menu updated.');
+    } else {
+        showAdminToast('Saved locally, but the cloud publish partially failed. Check your connection and try again.', 'error');
+    }
+}
+window.publishCategoryConfig = publishCategoryConfig;
 
 // ===== Navigation Mega-Menu editor (main / sub headings) =====
 const ADMIN_MEGA_CACHE = 'ssa_megamenu_v1';
@@ -1852,7 +1892,7 @@ window.deleteMegaChild = deleteMegaChild;
 function resetMegaMenu() { if (!confirm('Reset the navigation menu to the default layout? Unsaved edits will be lost.')) return; _adminMega = JSON.parse(JSON.stringify(ADMIN_DEFAULT_MEGA)); renderMegaEditor(); }
 window.resetMegaMenu = resetMegaMenu;
 
-async function saveMegaMenu() {
+async function saveMegaMenu(silent) {
     if (!_adminMega) _adminMega = _readMega();
     const clean = _adminMega.map(col => ({
         title: (col.title || '').trim(), cat: col.cat || '', icon: col.icon || 'th-large',
@@ -1861,13 +1901,13 @@ async function saveMegaMenu() {
             children: (it.children || []).filter(ch => (ch.label || '').trim()).map(ch => ({ label: ch.label.trim(), cat: ch.cat || '', gender: ch.gender || '', sleeve: ch.sleeve || '' }))
         }))
     })).filter(col => col.title);
-    if (!clean.length) { showAdminToast('Add at least one column before saving', 'error'); return; }
+    if (!clean.length) { showAdminToast('Add at least one menu column before saving', 'error'); return false; }
     localStorage.setItem(ADMIN_MEGA_CACHE, JSON.stringify(clean));
     if (typeof _markProductsDirty === 'function') _markProductsDirty();
     if (window.db) {
-        try { await window.db.collection('settings').doc('megamenu').set({ name: JSON.stringify(clean) }); showAdminToast('Navigation menu published to the live site'); }
-        catch (e) { showAdminToast('Saved locally. Cloud publish failed: ' + (e.message || 'unknown'), 'error'); }
-    } else { showAdminToast('Saved locally (' + clean.length + ' columns)'); }
+        try { await window.db.collection('settings').doc('megamenu').set({ name: JSON.stringify(clean) }); if (!silent) showAdminToast('Navigation menu published to the live site'); return true; }
+        catch (e) { if (!silent) showAdminToast('Saved locally. Cloud publish failed: ' + (e.message || 'unknown'), 'error'); return false; }
+    } else { if (!silent) showAdminToast('Saved locally (' + clean.length + ' columns)'); return true; }
 }
 window.saveMegaMenu = saveMegaMenu;
 

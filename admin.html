@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=57">
+    <link rel="stylesheet" href="css/admin.css?v=58">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -230,15 +230,15 @@
 
             <!-- Categories Page -->
             <div class="page" id="page-categories">
-                <div class="page-toolbar">
+                <div class="page-toolbar cat-toolbar">
                     <div class="toolbar-left">
-                        <h3 style="margin:0;font-size:1rem;font-weight:700;"><i class="fas fa-tags"></i> Manage Categories</h3>
+                        <h3 style="margin:0;font-size:1rem;font-weight:700;"><i class="fas fa-tags"></i> Categories &amp; Navigation</h3>
                     </div>
                     <div class="toolbar-right">
-                        <button class="btn-primary" onclick="saveCategories()"><i class="fas fa-save"></i> Save &amp; Publish</button>
+                        <button class="btn-primary btn-publish-all" onclick="publishCategoryConfig(this)"><i class="fas fa-cloud-upload-alt"></i> Save &amp; Publish</button>
                     </div>
                 </div>
-                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>Live on the site:</strong> Categories you add here appear as shop filter chips on the Categories page and in the product category dropdown. Use <strong>Menu Placement</strong> to choose which navigation group a new category shows under (e.g. under Doctor Uniform or Linen &amp; Bedsheets) &mdash; or leave it Standalone to only show as a shop chip. Mark one as <em>Signature</em> for the highlighted CliniFlex-style chip. Click <strong>Save &amp; Publish</strong> to push changes to the live site.</div></div>
+                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>One place, one button.</strong> Manage your shop categories (filter chips + product tags) and the header navigation dropdown here, then click <strong>Save &amp; Publish</strong> once to push <em>both</em> to the live site. Tip: a category's <em>chip label</em> and a navigation <em>heading</em> are separate texts &mdash; edit the label in <strong>Current Categories</strong> to rename the shop chip, or the heading in <strong>Navigation Menu</strong> to rename the dropdown text.</div></div>
                 <div class="settings-panel">
                     <div class="settings-section">
                         <h4 class="settings-section-title"><i class="fas fa-plus-circle"></i> Add New Category</h4>
@@ -266,20 +266,19 @@
                         </div>
                     </div>
                     <div class="settings-section">
-                        <h4 class="settings-section-title"><i class="fas fa-list"></i> Current Categories</h4>
-                        <p class="settings-section-desc">The order shown is the order used on the site. Remove a category with the trash icon (existing products keep their data, but the chip is hidden). Remember to <strong>Save &amp; Publish</strong>.</p>
+                        <h4 class="settings-section-title"><i class="fas fa-list"></i> Current Categories <span class="section-hint">shop filter chips &amp; product tags</span></h4>
+                        <p class="settings-section-desc">The order shown is the order used on the site. Edit a label to rename the shop chip, mark one as <em>Signature</em> to highlight it, or remove it with the trash icon (existing products keep their data). Changes go live when you click <strong>Save &amp; Publish</strong> at the top.</p>
                         <div id="categoriesList" class="cat-manage-list"><p class="empty">Loading...</p></div>
                     </div>
                     <div class="settings-section">
                         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-                            <h4 class="settings-section-title" style="margin:0"><i class="fas fa-sitemap"></i> Navigation Menu (Main &amp; Sub Headings)</h4>
+                            <h4 class="settings-section-title" style="margin:0"><i class="fas fa-sitemap"></i> Navigation Menu <span class="section-hint">header dropdown headings</span></h4>
                             <div style="display:flex;gap:8px">
                                 <button type="button" class="btn-secondary btn-sm" onclick="addMegaColumn()"><i class="fas fa-plus"></i> Add Column</button>
                                 <button type="button" class="btn-secondary btn-sm" onclick="resetMegaMenu()"><i class="fas fa-undo"></i> Reset to Default</button>
-                                <button type="button" class="btn-primary btn-sm" onclick="saveMegaMenu()"><i class="fas fa-save"></i> Save &amp; Publish Menu</button>
                             </div>
                         </div>
-                        <p class="settings-section-desc">Edit the <strong>Categories</strong> dropdown that appears in the site header. Each <strong>column</strong> has a heading; inside it you can add <strong>bold main headings</strong> (e.g. “Male Doctor Uniform”) and <strong>sub-items</strong> (e.g. “Full Sleeve”). Links point to a category, optionally filtered by gender/sleeve. Click <strong>Save &amp; Publish Menu</strong> to go live.</p>
+                        <p class="settings-section-desc">This is the <strong>Categories</strong> dropdown in the site header. Each <strong>column</strong> has a heading; inside it add <strong>bold main headings</strong> (e.g. “Male Doctor Uniform”) and <strong>sub-items</strong> (e.g. “Full Sleeve”). Each links to a category, optionally filtered by gender/sleeve. Changes go live when you click <strong>Save &amp; Publish</strong> at the top.</p>
                         <div id="megaMenuEditor" class="mega-editor"><p class="empty">Loading...</p></div>
                     </div>
                 </div>
@@ -665,10 +664,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     
     <!-- Backend initialization -->
-    <script src="js/api.js?v=57" defer></script>
-    <script src="js/backend-config.js?v=57" defer></script>
-    <script src="js/db-init.js?v=57" defer></script>
-    <script defer src="js/admin.js?v=57"></script>
+    <script src="js/api.js?v=58" defer></script>
+    <script src="js/backend-config.js?v=58" defer></script>
+    <script src="js/db-init.js?v=58" defer></script>
+    <script defer src="js/admin.js?v=58"></script>
 </body>
 </html>
 
