@@ -44,6 +44,7 @@ alter table public.products add column if not exists "sizePrices" jsonb not null
 alter table public.products add column if not exists "embroideryEnabled" boolean not null default false;
 alter table public.products add column if not exists "embroideryPrice" numeric;
 alter table public.products add column if not exists "embroideryPrices" jsonb;
+alter table public.products add column if not exists "subCategory" text;
 
 create table if not exists public.inventory (
   id text primary key default ('i_' || replace(gen_random_uuid()::text, '-', '')),

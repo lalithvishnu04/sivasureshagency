@@ -581,6 +581,7 @@ function openProductModal(product = null) {
     document.getElementById('productModalTitle').innerHTML = product ? '<i class="fas fa-edit"></i> Edit Product' : '<i class="fas fa-plus"></i> Add Product';
     document.getElementById('pName').value = product ? product.name : '';
     populateCategorySelect(product ? product.category : 'scrub-suits');
+    populateSubCategorySelect(product ? product.category : 'scrub-suits', product ? (product.subCategory || '') : '');
     document.getElementById('pPrice').value = product ? product.price : '';
     document.getElementById('pOldPrice').value = product ? product.oldPrice || '' : '';
     document.getElementById('pGender').value = product ? product.gender || '' : '';
@@ -761,6 +762,7 @@ async function saveProduct(e) {
     const data = {
         name: document.getElementById('pName').value.trim(),
         category: document.getElementById('pCategory').value,
+        subCategory: (document.getElementById('pSubCategory') && document.getElementById('pSubCategory').value) || null,
         price: parseInt(document.getElementById('pPrice').value),
         oldPrice: parseInt(document.getElementById('pOldPrice').value) || null,
         gender: document.getElementById('pGender').value || null,
@@ -1539,6 +1541,12 @@ const ADMIN_DEFAULT_CATEGORIES = [
 ];
 const ADMIN_CATS_CACHE_KEY = 'ssa_categories_v1';
 let _adminCategories = null; // working copy (unsaved edits live here)
+const _openSubCats = new Set(); // slugs whose sub-category panel is expanded
+
+// Normalize a category's sub-category array to { slug, label, image }.
+function _normSubs(subs) {
+    return Array.isArray(subs) ? subs.filter(s => s && s.slug).map(s => ({ slug: s.slug, label: s.label || s.slug, image: s.image || '' })) : [];
+}
 
 function _readCachedCategories() {
     try {
@@ -1589,12 +1597,12 @@ window.loadCategories = loadCategories;
 function _parseCategoryDoc(d) {
     if (!d) return null;
     if (Array.isArray(d.list) && d.list.length) {
-        return d.list.filter(c => c && c.slug).map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature, group: c.group || '' }));
+        return d.list.filter(c => c && c.slug).map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature, group: c.group || '', subs: _normSubs(c.subs) }));
     }
     if (typeof d.name === 'string' && d.name.trim().startsWith('[')) {
         try {
             const arr = JSON.parse(d.name);
-            if (Array.isArray(arr)) return arr.filter(c => c && c.slug).map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature, group: c.group || '' }));
+            if (Array.isArray(arr)) return arr.filter(c => c && c.slug).map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature, group: c.group || '', subs: _normSubs(c.subs) }));
         } catch (e) { /* ignore */ }
     }
     return null;
@@ -1629,20 +1637,48 @@ function renderCategoriesList() {
                         ${ADMIN_CAT_GROUPS.map(g => `<option value="${g.value}"${(c.group||'')===g.value ? ' selected' : ''}>${_escHtmlCat(g.label)}</option>`).join('')}
                     </select>
                </label>`;
+        const subs = Array.isArray(c.subs) ? c.subs : [];
+        const open = _openSubCats.has(c.slug);
+        const subRows = subs.length ? subs.map((s, si) => `
+                    <div class="cat-sub-row">
+                        <label class="cat-sub-img${s.image ? ' has-img' : ''}" title="Upload sub-category image">
+                            ${s.image ? `<img src="${s.image}" alt="">` : '<i class="fas fa-image"></i>'}
+                            <input type="file" accept="image/*" onchange="handleSubImage(${i},${si},this)" hidden>
+                        </label>
+                        <input type="text" class="cat-sub-name" value="${_escHtmlCat(s.label)}" placeholder="Sub-category name" oninput="setSubLabel(${i},${si},this.value)">
+                        <code class="cat-sub-slug" title="Internal ID (fixed)">${_escHtmlCat(s.slug)}</code>
+                        <button type="button" class="cat-del-btn" title="Remove sub-category" onclick="deleteSubCategory(${i},${si})"><i class="fas fa-trash"></i></button>
+                    </div>`).join('') : '<p class="cat-subs-empty">No sub-categories yet — add one below (e.g. Surgeon Aprons).</p>';
+        const subPanel = `
+            <div class="cat-subs${open ? ' open' : ''}">
+                <button type="button" class="cat-subs-toggle" onclick="toggleSubs('${c.slug}')">
+                    <i class="fas fa-chevron-${open ? 'down' : 'right'}"></i> Sub-categories <span class="cat-subs-count">${subs.length}</span>
+                </button>
+                ${open ? `<div class="cat-subs-body">
+                    ${subRows}
+                    <div class="cat-sub-add">
+                        <input type="text" id="newSub_${i}" placeholder="e.g. Surgeon Aprons" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubCategory(${i});}">
+                        <button type="button" class="btn-secondary btn-sm" onclick="addSubCategory(${i})"><i class="fas fa-plus"></i> Add Sub-category</button>
+                    </div>
+                </div>` : ''}
+            </div>`;
         return `
         <div class="cat-manage-item${c.signature ? ' is-signature' : ''}">
-            <span class="cat-name-wrap">
-                ${c.signature ? '<i class="fas fa-star cat-sig-star" title="Signature category"></i>' : ''}
-                <input type="text" class="cat-name-input" value="${_escHtmlCat(c.label)}" title="Shop chip label — edit to rename" oninput="setCategoryLabel(${i}, this.value)">
-            </span>
-            <code class="cat-manage-slug" title="Internal ID (fixed — keeps product tags intact)">${_escHtmlCat(c.slug)}</code>
-            <div class="cat-manage-actions">
-                ${groupSelect}
-                <label class="cat-sig-toggle" title="Signature (highlighted) category">
-                    <input type="checkbox" ${c.signature ? 'checked' : ''} onchange="toggleCategorySignature(${i}, this.checked)"> Signature
-                </label>
-                <button type="button" class="cat-del-btn" title="Remove category" onclick="deleteCategory(${i})"><i class="fas fa-trash"></i></button>
+            <div class="cat-manage-main">
+                <span class="cat-name-wrap">
+                    ${c.signature ? '<i class="fas fa-star cat-sig-star" title="Signature category"></i>' : ''}
+                    <input type="text" class="cat-name-input" value="${_escHtmlCat(c.label)}" title="Shop chip label — edit to rename" oninput="setCategoryLabel(${i}, this.value)">
+                </span>
+                <code class="cat-manage-slug" title="Internal ID (fixed — keeps product tags intact)">${_escHtmlCat(c.slug)}</code>
+                <div class="cat-manage-actions">
+                    ${groupSelect}
+                    <label class="cat-sig-toggle" title="Signature (highlighted) category">
+                        <input type="checkbox" ${c.signature ? 'checked' : ''} onchange="toggleCategorySignature(${i}, this.checked)"> Signature
+                    </label>
+                    <button type="button" class="cat-del-btn" title="Remove category" onclick="deleteCategory(${i})"><i class="fas fa-trash"></i></button>
+                </div>
             </div>
+            ${subPanel}
         </div>`;
     }).join('');
 }
@@ -1708,6 +1744,89 @@ function setCategoryLabel(index, value) {
 }
 window.setCategoryLabel = setCategoryLabel;
 
+// ===== Sub-category management (nested under each main category) =====
+function toggleSubs(slug) {
+    if (_openSubCats.has(slug)) _openSubCats.delete(slug); else _openSubCats.add(slug);
+    renderCategoriesList();
+}
+window.toggleSubs = toggleSubs;
+
+function addSubCategory(catIndex) {
+    if (!_adminCategories) _adminCategories = _readCachedCategories();
+    const cat = _adminCategories[catIndex];
+    if (!cat) return;
+    const input = document.getElementById('newSub_' + catIndex);
+    const label = (input?.value || '').trim();
+    if (!label) { showAdminToast('Enter a sub-category name', 'error'); return; }
+    const slug = _slugify(label);
+    if (!slug) { showAdminToast('Sub-category name must contain letters or numbers', 'error'); return; }
+    cat.subs = Array.isArray(cat.subs) ? cat.subs : [];
+    if (cat.subs.some(s => s.slug === slug)) { showAdminToast('That sub-category already exists here', 'error'); return; }
+    cat.subs.push({ slug, label, image: '' });
+    _openSubCats.add(cat.slug);
+    if (input) input.value = '';
+    renderCategoriesList();
+    // Keep the product form + menu editor sub dropdowns in sync.
+    if (typeof refreshProductSubSelect === 'function') refreshProductSubSelect();
+    if (Array.isArray(_adminMega)) renderMegaEditor();
+    showAdminToast('Added sub-category "' + label + '". Click Save & Publish to go live.', 'info');
+}
+window.addSubCategory = addSubCategory;
+
+function setSubLabel(catIndex, subIndex, value) {
+    if (!_adminCategories) _adminCategories = _readCachedCategories();
+    const cat = _adminCategories[catIndex];
+    if (cat && cat.subs && cat.subs[subIndex]) cat.subs[subIndex].label = value;
+    // No re-render — keep the input focused while typing.
+}
+window.setSubLabel = setSubLabel;
+
+function deleteSubCategory(catIndex, subIndex) {
+    if (!_adminCategories) _adminCategories = _readCachedCategories();
+    const cat = _adminCategories[catIndex];
+    if (!cat || !cat.subs || !cat.subs[subIndex]) return;
+    const s = cat.subs[subIndex];
+    if (!confirm(`Remove the "${s.label}" sub-category?\n\nProducts keep their data — they just won't be filtered under this sub-category.`)) return;
+    cat.subs.splice(subIndex, 1);
+    renderCategoriesList();
+    if (typeof refreshProductSubSelect === 'function') refreshProductSubSelect();
+    if (Array.isArray(_adminMega)) renderMegaEditor();
+    showAdminToast('Removed "' + s.label + '". Click Save & Publish to go live.', 'info');
+}
+window.deleteSubCategory = deleteSubCategory;
+
+// Resize + store a sub-category image as a compact JPEG data URL.
+function handleSubImage(catIndex, subIndex, input) {
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+            const MAX = 400;
+            let w = img.width, h = img.height;
+            if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+            else if (h >= w && h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+            if (!_adminCategories) _adminCategories = _readCachedCategories();
+            const cat = _adminCategories[catIndex];
+            if (cat && cat.subs && cat.subs[subIndex]) {
+                cat.subs[subIndex].image = dataUrl;
+                _openSubCats.add(cat.slug);
+                renderCategoriesList();
+                showAdminToast('Image set. Click Save & Publish to go live.', 'info');
+            }
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+}
+window.handleSubImage = handleSubImage;
+
 function setCategoryGroup(index, value) {
     if (!_adminCategories) _adminCategories = _readCachedCategories();
     if (_adminCategories[index]) _adminCategories[index].group = value || '';
@@ -1717,7 +1836,7 @@ window.setCategoryGroup = setCategoryGroup;
 
 async function saveCategories(silent) {
     if (!_adminCategories) _adminCategories = _readCachedCategories();
-    const list = _adminCategories.map(c => ({ slug: c.slug, label: c.label, signature: !!c.signature, group: c.group || '' }));
+    const list = _adminCategories.map(c => ({ slug: c.slug, label: c.label, signature: !!c.signature, group: c.group || '', subs: _normSubs(c.subs) }));
     if (!list.length) { showAdminToast('Add at least one category before saving', 'error'); return false; }
     localStorage.setItem(ADMIN_CATS_CACHE_KEY, JSON.stringify(list));
     _markProductsDirty();
@@ -1817,6 +1936,14 @@ function _megaCatOptions(sel) {
 function _megaGenderOptions(sel) {
     return ['', 'male', 'female', 'unisex'].map(g => `<option value="${g}"${(sel || '') === g ? ' selected' : ''}>${g ? g : '\u2014 gender \u2014'}</option>`).join('');
 }
+// Sub-category options for the menu editor, based on the item's linked category.
+function _megaSubOptions(catSlug, sel) {
+    const cats = (Array.isArray(_adminCategories) && _adminCategories.length) ? _adminCategories : _readCachedCategories();
+    const cat = cats.find(c => c.slug === catSlug);
+    const subs = (cat && Array.isArray(cat.subs)) ? cat.subs.filter(s => s && s.slug) : [];
+    if (!subs.length) return '<option value="">\u2014 no subs \u2014</option>';
+    return '<option value="">\u2014 all \u2014</option>' + subs.map(s => `<option value="${_escHtmlCat(s.slug)}"${sel === s.slug ? ' selected' : ''}>${_escHtmlCat(s.label || s.slug)}</option>`).join('');
+}
 function _megaSleeveOptions(sel) {
     return ['', 'full', 'half'].map(s => `<option value="${s}"${(sel || '') === s ? ' selected' : ''}>${s ? s + ' sleeve' : '\u2014 sleeve \u2014'}</option>`).join('');
 }
@@ -1836,13 +1963,14 @@ function renderMegaEditor() {
                 <button type="button" class="cat-del-btn" title="Remove column" onclick="deleteMegaColumn(${ci})"><i class="fas fa-trash"></i></button>
             </div>
             <div class="mce-items">
-                ${(col.items && col.items.length) ? `<div class="mce-legend"><span>Bold</span><span>Heading / item label</span><span>Category</span><span>Gender</span><span>Sleeve</span><span></span></div>` : ''}
+                ${(col.items && col.items.length) ? `<div class="mce-legend"><span>Bold</span><span>Heading / item label</span><span>Category</span><span>Sub</span><span>Gender</span><span>Sleeve</span><span></span></div>` : ''}
                 ${(col.items || []).map((it, ii) => `
                     <div class="mce-item">
                         <div class="mce-item-row">
                             <label class="mce-bold" title="Show as a bold main heading"><input type="checkbox" ${it.bold ? 'checked' : ''} onchange="megaSetBold(${ci},${ii},this.checked)"> Bold</label>
                             <input type="text" value="${_escHtmlCat(it.label || '')}" placeholder="Heading / item label" oninput="megaSet(${ci},${ii},null,'label',this.value)">
-                            <select onchange="megaSet(${ci},${ii},null,'cat',this.value)"><option value="">\u2014 category \u2014</option>${_megaCatOptions(it.cat)}</select>
+                            <select onchange="megaSetCat(${ci},${ii},null,this.value)"><option value="">\u2014 category \u2014</option>${_megaCatOptions(it.cat)}</select>
+                            <select title="Sub-category" onchange="megaSet(${ci},${ii},null,'sub',this.value)">${_megaSubOptions(it.cat, it.sub)}</select>
                             <select onchange="megaSet(${ci},${ii},null,'gender',this.value)">${_megaGenderOptions(it.gender)}</select>
                             <select onchange="megaSet(${ci},${ii},null,'sleeve',this.value)">${_megaSleeveOptions(it.sleeve)}</select>
                             <button type="button" class="cat-del-btn" title="Remove item" onclick="deleteMegaItem(${ci},${ii})"><i class="fas fa-trash"></i></button>
@@ -1852,7 +1980,8 @@ function renderMegaEditor() {
                                 <div class="mce-child-row">
                                     <span class="mce-tick">\u21b3</span>
                                     <input type="text" value="${_escHtmlCat(ch.label || '')}" placeholder="Sub-item label" oninput="megaSet(${ci},${ii},${chi},'label',this.value)">
-                                    <select onchange="megaSet(${ci},${ii},${chi},'cat',this.value)"><option value="">\u2014 category \u2014</option>${_megaCatOptions(ch.cat)}</select>
+                                    <select onchange="megaSetCat(${ci},${ii},${chi},this.value)"><option value="">\u2014 category \u2014</option>${_megaCatOptions(ch.cat)}</select>
+                                    <select title="Sub-category" onchange="megaSet(${ci},${ii},${chi},'sub',this.value)">${_megaSubOptions(ch.cat, ch.sub)}</select>
                                     <select onchange="megaSet(${ci},${ii},${chi},'gender',this.value)">${_megaGenderOptions(ch.gender)}</select>
                                     <select onchange="megaSet(${ci},${ii},${chi},'sleeve',this.value)">${_megaSleeveOptions(ch.sleeve)}</select>
                                     <button type="button" class="cat-del-btn" title="Remove sub-item" onclick="deleteMegaChild(${ci},${ii},${chi})"><i class="fas fa-trash"></i></button>
@@ -1875,6 +2004,9 @@ function _megaTarget(ci, ii, chi) {
 }
 function megaSet(ci, ii, chi, field, value) { const t = _megaTarget(ci, ii, chi); if (t) t[field] = value; }
 window.megaSet = megaSet;
+// Change an item/child category and reset its sub (sub options depend on category).
+function megaSetCat(ci, ii, chi, value) { const t = _megaTarget(ci, ii, chi); if (t) { t.cat = value; t.sub = ''; } renderMegaEditor(); }
+window.megaSetCat = megaSetCat;
 function megaSetBold(ci, ii, checked) { const t = _megaTarget(ci, ii, null); if (t) t.bold = !!checked; }
 window.megaSetBold = megaSetBold;
 function addMegaColumn() { if (!_adminMega) _adminMega = _readMega(); _adminMega.push({ title: 'New Column', cat: '', icon: 'th-large', items: [] }); renderMegaEditor(); }
@@ -1897,8 +2029,8 @@ async function saveMegaMenu(silent) {
     const clean = _adminMega.map(col => ({
         title: (col.title || '').trim(), cat: col.cat || '', icon: col.icon || 'th-large',
         items: (col.items || []).filter(it => (it.label || '').trim()).map(it => ({
-            label: it.label.trim(), bold: !!it.bold, cat: it.cat || '', gender: it.gender || '', sleeve: it.sleeve || '',
-            children: (it.children || []).filter(ch => (ch.label || '').trim()).map(ch => ({ label: ch.label.trim(), cat: ch.cat || '', gender: ch.gender || '', sleeve: ch.sleeve || '' }))
+            label: it.label.trim(), bold: !!it.bold, cat: it.cat || '', sub: it.sub || '', gender: it.gender || '', sleeve: it.sleeve || '',
+            children: (it.children || []).filter(ch => (ch.label || '').trim()).map(ch => ({ label: ch.label.trim(), cat: ch.cat || '', sub: ch.sub || '', gender: ch.gender || '', sleeve: ch.sleeve || '' }))
         }))
     })).filter(col => col.title);
     if (!clean.length) { showAdminToast('Add at least one menu column before saving', 'error'); return false; }
@@ -1933,6 +2065,35 @@ function populateCategorySelect(selected) {
     }
 }
 window.populateCategorySelect = populateCategorySelect;
+
+// Fill the product-modal Sub-Category <select> from the chosen category's subs.
+// Hidden when the category has no sub-categories.
+function populateSubCategorySelect(catSlug, selected) {
+    const group = document.getElementById('pSubCategoryGroup');
+    const sel = document.getElementById('pSubCategory');
+    if (!sel || !group) return;
+    const cat = (_adminCategories || _readCachedCategories()).find(c => c.slug === catSlug);
+    const subs = (cat && Array.isArray(cat.subs)) ? cat.subs.filter(s => s && s.slug) : [];
+    if (!subs.length) { group.style.display = 'none'; sel.innerHTML = '<option value="">\u2014 None \u2014</option>'; return; }
+    group.style.display = '';
+    sel.innerHTML = '<option value="">\u2014 None \u2014</option>' + subs.map(s => `<option value="${_escHtmlCat(s.slug)}">${_escHtmlCat(s.label || s.slug)}</option>`).join('');
+    if (selected && !subs.some(s => s.slug === selected)) {
+        const opt = document.createElement('option');
+        opt.value = selected; opt.textContent = selected.replace(/-/g, ' ') + ' (removed)';
+        sel.appendChild(opt);
+    }
+    sel.value = selected || '';
+}
+window.populateSubCategorySelect = populateSubCategorySelect;
+
+// Re-fill the product Sub-Category select for the currently chosen category.
+// Called on category change (resets selection) and after sub edits.
+function refreshProductSubSelect(selected) {
+    const catSel = document.getElementById('pCategory');
+    if (!catSel) return;
+    populateSubCategorySelect(catSel.value, selected);
+}
+window.refreshProductSubSelect = refreshProductSubSelect;
 
 // ===== Settings =====
 function loadSettings() {

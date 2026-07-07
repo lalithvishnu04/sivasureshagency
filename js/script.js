@@ -292,6 +292,21 @@ function getCategoryLabel(slug) {
 }
 window.getCategoryLabel = getCategoryLabel;
 
+// Sub-categories live inside each category as an optional `subs` array
+// [{ slug, label, image }]. Products map to one via their `subCategory` slug.
+function getSubCategories(catSlug) {
+    const c = getCategoryList().find(c => c.slug === catSlug);
+    return (c && Array.isArray(c.subs)) ? c.subs.filter(s => s && s.slug) : [];
+}
+window.getSubCategories = getSubCategories;
+
+function getSubCategoryLabel(catSlug, subSlug) {
+    const s = getSubCategories(catSlug).find(s => s.slug === subSlug);
+    if (s) return s.label || s.slug;
+    return String(subSlug || '').replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
+}
+window.getSubCategoryLabel = getSubCategoryLabel;
+
 // Build the shop filter chips on categories.html from the category list.
 function renderShopFilters() {
     const bar = document.getElementById('shopFilters');
@@ -310,8 +325,49 @@ function renderShopFilters() {
     bar.innerHTML = html;
     // Re-bind click handlers (initCategoriesPage binds on first load; rebind after re-render)
     if (typeof bindFilterButtons === 'function') bindFilterButtons();
+    if (typeof renderSubFilters === 'function') renderSubFilters(active);
 }
 window.renderShopFilters = renderShopFilters;
+
+// Secondary chip row showing the active category's sub-categories. Clicking one
+// applies ?sub=<slug> and re-renders products filtered by product.subCategory.
+function renderSubFilters(activeCat) {
+    const bar = document.getElementById('shopFilters');
+    if (!bar) return;
+    let row = document.getElementById('shopSubFilters');
+    const subs = (activeCat && activeCat !== 'all' && typeof getSubCategories === 'function') ? getSubCategories(activeCat) : [];
+    if (!subs.length) { if (row) row.remove(); return; }
+    if (!row) {
+        row = document.createElement('div');
+        row.id = 'shopSubFilters';
+        row.className = 'shop-subfilters';
+        bar.insertAdjacentElement('afterend', row);
+    }
+    const activeSub = window._currentSub || '';
+    const catLabel = (typeof getCategoryLabel === 'function') ? getCategoryLabel(activeCat) : activeCat;
+    let html = `<button class="subfilter-btn${!activeSub ? ' active' : ''}" data-sub="">All ${escapeRichText(catLabel)}</button>`;
+    for (const s of subs) {
+        html += `<button class="subfilter-btn${activeSub === s.slug ? ' active' : ''}" data-sub="${escapeRichText(s.slug)}">${escapeRichText(s.label || s.slug)}</button>`;
+    }
+    row.innerHTML = html;
+    row.querySelectorAll('.subfilter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const val = btn.dataset.sub || null;
+            window._currentSub = val;
+            displayedProducts = 12;
+            try {
+                const url = new URL(window.location.href);
+                if (val) url.searchParams.set('sub', val); else url.searchParams.delete('sub');
+                history.replaceState({}, '', url);
+            } catch (e) { /* ignore */ }
+            row.querySelectorAll('.subfilter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            _syncWindowState();
+            renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, currentSearch, val);
+        });
+    });
+}
+window.renderSubFilters = renderSubFilters;
 
 // The nav mega-menu / CliniFlex dropdown are authored in HTML with fixed group
 // columns. Admin-added categories carry a `group` (the data-cat of the column they
@@ -416,6 +472,7 @@ function _megaHref(o) {
     let u = 'categories.html?cat=' + encodeURIComponent(o.cat);
     if (o.gender) u += '&gender=' + encodeURIComponent(o.gender);
     if (o.sleeve) u += '&sleeve=' + encodeURIComponent(o.sleeve);
+    if (o.sub) u += '&sub=' + encodeURIComponent(o.sub);
     return u;
 }
 
@@ -542,7 +599,7 @@ window.initCardHoverCycle = initCardHoverCycle;
             if (doc && doc.exists) {
                 const list = _parseDoc(doc.data());
                 if (list && list.length) {
-                    const normalized = list.map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature, group: c.group || '' }));
+                    const normalized = list.map(c => ({ slug: c.slug, label: c.label || c.slug, signature: !!c.signature, group: c.group || '', subs: Array.isArray(c.subs) ? c.subs.filter(s => s && s.slug).map(s => ({ slug: s.slug, label: s.label || s.slug, image: s.image || '' })) : [] }));
                     const prev = localStorage.getItem(_CATS_CACHE_KEY);
                     const next = JSON.stringify(normalized);
                     if (prev !== next) {
@@ -576,7 +633,7 @@ window.initCardHoverCycle = initCardHoverCycle;
             const local = productsData.find(p => p.name === fp.name);
             if (local) {
                 // Overlay admin-editable fields (image, price, badge, description, colorVariants, sizes, gender, sleeve, fitSizing, fabricCare, returns)
-                for (const f of ['image', 'mainImage', 'price', 'oldPrice', 'badge', 'description', 'colorVariants', 'sizes', 'gender', 'sleeve', 'fitSizing', 'fabricCare', 'returns', 'sizePrices', 'embroideryEnabled', 'embroideryPrices', 'embroideryPrice']) {
+                for (const f of ['image', 'mainImage', 'price', 'oldPrice', 'badge', 'description', 'colorVariants', 'sizes', 'gender', 'sleeve', 'subCategory', 'fitSizing', 'fabricCare', 'returns', 'sizePrices', 'embroideryEnabled', 'embroideryPrices', 'embroideryPrice']) {
                     const val = fp[f];
                     if (val !== undefined && val !== null && val !== '' && val !== local[f]) {
                         local[f] = val;
@@ -593,6 +650,7 @@ window.initCardHoverCycle = initCardHoverCycle;
                     oldPrice: fp.oldPrice || null,
                     gender: fp.gender || null,
                     sleeve: fp.sleeve || null,
+                    subCategory: fp.subCategory || null,
                     sizes: fp.sizes || ['S', 'M', 'L', 'XL', 'XXL'],
                     description: fp.description || '',
                     image: fp.image || '',
@@ -648,8 +706,9 @@ window.initCardHoverCycle = initCardHoverCycle;
             const _c  = window._currentCount   || 12;
             const _g  = window._currentGender  || new URLSearchParams(window.location.search).get('gender') || null;
             const _s  = window._currentSleeve  || new URLSearchParams(window.location.search).get('sleeve') || null;
+            const _sub = window._currentSub || new URLSearchParams(window.location.search).get('sub') || null;
             const _q  = window._currentSearch  || '';
-            if (typeof renderProducts === 'function') renderProducts(_f, _c, _g, _s, _q);
+            if (typeof renderProducts === 'function') renderProducts(_f, _c, _g, _s, _q, _sub);
             if (typeof updateScrubsCount === 'function') updateScrubsCount();
         } else if (page === 'home') {
             const grid = document.getElementById('shopGrid') || document.getElementById('featuredGrid');
@@ -877,6 +936,7 @@ function _syncWindowState() {
     const _p = new URLSearchParams(window.location.search);
     window._currentGender = _p.get('gender') || null;
     window._currentSleeve = _p.get('sleeve') || null;
+    window._currentSub = _p.get('sub') || null;
     _syncWindowState();
 })();
 
@@ -1214,9 +1274,10 @@ function bindFilterButtons() {
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
             displayedProducts = 12;
-            // Selecting a top-level category clears any gender/sleeve sub-filter
+            // Selecting a top-level category clears any gender/sleeve/sub sub-filter
             window._currentGender = null;
             window._currentSleeve = null;
+            window._currentSub = null;
             // Keep the address bar in sync so a refresh/share shows the right category
             try {
                 const url = new URL(window.location.href);
@@ -1224,10 +1285,12 @@ function bindFilterButtons() {
                 else url.searchParams.delete('cat');
                 url.searchParams.delete('gender');
                 url.searchParams.delete('sleeve');
+                url.searchParams.delete('sub');
                 history.replaceState({}, '', url);
             } catch (e) { /* ignore */ }
-            _syncWindowState(); renderProducts(currentFilter, displayedProducts, null, null, currentSearch);
+            _syncWindowState(); renderProducts(currentFilter, displayedProducts, null, null, currentSearch, null);
             if (typeof updateCategoryHero === 'function') updateCategoryHero(currentFilter);
+            if (typeof renderSubFilters === 'function') renderSubFilters(currentFilter);
         });
     });
 }
@@ -1240,6 +1303,7 @@ function applyUrlFilterAndRender() {
     currentFilter = params.get('cat') || 'all';
     window._currentGender = params.get('gender') || null;
     window._currentSleeve = params.get('sleeve') || null;
+    window._currentSub = params.get('sub') || null;
     currentSearch = '';
     displayedProducts = 12;
     const psi = document.getElementById('productSearchInput');
@@ -1250,7 +1314,7 @@ function applyUrlFilterAndRender() {
     updateScrubsCount();
     if (typeof updateCategoryHero === 'function') updateCategoryHero(currentFilter);
     _syncWindowState();
-    renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, currentSearch);
+    renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, currentSearch, window._currentSub);
 }
 window.applyUrlFilterAndRender = applyUrlFilterAndRender;
 
@@ -1260,6 +1324,7 @@ function initCategoriesPage() {
     const cat = params.get('cat');
     const gender = params.get('gender');
     const sleeve = params.get('sleeve');
+    const sub = params.get('sub');
 
     if (cat) currentFilter = cat;
     window._currentFilter = currentFilter;
@@ -1320,11 +1385,12 @@ function initCategoriesPage() {
     // Store gender/sleeve for use by other callers
     window._currentGender = gender;
     window._currentSleeve = sleeve;
+    window._currentSub = sub;
 
     updateScrubsCount();
     _syncWindowState();
     if (typeof updateCategoryHero === 'function') updateCategoryHero(currentFilter);
-    renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch);
+    renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch, sub);
 }
 
 // ===== Contact Page =====
@@ -1419,10 +1485,12 @@ function buildProductCard(p) {
     </div>`;
 }
 
-function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null, searchQuery = '') {
+function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null, searchQuery = '', sub = undefined) {
+    if (sub === undefined) sub = window._currentSub || null;
     let filtered = filter === 'all' ? [...productsData] : productsData.filter(p => p.category === filter);
     if (gender) filtered = filtered.filter(p => p.gender === gender || p.gender === 'unisex');
     if (sleeve) filtered = filtered.filter(p => p.sleeve === sleeve);
+    if (sub) filtered = filtered.filter(p => (p.subCategory || '') === sub);
     if (searchQuery) {
         const q = searchQuery.toLowerCase();
         filtered = filtered.filter(p =>
@@ -1436,7 +1504,7 @@ function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null
     if (!grid) return;
     if (toShow.length === 0) {
         const isScrubs = filter === 'scrub-suits';
-        const hasSubFilter = !!(gender || sleeve);
+        const hasSubFilter = !!(gender || sleeve || sub);
         const catLabel = filter && filter !== 'all'
             ? (typeof getCategoryLabel === 'function' ? getCategoryLabel(filter) : filter.replace(/-/g, ' '))
             : '';

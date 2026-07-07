@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=58">
+    <link rel="stylesheet" href="css/admin.css?v=59">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -267,7 +267,7 @@
                     </div>
                     <div class="settings-section">
                         <h4 class="settings-section-title"><i class="fas fa-list"></i> Current Categories <span class="section-hint">shop filter chips &amp; product tags</span></h4>
-                        <p class="settings-section-desc">The order shown is the order used on the site. Edit a label to rename the shop chip, mark one as <em>Signature</em> to highlight it, or remove it with the trash icon (existing products keep their data). Changes go live when you click <strong>Save &amp; Publish</strong> at the top.</p>
+                        <p class="settings-section-desc">Edit a label to rename the shop chip, mark one as <em>Signature</em> to highlight it, or remove it with the trash icon. Expand <strong>Sub-categories</strong> under any category to add sub-groups (e.g. <em>Surgeon Aprons</em>, <em>OT Accessories</em>) with their own image &mdash; then assign products to them from the product form. Changes go live when you click <strong>Save &amp; Publish</strong> at the top.</p>
                         <div id="categoriesList" class="cat-manage-list"><p class="empty">Loading...</p></div>
                     </div>
                     <div class="settings-section">
@@ -421,7 +421,7 @@
                     <div class="form-row">
                         <div class="form-group"><label>Product Name *</label><div style="display:flex;gap:6px;align-items:center"><input type="text" id="pName" required style="flex:1"><button type="button" class="btn-secondary btn-sm" onclick="insertNameSymbol('™')">™</button><button type="button" class="btn-secondary btn-sm" onclick="insertNameSymbol('®')">®</button></div></div>
                         <div class="form-group"><label>Category *</label>
-                            <select id="pCategory" required>
+                            <select id="pCategory" required onchange="refreshProductSubSelect()">
                                 <option value="scrub-suits">&#9733; CliniFlex&#8482; Scrub Suits</option>
                                 <option value="doctor-uniform">Doctor Uniform</option>
                                 <option value="staff-uniform">Staff Uniform</option>
@@ -430,6 +430,10 @@
                                 <option value="hotel-linen">Hotel Linen</option>
                             </select>
                         </div>
+                    </div>
+                    <div class="form-group" id="pSubCategoryGroup" style="display:none">
+                        <label><i class="fas fa-sitemap"></i> Sub-Category <small style="color:var(--text-muted);font-weight:400">(optional — files this product under a sub-category of the chosen category)</small></label>
+                        <select id="pSubCategory"><option value="">&mdash; None &mdash;</option></select>
                     </div>
                     <div class="form-row">
                         <div class="form-group"><label>Price (₹) *</label><input type="number" id="pPrice" required></div>
@@ -664,10 +668,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     
     <!-- Backend initialization -->
-    <script src="js/api.js?v=58" defer></script>
-    <script src="js/backend-config.js?v=58" defer></script>
-    <script src="js/db-init.js?v=58" defer></script>
-    <script defer src="js/admin.js?v=58"></script>
+    <script src="js/api.js?v=59" defer></script>
+    <script src="js/backend-config.js?v=59" defer></script>
+    <script src="js/db-init.js?v=59" defer></script>
+    <script defer src="js/admin.js?v=59"></script>
 </body>
 </html>
 
