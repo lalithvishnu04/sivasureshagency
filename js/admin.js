@@ -98,7 +98,7 @@ function waitForDbThenLoad(attempts) {
         // Refresh the category list from Supabase up-front so the product
         // category dropdown reflects live categories even before the Categories
         // tab is opened.
-        if (typeof loadCategories === 'function') { try { loadCategories(); } catch (e) { /* ignore */ } }
+        if (typeof loadTaxonomy === 'function') { try { loadTaxonomy(true); } catch (e) { /* ignore */ } }
     } else if (attempts > 60) {
         console.error('[admin.js] Firestore not ready after 3s');
         showAdminToast('Database connection failed. Please refresh.', 'error');
@@ -198,7 +198,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         document.getElementById('pageTitle').textContent = item.textContent.trim();
         if (page === 'orders') loadOrders();
         if (page === 'products') loadProducts();
-        if (page === 'categories') { loadCategories(); }
+        if (page === 'categories') { loadTaxonomy(); }
         if (page === 'inventory') loadInventory();
         if (page === 'customers') loadCustomers();
         if (page === 'messages') loadMessages();
@@ -580,8 +580,7 @@ function openProductModal(product = null) {
     document.getElementById('productEditId').value = product ? product.docId : '';
     document.getElementById('productModalTitle').innerHTML = product ? '<i class="fas fa-edit"></i> Edit Product' : '<i class="fas fa-plus"></i> Add Product';
     document.getElementById('pName').value = product ? product.name : '';
-    populateCategorySelect(product ? product.category : 'scrub-suits');
-    populateSubCategorySelect(product ? product.category : 'scrub-suits', product ? (product.subCategory || '') : '');
+    { const _n = _findProductNode(product); refreshProductTaxonomy(_n.catSlug, _n.subSlug); }
     document.getElementById('pPrice').value = product ? product.price : '';
     document.getElementById('pOldPrice').value = product ? product.oldPrice || '' : '';
     document.getElementById('pGender').value = product ? product.gender || '' : '';
@@ -759,14 +758,15 @@ async function saveProduct(e) {
     }
     if (btn) { btn.disabled = false; btn.innerHTML = _origBtn; }
     const docId = document.getElementById('productEditId').value;
+    const _map = _resolveProductMapping(document.getElementById('pCategory').value, (document.getElementById('pSubCategory') && document.getElementById('pSubCategory').value) || '');
     const data = {
         name: document.getElementById('pName').value.trim(),
-        category: document.getElementById('pCategory').value,
-        subCategory: (document.getElementById('pSubCategory') && document.getElementById('pSubCategory').value) || null,
+        category: _map.category,
+        subCategory: _map.subCategory || null,
         price: parseInt(document.getElementById('pPrice').value),
         oldPrice: parseInt(document.getElementById('pOldPrice').value) || null,
-        gender: document.getElementById('pGender').value || null,
-        sleeve: document.getElementById('pSleeve').value || null,
+        gender: _map.gender || (document.getElementById('pGender').value || null),
+        sleeve: _map.sleeve || (document.getElementById('pSleeve').value || null),
         sizes: document.getElementById('pSizes').value.split(',').map(s => s.trim()).filter(Boolean),
         sizePrices: _collectSizePrices(),
         embroideryEnabled: document.getElementById('pEmbEnabled').checked,
@@ -1570,6 +1570,310 @@ function _escHtmlCat(s) {
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
+
+// ============================================================================
+// ===== 3-LEVEL CATEGORY TREE (Main Heading → Main Category → Sub Category) =====
+// Stored in Supabase settings/taxonomy (JSON in `name`) + localStorage cache.
+// ============================================================================
+const ADMIN_TAX_CACHE_KEY = 'ssa_taxonomy_v1';
+let _adminTax = null;
+const _openTaxNodes = new Set(); // 'h:<hi>' or 'c:<hi>/<ci>' expanded keys
+
+const ADMIN_DEFAULT_TAX = [
+    { slug: 'doctor-uniform', label: 'Doctor Uniform', icon: 'user-md', cats: [
+        { slug: 'male-doctor-uniform', label: 'Male Doctor Uniform', image: '', map: { cat: 'doctor-uniform', gender: 'male' }, subs: [
+            { slug: 'male-doctor-full', label: 'Full Sleeve', image: '', map: { cat: 'doctor-uniform', gender: 'male', sleeve: 'full' } },
+            { slug: 'male-doctor-half', label: 'Half Sleeve', image: '', map: { cat: 'doctor-uniform', gender: 'male', sleeve: 'half' } },
+        ] },
+        { slug: 'female-doctor-uniform', label: 'Female Doctor Uniform', image: '', map: { cat: 'doctor-uniform', gender: 'female' }, subs: [
+            { slug: 'female-doctor-full', label: 'Full Sleeve', image: '', map: { cat: 'doctor-uniform', gender: 'female', sleeve: 'full' } },
+            { slug: 'female-doctor-half', label: 'Half Sleeve', image: '', map: { cat: 'doctor-uniform', gender: 'female', sleeve: 'half' } },
+        ] },
+    ] },
+    { slug: 'staff-uniform', label: 'Staff Uniform', icon: 'tshirt', cats: [
+        { slug: 'male-staff-uniform', label: 'Male Staff Uniform', image: '', map: { cat: 'staff-uniform', gender: 'male' }, subs: [] },
+        { slug: 'female-staff-uniform', label: 'Female Staff Uniform', image: '', map: { cat: 'staff-uniform', gender: 'female' }, subs: [] },
+    ] },
+    { slug: 'linen-bedsheets', label: 'Linen & Bedsheets', icon: 'bed', cats: [
+        { slug: 'bedsheets', label: 'Bedsheets & Pillow Covers', image: '', map: { cat: 'bedsheets' }, subs: [] },
+        { slug: 'hospital-linen', label: 'Hospital Linen', image: '', map: { cat: 'hospital-linen' }, subs: [
+            { slug: 'surgeon-aprons', label: 'Surgeon Aprons', image: '', map: { cat: 'hospital-linen', sub: 'surgeon-aprons' } },
+            { slug: 'ot-accessories', label: 'OT Accessories', image: '', map: { cat: 'hospital-linen', sub: 'ot-accessories' } },
+            { slug: 'patient-wear', label: 'Patient Wear', image: '', map: { cat: 'hospital-linen', sub: 'patient-wear' } },
+        ] },
+        { slug: 'hotel-linen', label: 'Hotel Linen', image: '', map: { cat: 'hotel-linen' }, subs: [] },
+    ] },
+    { slug: 'scrub-suits', label: 'CliniFlex\u2122 Scrubs', icon: 'award', signature: true, cats: [
+        { slug: 'gents-scrubs', label: 'Gents Scrub Suits', image: '', map: { cat: 'scrub-suits', gender: 'male' }, subs: [] },
+        { slug: 'ladies-scrubs', label: 'Ladies Scrub Suits', image: '', map: { cat: 'scrub-suits', gender: 'female' }, subs: [] },
+        { slug: 'all-scrubs', label: 'All Scrub Suits', image: '', map: { cat: 'scrub-suits' }, subs: [] },
+    ] },
+];
+
+function _readCachedTax() {
+    try { const raw = localStorage.getItem(ADMIN_TAX_CACHE_KEY); if (raw) { const t = JSON.parse(raw); if (Array.isArray(t) && t.length) return t; } } catch (e) { /* ignore */ }
+    return JSON.parse(JSON.stringify(ADMIN_DEFAULT_TAX));
+}
+function _parseTaxDoc(d) {
+    if (!d) return null;
+    if (Array.isArray(d.list) && d.list.length) return d.list;
+    if (typeof d.name === 'string' && d.name.trim().startsWith('[')) { try { const a = JSON.parse(d.name); if (Array.isArray(a) && a.length) return a; } catch (e) { /* ignore */ } }
+    return null;
+}
+
+async function loadTaxonomy(silent) {
+    _adminTax = _readCachedTax();
+    renderTaxonomyEditor();
+    if (window.db) {
+        let hasDoc = false;
+        try {
+            const doc = await window.db.collection('settings').doc('taxonomy').get();
+            if (doc && doc.exists) {
+                const t = _parseTaxDoc(doc.data());
+                if (t && t.length) { _adminTax = t; localStorage.setItem(ADMIN_TAX_CACHE_KEY, JSON.stringify(t)); renderTaxonomyEditor(); hasDoc = true; }
+            }
+        } catch (e) { /* keep cache */ }
+        if (!hasDoc) { try { await _migrateToTaxonomy(silent); } catch (e) { /* ignore */ } }
+    }
+    if (typeof refreshProductTaxonomy === 'function') refreshProductTaxonomy();
+}
+window.loadTaxonomy = loadTaxonomy;
+
+let _taxMigrationNotified = false;
+// Build the 3-level tree from the previously-authored mega-menu (column→heading,
+// item→main category, child→sub category), preserving cat/gender/sleeve/sub maps.
+async function _migrateToTaxonomy(silent) {
+    let mega = null;
+    try { const d = await window.db.collection('settings').doc('megamenu').get(); if (d && d.exists) mega = _parseMegaDoc(d.data()); } catch (e) { /* ignore */ }
+    if (!Array.isArray(mega) || !mega.length) { _adminTax = _readCachedTax(); renderTaxonomyEditor(); return; }
+    const cleanMap = (node, parentCat) => { const m = {}; const cat = node.cat || parentCat || ''; if (cat) m.cat = cat; if (node.gender) m.gender = node.gender; if (node.sleeve) m.sleeve = node.sleeve; if (node.sub) m.sub = node.sub; return m; };
+    const tax = mega.map(col => {
+        const hslug = _slugify(col.title) || col.cat || 'heading';
+        return { slug: hslug, label: col.title || hslug, icon: col.icon || 'th-large', cats: (col.items || []).map(it => ({
+            slug: _slugify(it.label) || 'category', label: it.label, image: '', map: cleanMap(it, col.cat),
+            subs: (it.children || []).map(ch => ({ slug: _slugify(ch.label) || 'sub', label: ch.label, image: '', map: cleanMap(ch, it.cat || col.cat) }))
+        })) };
+    });
+    if (!tax.some(h => h.signature || h.slug === 'scrub-suits')) {
+        const cf = ADMIN_DEFAULT_TAX.find(h => h.signature); if (cf) tax.push(JSON.parse(JSON.stringify(cf)));
+    }
+    _adminTax = tax;
+    localStorage.setItem(ADMIN_TAX_CACHE_KEY, JSON.stringify(tax));
+    renderTaxonomyEditor();
+    if (typeof refreshProductTaxonomy === 'function') refreshProductTaxonomy();
+    if (!silent && !_taxMigrationNotified) { _taxMigrationNotified = true; showAdminToast('Built a 3-level Category Tree from your menu \u2014 review, then Save & Publish.', 'info'); }
+}
+
+// ----- Tree renderer -----
+function renderTaxonomyEditor() {
+    const wrap = document.getElementById('taxonomyEditor');
+    if (!wrap) return;
+    const tax = _adminTax || _readCachedTax();
+    if (!tax.length) { wrap.innerHTML = '<p class="empty">No headings yet. Add one above.</p>'; return; }
+    wrap.innerHTML = tax.map((h, hi) => {
+        const hOpen = _openTaxNodes.has('h:' + hi);
+        const cats = h.cats || [];
+        return `
+        <div class="tax-heading${h.signature ? ' is-signature' : ''}">
+            <div class="tax-heading-main">
+                <button type="button" class="tax-toggle" onclick="toggleTaxNode('h:${hi}')" title="Expand/collapse"><i class="fas fa-chevron-${hOpen ? 'down' : 'right'}"></i></button>
+                <span class="tax-level-badge heading">Heading</span>
+                ${h.signature ? '<i class="fas fa-star tax-sig-star" title="Signature heading"></i>' : ''}
+                <input type="text" class="tax-name tax-name-h" value="${_escHtmlCat(h.label)}" oninput="setHeadingLabel(${hi},this.value)" placeholder="Main Heading name">
+                <span class="tax-count">${cats.length} categor${cats.length === 1 ? 'y' : 'ies'}</span>
+                <label class="tax-sig-toggle" title="Show as a separate highlighted collection (like CliniFlex)"><input type="checkbox" ${h.signature ? 'checked' : ''} onchange="toggleHeadingSignature(${hi},this.checked)"> Signature</label>
+                <button type="button" class="cat-del-btn" title="Remove heading" onclick="deleteHeading(${hi})"><i class="fas fa-trash"></i></button>
+            </div>
+            ${hOpen ? `<div class="tax-cats">
+                ${cats.map((c, ci) => {
+                    const cKey = 'c:' + hi + '/' + ci; const cOpen = _openTaxNodes.has(cKey); const subs = c.subs || [];
+                    return `<div class="tax-cat">
+                        <div class="tax-cat-main">
+                            <button type="button" class="tax-toggle" onclick="toggleTaxNode('${cKey}')"><i class="fas fa-chevron-${cOpen ? 'down' : 'right'}"></i></button>
+                            <span class="tax-level-badge cat">Category</span>
+                            <label class="tax-img${c.image ? ' has-img' : ''}" title="Category image">${c.image ? `<img src="${c.image}" alt="">` : '<i class="fas fa-image"></i>'}<input type="file" accept="image/*" onchange="handleTaxImage('c',${hi},${ci},-1,this)" hidden></label>
+                            <input type="text" class="tax-name" value="${_escHtmlCat(c.label)}" oninput="setMainCatLabel(${hi},${ci},this.value)" placeholder="Main Category name">
+                            <code class="tax-slug">${_escHtmlCat(c.slug)}</code>
+                            <span class="tax-count">${subs.length} sub</span>
+                            <button type="button" class="cat-del-btn" title="Remove category" onclick="deleteMainCat(${hi},${ci})"><i class="fas fa-trash"></i></button>
+                        </div>
+                        ${cOpen ? `<div class="tax-subs">
+                            ${subs.length ? subs.map((s, si) => `<div class="tax-sub">
+                                <span class="tax-tick">\u21b3</span>
+                                <span class="tax-level-badge sub">Sub</span>
+                                <label class="tax-img${s.image ? ' has-img' : ''}" title="Sub-category image">${s.image ? `<img src="${s.image}" alt="">` : '<i class="fas fa-image"></i>'}<input type="file" accept="image/*" onchange="handleTaxImage('s',${hi},${ci},${si},this)" hidden></label>
+                                <input type="text" class="tax-name" value="${_escHtmlCat(s.label)}" oninput="setSub2Label(${hi},${ci},${si},this.value)" placeholder="Sub Category name">
+                                <code class="tax-slug">${_escHtmlCat(s.slug)}</code>
+                                <button type="button" class="cat-del-btn" title="Remove sub-category" onclick="deleteSub2(${hi},${ci},${si})"><i class="fas fa-trash"></i></button>
+                            </div>`).join('') : '<p class="tax-empty">No sub-categories yet.</p>'}
+                            <div class="tax-add"><input type="text" id="newSub_${hi}_${ci}" placeholder="Add sub-category (e.g. Full Sleeve)" onkeydown="if(event.key==='Enter'){event.preventDefault();addSub2(${hi},${ci});}"><button type="button" class="btn-secondary btn-sm" onclick="addSub2(${hi},${ci})"><i class="fas fa-plus"></i> Add Sub</button></div>
+                        </div>` : ''}
+                    </div>`;
+                }).join('') || '<p class="tax-empty">No main categories yet.</p>'}
+                <div class="tax-add"><input type="text" id="newCat_${hi}" placeholder="Add main category (e.g. Male Doctor Uniform)" onkeydown="if(event.key==='Enter'){event.preventDefault();addMainCat(${hi});}"><button type="button" class="btn-secondary btn-sm" onclick="addMainCat(${hi})"><i class="fas fa-plus"></i> Add Main Category</button></div>
+            </div>` : ''}
+        </div>`;
+    }).join('');
+}
+window.renderTaxonomyEditor = renderTaxonomyEditor;
+
+function toggleTaxNode(key) { if (_openTaxNodes.has(key)) _openTaxNodes.delete(key); else _openTaxNodes.add(key); renderTaxonomyEditor(); }
+window.toggleTaxNode = toggleTaxNode;
+
+function addHeading() {
+    const el = document.getElementById('newHeadingLabel'); const sig = document.getElementById('newHeadingSignature');
+    const label = (el?.value || '').trim(); if (!label) { showAdminToast('Enter a heading name', 'error'); return; }
+    const slug = _slugify(label); if (!slug) { showAdminToast('Heading name must contain letters or numbers', 'error'); return; }
+    if (!_adminTax) _adminTax = _readCachedTax();
+    if (_adminTax.some(h => h.slug === slug)) { showAdminToast('That heading already exists', 'error'); return; }
+    _adminTax.push({ slug, label, icon: 'th-large', signature: !!(sig && sig.checked), cats: [] });
+    _openTaxNodes.add('h:' + (_adminTax.length - 1));
+    if (el) el.value = ''; if (sig) sig.checked = false;
+    renderTaxonomyEditor();
+    showAdminToast('Added heading "' + label + '". Add categories under it, then Save & Publish.', 'info');
+}
+window.addHeading = addHeading;
+function setHeadingLabel(hi, v) { if (!_adminTax) _adminTax = _readCachedTax(); if (_adminTax[hi]) _adminTax[hi].label = v; }
+window.setHeadingLabel = setHeadingLabel;
+function toggleHeadingSignature(hi, ch) { if (!_adminTax) _adminTax = _readCachedTax(); if (_adminTax[hi]) _adminTax[hi].signature = !!ch; renderTaxonomyEditor(); }
+window.toggleHeadingSignature = toggleHeadingSignature;
+function deleteHeading(hi) { if (!_adminTax) _adminTax = _readCachedTax(); const h = _adminTax[hi]; if (!h) return; if (!confirm(`Remove the "${h.label}" heading and everything under it?`)) return; _adminTax.splice(hi, 1); renderTaxonomyEditor(); if (typeof refreshProductTaxonomy === 'function') refreshProductTaxonomy(); }
+window.deleteHeading = deleteHeading;
+
+function addMainCat(hi) {
+    if (!_adminTax) _adminTax = _readCachedTax(); const h = _adminTax[hi]; if (!h) return;
+    const el = document.getElementById('newCat_' + hi); const label = (el?.value || '').trim();
+    if (!label) { showAdminToast('Enter a main category name', 'error'); return; }
+    const slug = _slugify(label); if (!slug) { showAdminToast('Name must contain letters or numbers', 'error'); return; }
+    h.cats = h.cats || []; if (h.cats.some(c => c.slug === slug)) { showAdminToast('That category already exists here', 'error'); return; }
+    h.cats.push({ slug, label, image: '', map: {}, subs: [] });
+    _openTaxNodes.add('h:' + hi);
+    if (el) el.value = '';
+    renderTaxonomyEditor(); if (typeof refreshProductTaxonomy === 'function') refreshProductTaxonomy();
+    showAdminToast('Added category "' + label + '".', 'info');
+}
+window.addMainCat = addMainCat;
+function setMainCatLabel(hi, ci, v) { if (!_adminTax) _adminTax = _readCachedTax(); const c = _adminTax[hi] && _adminTax[hi].cats[ci]; if (c) c.label = v; }
+window.setMainCatLabel = setMainCatLabel;
+function deleteMainCat(hi, ci) { if (!_adminTax) _adminTax = _readCachedTax(); const c = _adminTax[hi] && _adminTax[hi].cats[ci]; if (!c) return; if (!confirm(`Remove the "${c.label}" category?`)) return; _adminTax[hi].cats.splice(ci, 1); renderTaxonomyEditor(); if (typeof refreshProductTaxonomy === 'function') refreshProductTaxonomy(); }
+window.deleteMainCat = deleteMainCat;
+
+function addSub2(hi, ci) {
+    if (!_adminTax) _adminTax = _readCachedTax(); const c = _adminTax[hi] && _adminTax[hi].cats[ci]; if (!c) return;
+    const el = document.getElementById('newSub_' + hi + '_' + ci); const label = (el?.value || '').trim();
+    if (!label) { showAdminToast('Enter a sub-category name', 'error'); return; }
+    const slug = _slugify(label); if (!slug) { showAdminToast('Name must contain letters or numbers', 'error'); return; }
+    c.subs = c.subs || []; if (c.subs.some(s => s.slug === slug)) { showAdminToast('That sub-category already exists here', 'error'); return; }
+    c.subs.push({ slug, label, image: '', map: {} });
+    _openTaxNodes.add('c:' + hi + '/' + ci);
+    if (el) el.value = '';
+    renderTaxonomyEditor(); if (typeof refreshProductTaxonomy === 'function') refreshProductTaxonomy();
+    showAdminToast('Added sub-category "' + label + '".', 'info');
+}
+window.addSub2 = addSub2;
+function setSub2Label(hi, ci, si, v) { if (!_adminTax) _adminTax = _readCachedTax(); const s = _adminTax[hi] && _adminTax[hi].cats[ci] && _adminTax[hi].cats[ci].subs[si]; if (s) s.label = v; }
+window.setSub2Label = setSub2Label;
+function deleteSub2(hi, ci, si) { if (!_adminTax) _adminTax = _readCachedTax(); const c = _adminTax[hi] && _adminTax[hi].cats[ci]; if (!c || !c.subs[si]) return; if (!confirm(`Remove the "${c.subs[si].label}" sub-category?`)) return; c.subs.splice(si, 1); renderTaxonomyEditor(); if (typeof refreshProductTaxonomy === 'function') refreshProductTaxonomy(); }
+window.deleteSub2 = deleteSub2;
+
+function handleTaxImage(kind, hi, ci, si, input) {
+    const file = input && input.files && input.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+            const MAX = 400; let w = img.width, h = img.height;
+            if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX; } else if (h >= w && h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+            const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+            if (!_adminTax) _adminTax = _readCachedTax();
+            if (kind === 'c') { const c = _adminTax[hi] && _adminTax[hi].cats[ci]; if (c) c.image = dataUrl; }
+            else { const s = _adminTax[hi] && _adminTax[hi].cats[ci] && _adminTax[hi].cats[ci].subs[si]; if (s) s.image = dataUrl; }
+            renderTaxonomyEditor();
+            showAdminToast('Image set. Click Save & Publish to go live.', 'info');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file); input.value = '';
+}
+window.handleTaxImage = handleTaxImage;
+
+async function saveTaxonomy(silent) {
+    if (!_adminTax) _adminTax = _readCachedTax();
+    const clean = _adminTax.filter(h => h && (h.label || '').trim()).map(h => ({
+        slug: h.slug || _slugify(h.label), label: h.label.trim(), icon: h.icon || 'th-large', signature: !!h.signature,
+        cats: (h.cats || []).filter(c => (c.label || '').trim()).map(c => ({
+            slug: c.slug || _slugify(c.label), label: c.label.trim(), image: c.image || '', map: c.map || {},
+            subs: (c.subs || []).filter(s => (s.label || '').trim()).map(s => ({ slug: s.slug || _slugify(s.label), label: s.label.trim(), image: s.image || '', map: s.map || {} }))
+        }))
+    }));
+    if (!clean.length) { showAdminToast('Add at least one heading before saving', 'error'); return false; }
+    localStorage.setItem(ADMIN_TAX_CACHE_KEY, JSON.stringify(clean));
+    if (typeof _markProductsDirty === 'function') _markProductsDirty();
+    if (window.db) {
+        try { await window.db.collection('settings').doc('taxonomy').set({ name: JSON.stringify(clean) }); if (!silent) showAdminToast('Category tree published to the live site'); return true; }
+        catch (e) { if (!silent) showAdminToast('Saved locally. Cloud publish failed: ' + (e.message || 'unknown'), 'error'); return false; }
+    }
+    if (!silent) showAdminToast('Saved locally'); return true;
+}
+window.saveTaxonomy = saveTaxonomy;
+async function publishTaxonomy(btn) {
+    let restore = null; if (btn) { restore = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing\u2026'; }
+    const ok = await saveTaxonomy(false);
+    if (btn) { btn.disabled = false; btn.innerHTML = restore; }
+}
+window.publishTaxonomy = publishTaxonomy;
+
+// ----- Product form mapping helpers -----
+function _adminResolveCat(c) { const m = c.map || {}; return { cat: m.cat || c.slug, gender: m.gender || '', sleeve: m.sleeve || '', sub: '' }; }
+function _adminResolveSub(c, s) { const cm = c.map || {}, sm = s.map || {}; return { cat: sm.cat || cm.cat || c.slug, gender: sm.gender || cm.gender || '', sleeve: sm.sleeve || cm.sleeve || '', sub: sm.sub || ((sm.gender || sm.sleeve) ? '' : s.slug) }; }
+
+function refreshProductTaxonomy(selectedCatSlug, selectedSubSlug) {
+    populateProductMainCat(selectedCatSlug); populateProductSub(selectedCatSlug, selectedSubSlug);
+}
+window.refreshProductTaxonomy = refreshProductTaxonomy;
+function populateProductMainCat(selectedCatSlug) {
+    const sel = document.getElementById('pCategory'); if (!sel) return;
+    const tax = _adminTax || _readCachedTax(); let html = '';
+    tax.forEach(h => { const opts = (h.cats || []).map(c => `<option value="${_escHtmlCat(c.slug)}"${selectedCatSlug === c.slug ? ' selected' : ''}>${_escHtmlCat(c.label)}</option>`).join(''); if (opts) html += `<optgroup label="${_escHtmlCat(h.label)}">${opts}</optgroup>`; });
+    sel.innerHTML = html || '<option value="">(add categories in the Category Tree)</option>';
+    if (selectedCatSlug) sel.value = selectedCatSlug;
+}
+function populateProductSub(catSlug, selectedSubSlug) {
+    const group = document.getElementById('pSubCategoryGroup'), sel = document.getElementById('pSubCategory'); if (!sel || !group) return;
+    const tax = _adminTax || _readCachedTax(); let cat = null;
+    tax.forEach(h => (h.cats || []).forEach(c => { if (c.slug === catSlug) cat = c; }));
+    const subs = (cat && cat.subs) || [];
+    if (!subs.length) { group.style.display = 'none'; sel.innerHTML = '<option value="">\u2014 None \u2014</option>'; return; }
+    group.style.display = '';
+    sel.innerHTML = '<option value="">\u2014 None \u2014</option>' + subs.map(s => `<option value="${_escHtmlCat(s.slug)}"${selectedSubSlug === s.slug ? ' selected' : ''}>${_escHtmlCat(s.label)}</option>`).join('');
+    if (selectedSubSlug) sel.value = selectedSubSlug;
+}
+function refreshProductSubSelect() { const sel = document.getElementById('pCategory'); if (sel) populateProductSub(sel.value, ''); }
+window.refreshProductSubSelect = refreshProductSubSelect;
+
+// Resolve the product fields (category/subCategory/gender/sleeve) from a tree selection.
+function _resolveProductMapping(catSlug, subSlug) {
+    const tax = _adminTax || _readCachedTax(); let cat = null;
+    tax.forEach(h => (h.cats || []).forEach(c => { if (c.slug === catSlug) cat = c; }));
+    if (!cat) return { category: catSlug || '', subCategory: '', gender: '', sleeve: '' };
+    if (subSlug) { const s = (cat.subs || []).find(x => x.slug === subSlug); if (s) { const r = _adminResolveSub(cat, s); return { category: r.cat, subCategory: r.sub || '', gender: r.gender || '', sleeve: r.sleeve || '' }; } }
+    const r = _adminResolveCat(cat); return { category: r.cat, subCategory: '', gender: r.gender || '', sleeve: r.sleeve || '' };
+}
+window._resolveProductMapping = _resolveProductMapping;
+
+// Reverse-lookup which tree node a product belongs to (for editing).
+function _findProductNode(product) {
+    const tax = _adminTax || _readCachedTax();
+    if (!product) { const first = tax[0] && tax[0].cats && tax[0].cats[0]; return { catSlug: first ? first.slug : '', subSlug: '' }; }
+    const pc = product.category || '', pg = product.gender || '', ps = product.sleeve || '', psub = product.subCategory || '';
+    for (const h of tax) for (const c of (h.cats || [])) for (const s of (c.subs || [])) { const r = _adminResolveSub(c, s); if (r.cat === pc && (r.gender || '') === pg && (r.sleeve || '') === ps && (r.sub || '') === psub && (r.sub || r.gender || r.sleeve)) return { catSlug: c.slug, subSlug: s.slug }; }
+    for (const h of tax) for (const c of (h.cats || [])) { const r = _adminResolveCat(c); if (r.cat === pc && (r.gender || '') === pg && (r.sleeve || '') === ps) return { catSlug: c.slug, subSlug: '' }; }
+    for (const h of tax) for (const c of (h.cats || [])) { if (c.slug === pc) return { catSlug: c.slug, subSlug: psub || '' }; }
+    return { catSlug: '', subSlug: '' };
+}
+window._findProductNode = _findProductNode;
 
 async function loadCategories() {
     _adminCategories = _readCachedCategories();

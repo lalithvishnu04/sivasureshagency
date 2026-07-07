@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=60">
+    <link rel="stylesheet" href="css/admin.css?v=62">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -232,43 +232,33 @@
             <div class="page" id="page-categories">
                 <div class="page-toolbar cat-toolbar">
                     <div class="toolbar-left">
-                        <h3 style="margin:0;font-size:1rem;font-weight:700;"><i class="fas fa-tags"></i> Categories &amp; Navigation</h3>
+                        <h3 style="margin:0;font-size:1rem;font-weight:700;"><i class="fas fa-sitemap"></i> Category Tree &amp; Navigation</h3>
                     </div>
                     <div class="toolbar-right">
-                        <button class="btn-primary btn-publish-all" onclick="publishCategoryConfig(this)"><i class="fas fa-cloud-upload-alt"></i> Save &amp; Publish</button>
+                        <button class="btn-primary btn-publish-all" onclick="publishTaxonomy(this)"><i class="fas fa-cloud-upload-alt"></i> Save &amp; Publish</button>
                     </div>
                 </div>
-                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>One tree runs the whole site.</strong> Your categories here are the shop filter chips, the header navigation dropdown, <em>and</em> the product tags &mdash; all from one place. Add <strong>Sub-categories</strong> under a category to create dropdown sub-links (e.g. <em>Surgeon Aprons</em>) and file products under them. Click <strong>Save &amp; Publish</strong> once to push everything live.</div></div>
+                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>One tree runs the whole site.</strong> Build it in three levels &mdash; <strong>Main Heading</strong> (menu column) &rarr; <strong>Main Category</strong> (e.g. Male Doctor Uniform) &rarr; <strong>Sub Category</strong> (e.g. Full Sleeve). This powers the header dropdown, the shop filters, and where products are filed. Mark a heading <em>Signature</em> to show it as a separate highlighted collection (like CliniFlex). Click <strong>Save &amp; Publish</strong> to push everything live.</div></div>
                 <div class="settings-panel">
                     <div class="settings-section">
-                        <h4 class="settings-section-title"><i class="fas fa-plus-circle"></i> Add New Category</h4>
+                        <h4 class="settings-section-title"><i class="fas fa-plus-circle"></i> Add Main Heading</h4>
                         <div class="form-row">
                             <div class="form-group" style="flex:2">
-                                <label>Category Name</label>
-                                <input type="text" id="newCatLabel" placeholder="e.g. Lab Coats" onkeydown="if(event.key==='Enter'){event.preventDefault();addCategory();}">
-                            </div>
-                            <div class="form-group" style="flex:1.4">
-                                <label>Menu Placement</label>
-                                <select id="newCatGroup">
-                                    <option value="">Standalone (shop chip only)</option>
-                                    <option value="scrub-suits">Under CliniFlex&trade; Scrubs</option>
-                                    <option value="doctor-uniform">Under Doctor Uniform</option>
-                                    <option value="staff-uniform">Under Staff Uniform</option>
-                                    <option value="hospital-linen">Under Linen &amp; Bedsheets</option>
-                                </select>
+                                <label>Heading Name <small style="color:var(--text-muted);font-weight:400">(top-level menu column)</small></label>
+                                <input type="text" id="newHeadingLabel" placeholder="e.g. Doctor Uniform" onkeydown="if(event.key==='Enter'){event.preventDefault();addHeading();}">
                             </div>
                             <div class="form-group" style="flex:0 0 auto;display:flex;align-items:flex-end;gap:14px">
-                                <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;white-space:nowrap">
-                                    <input type="checkbox" id="newCatSignature" style="width:auto"> <span><i class="fas fa-star" style="color:#f59e0b"></i> Signature</span>
+                                <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;white-space:nowrap" title="Show as a separate highlighted collection like CliniFlex">
+                                    <input type="checkbox" id="newHeadingSignature" style="width:auto"> <span><i class="fas fa-star" style="color:#f59e0b"></i> Signature</span>
                                 </label>
-                                <button type="button" class="btn-primary" onclick="addCategory()"><i class="fas fa-plus"></i> Add</button>
+                                <button type="button" class="btn-primary" onclick="addHeading()"><i class="fas fa-plus"></i> Add Heading</button>
                             </div>
                         </div>
                     </div>
                     <div class="settings-section">
-                        <h4 class="settings-section-title"><i class="fas fa-list"></i> Current Categories <span class="section-hint">shop chips, header menu &amp; product tags</span></h4>
-                        <p class="settings-section-desc">This one tree powers everything: each category is a shop chip <em>and</em> a header-menu column. Rename a label to rename it everywhere. Expand <strong>Sub-categories</strong> to add sub-groups (e.g. <em>Surgeon Aprons</em>, <em>Male Doctor Uniform</em>) &mdash; they appear in the header dropdown and let you file products precisely. Use <strong>Menu Placement</strong> to nest a category under another. Changes go live when you click <strong>Save &amp; Publish</strong> at the top.</p>
-                        <div id="categoriesList" class="cat-manage-list"><p class="empty">Loading...</p></div>
+                        <h4 class="settings-section-title"><i class="fas fa-stream"></i> Category Tree <span class="section-hint">Heading &rarr; Main Category &rarr; Sub Category</span></h4>
+                        <p class="settings-section-desc">Rename anything inline. Under each <strong>Heading</strong> add <strong>Main Categories</strong>; under each Main Category add <strong>Sub Categories</strong>. Products are filed against a Main Category (and optionally a Sub Category). Add images to Main/Sub categories to power the menu thumbnails.</p>
+                        <div id="taxonomyEditor" class="tax-editor"><p class="empty">Loading...</p></div>
                     </div>
                 </div>
             </div>
@@ -409,19 +399,14 @@
                     <input type="hidden" id="productEditId">
                     <div class="form-row">
                         <div class="form-group"><label>Product Name *</label><div style="display:flex;gap:6px;align-items:center"><input type="text" id="pName" required style="flex:1"><button type="button" class="btn-secondary btn-sm" onclick="insertNameSymbol('™')">™</button><button type="button" class="btn-secondary btn-sm" onclick="insertNameSymbol('®')">®</button></div></div>
-                        <div class="form-group"><label>Category *</label>
+                        <div class="form-group"><label>Main Category *</label>
                             <select id="pCategory" required onchange="refreshProductSubSelect()">
-                                <option value="scrub-suits">&#9733; CliniFlex&#8482; Scrub Suits</option>
-                                <option value="doctor-uniform">Doctor Uniform</option>
-                                <option value="staff-uniform">Staff Uniform</option>
-                                <option value="bedsheets">Bedsheets</option>
-                                <option value="hospital-linen">Hospital Linen</option>
-                                <option value="hotel-linen">Hotel Linen</option>
+                                <option value="">Loading…</option>
                             </select>
                         </div>
                     </div>
                     <div class="form-group" id="pSubCategoryGroup" style="display:none">
-                        <label><i class="fas fa-sitemap"></i> Sub-Category <small style="color:var(--text-muted);font-weight:400">(optional — files this product under a sub-category of the chosen category)</small></label>
+                        <label><i class="fas fa-sitemap"></i> Sub-Category <small style="color:var(--text-muted);font-weight:400">(optional — files this product under a sub-category)</small></label>
                         <select id="pSubCategory"><option value="">&mdash; None &mdash;</option></select>
                     </div>
                     <div class="form-row">
@@ -657,10 +642,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     
     <!-- Backend initialization -->
-    <script src="js/api.js?v=60" defer></script>
-    <script src="js/backend-config.js?v=60" defer></script>
-    <script src="js/db-init.js?v=60" defer></script>
-    <script defer src="js/admin.js?v=60"></script>
+    <script src="js/api.js?v=62" defer></script>
+    <script src="js/backend-config.js?v=62" defer></script>
+    <script src="js/db-init.js?v=62" defer></script>
+    <script defer src="js/admin.js?v=62"></script>
 </body>
 </html>
 

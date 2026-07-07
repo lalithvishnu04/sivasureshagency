@@ -286,6 +286,12 @@ function getCategoryList() {
 window.getCategoryList = getCategoryList;
 
 function getCategoryLabel(slug) {
+    try {
+        const tax = getTaxonomy();
+        for (const h of tax) { if (h.slug === slug) return h.label; }
+        for (const h of tax) { for (const c of (h.cats || [])) { if (c.slug === slug) return c.label; } }
+        for (const h of tax) { if (_headingCatSet(h).has(slug)) return h.label; }
+    } catch (e) { /* ignore */ }
     const c = getCategoryList().find(c => c.slug === slug);
     if (c) return c.label;
     return String(slug || '').replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
@@ -307,60 +313,73 @@ function getSubCategoryLabel(catSlug, subSlug) {
 }
 window.getSubCategoryLabel = getSubCategoryLabel;
 
-// Build the shop filter chips on categories.html from the category list.
+// Build the shop filter chips on categories.html from the taxonomy headings.
+function _activeHeadingSlug() {
+    const f = window._currentFilter || currentFilter || 'all';
+    if (f === 'all') return 'all';
+    const tax = getTaxonomy();
+    if (tax.some(h => h.slug === f)) return f;
+    for (const h of tax) { if (_headingCatSet(h).has(f)) return h.slug; }
+    return f;
+}
+window._activeHeadingSlug = _activeHeadingSlug;
+
 function renderShopFilters() {
     const bar = document.getElementById('shopFilters');
     if (!bar) return;
-    const list = getCategoryList();
-    const active = (window._currentFilter || currentFilter || 'all');
-    let html = `<button class="filter-btn${active === 'all' ? ' active' : ''}" data-filter="all">All Products</button>`;
-    for (const c of list) {
-        const isSig = !!c.signature;
-        const cls = 'filter-btn' + (isSig ? ' filter-btn-scrubs' : '') + (active === c.slug ? ' active' : '');
-        const label = escapeRichText(c.label);
-        html += `<button class="${cls}" data-filter="${escapeRichText(c.slug)}">`
+    const tax = getTaxonomy();
+    const activeH = _activeHeadingSlug();
+    let html = `<button class="filter-btn${activeH === 'all' ? ' active' : ''}" data-filter="all">All Products</button>`;
+    for (const h of tax) {
+        const isSig = !!h.signature;
+        const cls = 'filter-btn' + (isSig ? ' filter-btn-scrubs' : '') + (activeH === h.slug ? ' active' : '');
+        const label = escapeRichText(h.label);
+        html += `<button class="${cls}" data-filter="${escapeRichText(h.slug)}">`
              + (isSig ? `<i class="fas fa-star"></i> ${label} <span class="scrubs-pill">Signature</span>` : label)
              + `</button>`;
     }
     bar.innerHTML = html;
-    // Re-bind click handlers (initCategoriesPage binds on first load; rebind after re-render)
     if (typeof bindFilterButtons === 'function') bindFilterButtons();
-    if (typeof renderSubFilters === 'function') renderSubFilters(active);
+    if (typeof renderSubFilters === 'function') renderSubFilters(activeH);
 }
 window.renderShopFilters = renderShopFilters;
 
-// Secondary chip row showing the active category's sub-categories. Clicking one
-// applies ?sub=<slug> and re-renders products filtered by product.subCategory.
-function renderSubFilters(activeCat) {
+// Secondary chip row: the active heading's Main Categories (and their Sub
+// Categories, indented). Each applies its resolved product filter.
+function renderSubFilters(activeHeadingSlug) {
     const bar = document.getElementById('shopFilters');
     if (!bar) return;
     let row = document.getElementById('shopSubFilters');
-    const subs = (activeCat && activeCat !== 'all' && typeof getSubCategories === 'function') ? getSubCategories(activeCat) : [];
-    if (!subs.length) { if (row) row.remove(); return; }
-    if (!row) {
-        row = document.createElement('div');
-        row.id = 'shopSubFilters';
-        row.className = 'shop-subfilters';
-        bar.insertAdjacentElement('afterend', row);
-    }
+    const tax = getTaxonomy();
+    const heading = (activeHeadingSlug && activeHeadingSlug !== 'all') ? tax.find(h => h.slug === activeHeadingSlug) : null;
+    const cats = heading ? (heading.cats || []) : [];
+    if (!cats.length) { if (row) row.remove(); return; }
+    if (!row) { row = document.createElement('div'); row.id = 'shopSubFilters'; row.className = 'shop-subfilters'; bar.insertAdjacentElement('afterend', row); }
+    const curCat = window._currentFilter || currentFilter || '';
     const curG = window._currentGender || '', curS = window._currentSleeve || '', curSub = window._currentSub || '';
-    const noFilter = !curG && !curS && !curSub;
-    const catLabel = (typeof getCategoryLabel === 'function') ? getCategoryLabel(activeCat) : activeCat;
-    let html = `<button class="subfilter-btn${noFilter ? ' active' : ''}" data-gender="" data-sleeve="" data-sub="">All ${escapeRichText(catLabel)}</button>`;
-    for (const s of subs) {
-        const g = s.gender || '', sl = s.sleeve || '', sub = (!g && !sl) ? (s.slug || '') : '';
-        const active = (g || sl) ? (curG === g && curS === sl && !curSub) : (curSub === sub && !!sub);
-        html += `<button class="subfilter-btn${active ? ' active' : ''}" data-gender="${escapeRichText(g)}" data-sleeve="${escapeRichText(sl)}" data-sub="${escapeRichText(sub)}">${escapeRichText(s.label || s.slug)}</button>`;
+    const isActive = (r) => curCat === r.cat && curG === (r.gender || '') && curS === (r.sleeve || '') && curSub === (r.sub || '');
+    const allActive = curCat === activeHeadingSlug && !curG && !curS && !curSub;
+    let html = `<button class="subfilter-btn${allActive ? ' active' : ''}" data-filter="${escapeRichText(activeHeadingSlug)}" data-gender="" data-sleeve="" data-sub="">All ${escapeRichText(heading.label)}</button>`;
+    for (const c of cats) {
+        const r = _resolveCatFilter(c);
+        html += `<button class="subfilter-btn${isActive(r) ? ' active' : ''}" data-filter="${escapeRichText(r.cat)}" data-gender="${escapeRichText(r.gender)}" data-sleeve="${escapeRichText(r.sleeve)}" data-sub="">${escapeRichText(c.label)}</button>`;
+        for (const s of (c.subs || [])) {
+            const rs = _resolveSubFilter(c, s);
+            html += `<button class="subfilter-btn subfilter-sub${isActive(rs) ? ' active' : ''}" data-filter="${escapeRichText(rs.cat)}" data-gender="${escapeRichText(rs.gender)}" data-sleeve="${escapeRichText(rs.sleeve)}" data-sub="${escapeRichText(rs.sub)}">\u21b3 ${escapeRichText(s.label)}</button>`;
+        }
     }
     row.innerHTML = html;
     row.querySelectorAll('.subfilter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
+            const f = btn.dataset.filter || 'all';
             const g = btn.dataset.gender || null, sl = btn.dataset.sleeve || null, sub = btn.dataset.sub || null;
+            currentFilter = f; window._currentFilter = f;
             window._currentGender = g; window._currentSleeve = sl; window._currentSub = sub;
             displayedProducts = 12;
             try {
                 const url = new URL(window.location.href);
-                ['gender', 'sleeve', 'sub'].forEach(k => url.searchParams.delete(k));
+                ['gender', 'sleeve', 'sub', 'heading'].forEach(k => url.searchParams.delete(k));
+                url.searchParams.set('cat', f);
                 if (g) url.searchParams.set('gender', g);
                 if (sl) url.searchParams.set('sleeve', sl);
                 if (sub) url.searchParams.set('sub', sub);
@@ -369,7 +388,7 @@ function renderSubFilters(activeCat) {
             row.querySelectorAll('.subfilter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             _syncWindowState();
-            renderProducts(currentFilter, displayedProducts, g, sl, currentSearch, sub);
+            renderProducts(f, displayedProducts, g, sl, currentSearch, sub);
         });
     });
 }
@@ -382,48 +401,9 @@ window.renderSubFilters = renderSubFilters;
 const DEFAULT_CATEGORY_SLUGS = new Set(['scrub-suits', 'doctor-uniform', 'staff-uniform', 'bedsheets', 'hospital-linen', 'hotel-linen']);
 
 function initCustomCategoryNav() {
-    // When the header menu is generated from the Categories tree, every category
-    // already appears as a column/item — skip the legacy injection to avoid dupes.
-    try { const b = _buildMenuFromCategories(); if (b && b.length && b.every(col => col.items && col.items.length)) return; } catch (e) { /* fall through */ }
-    let list;
-    try { list = getCategoryList(); } catch (e) { return; }
-    if (!Array.isArray(list)) return;
-    // Idempotent: remove any previously-injected links before re-injecting.
-    document.querySelectorAll('[data-custom-cat]').forEach(el => el.remove());
-    list.forEach(c => {
-        if (!c || !c.slug || DEFAULT_CATEGORY_SLUGS.has(c.slug)) return;
-        const group = c.group || '';
-        const href = 'categories.html?cat=' + encodeURIComponent(c.slug);
-        const label = escapeRichText(c.label || c.slug);
-        if (group === 'scrub-suits') {
-            // Signature group → CliniFlex dropdown
-            document.querySelectorAll('.cliniflex-dropdown').forEach(dd => {
-                const a = document.createElement('a');
-                a.href = href; a.setAttribute('data-custom-cat', c.slug); a.innerHTML = label;
-                dd.appendChild(a);
-            });
-            return;
-        }
-        // Otherwise inject into the mega-menu column whose thumb matches the group.
-        document.querySelectorAll('.mega-menu').forEach(mm => {
-            let ul = null;
-            if (group) {
-                const thumb = mm.querySelector('.mega-col-thumb[data-cat="' + group + '"]');
-                if (thumb) { const col = thumb.closest('.mega-col'); if (col) ul = col.querySelector('ul'); }
-            }
-            if (!ul) {
-                // Standalone / unknown group → last content column
-                const cols = mm.querySelectorAll('.mega-col:not(.mega-cta)');
-                if (cols.length) ul = cols[cols.length - 1].querySelector('ul');
-            }
-            if (ul) {
-                const li = document.createElement('li');
-                li.setAttribute('data-custom-cat', c.slug);
-                li.innerHTML = '<a href="' + href + '">' + label + '</a>';
-                ul.appendChild(li);
-            }
-        });
-    });
+    // The header nav is now fully generated from the taxonomy (see renderMegaMenu),
+    // so the legacy injection is no longer needed.
+    return;
 }
 window.initCustomCategoryNav = initCustomCategoryNav;
 
@@ -459,53 +439,112 @@ const DEFAULT_MEGA_MENU = [
     ] },
 ];
 
+// ===== Taxonomy: 3-level tree (Main Heading → Main Category → Sub Category) =====
+// Stored in Supabase settings/taxonomy (JSON in `name`) + localStorage. Each Main
+// Category / Sub Category node may carry a product-filter map {cat,gender,sleeve,sub}.
+// When the map is absent, it defaults to the node's own slug — so brand-new nodes
+// the admin creates map products by their own slug automatically.
+const _TAX_CACHE_KEY = 'ssa_taxonomy_v1';
+const DEFAULT_TAXONOMY = [
+    { slug: 'doctor-uniform', label: 'Doctor Uniform', icon: 'user-md', cats: [
+        { slug: 'male-doctor-uniform', label: 'Male Doctor Uniform', image: '', map: { cat: 'doctor-uniform', gender: 'male' }, subs: [
+            { slug: 'male-doctor-full', label: 'Full Sleeve', image: '', map: { cat: 'doctor-uniform', gender: 'male', sleeve: 'full' } },
+            { slug: 'male-doctor-half', label: 'Half Sleeve', image: '', map: { cat: 'doctor-uniform', gender: 'male', sleeve: 'half' } },
+        ] },
+        { slug: 'female-doctor-uniform', label: 'Female Doctor Uniform', image: '', map: { cat: 'doctor-uniform', gender: 'female' }, subs: [
+            { slug: 'female-doctor-full', label: 'Full Sleeve', image: '', map: { cat: 'doctor-uniform', gender: 'female', sleeve: 'full' } },
+            { slug: 'female-doctor-half', label: 'Half Sleeve', image: '', map: { cat: 'doctor-uniform', gender: 'female', sleeve: 'half' } },
+        ] },
+    ] },
+    { slug: 'staff-uniform', label: 'Staff Uniform', icon: 'tshirt', cats: [
+        { slug: 'male-staff-uniform', label: 'Male Staff Uniform', image: '', map: { cat: 'staff-uniform', gender: 'male' }, subs: [] },
+        { slug: 'female-staff-uniform', label: 'Female Staff Uniform', image: '', map: { cat: 'staff-uniform', gender: 'female' }, subs: [] },
+    ] },
+    { slug: 'linen-bedsheets', label: 'Linen & Bedsheets', icon: 'bed', cats: [
+        { slug: 'bedsheets', label: 'Bedsheets & Pillow Covers', image: '', map: { cat: 'bedsheets' }, subs: [] },
+        { slug: 'hospital-linen', label: 'Hospital Linen', image: '', map: { cat: 'hospital-linen' }, subs: [
+            { slug: 'surgeon-aprons', label: 'Surgeon Aprons', image: '', map: { cat: 'hospital-linen', sub: 'surgeon-aprons' } },
+            { slug: 'ot-accessories', label: 'OT Accessories', image: '', map: { cat: 'hospital-linen', sub: 'ot-accessories' } },
+            { slug: 'patient-wear', label: 'Patient Wear', image: '', map: { cat: 'hospital-linen', sub: 'patient-wear' } },
+        ] },
+        { slug: 'hotel-linen', label: 'Hotel Linen', image: '', map: { cat: 'hotel-linen' }, subs: [] },
+    ] },
+    { slug: 'scrub-suits', label: 'CliniFlex\u2122 Scrubs', icon: 'award', signature: true, cats: [
+        { slug: 'gents-scrubs', label: 'Gents Scrub Suits', image: '', map: { cat: 'scrub-suits', gender: 'male' }, subs: [] },
+        { slug: 'ladies-scrubs', label: 'Ladies Scrub Suits', image: '', map: { cat: 'scrub-suits', gender: 'female' }, subs: [] },
+        { slug: 'all-scrubs', label: 'All Scrub Suits', image: '', map: { cat: 'scrub-suits' }, subs: [] },
+    ] },
+];
+
+function getTaxonomy() {
+    try { const raw = localStorage.getItem(_TAX_CACHE_KEY); if (raw) { const t = JSON.parse(raw); if (Array.isArray(t) && t.length) return t; } } catch (e) { /* ignore */ }
+    return DEFAULT_TAXONOMY;
+}
+window.getTaxonomy = getTaxonomy;
+
+// Resolve the product-filter for a Main Category / Sub Category node.
+function _resolveCatFilter(cat) {
+    const m = (cat && cat.map) || {};
+    return { cat: m.cat || cat.slug, gender: m.gender || '', sleeve: m.sleeve || '', sub: '' };
+}
+function _resolveSubFilter(cat, sub) {
+    const cm = (cat && cat.map) || {}, sm = (sub && sub.map) || {};
+    return {
+        cat: sm.cat || cm.cat || cat.slug,
+        gender: sm.gender || cm.gender || '',
+        sleeve: sm.sleeve || cm.sleeve || '',
+        sub: sm.sub || ((sm.gender || sm.sleeve) ? '' : sub.slug)
+    };
+}
+function _filterHref(r) {
+    let u = 'categories.html?cat=' + encodeURIComponent(r.cat);
+    if (r.gender) u += '&gender=' + encodeURIComponent(r.gender);
+    if (r.sleeve) u += '&sleeve=' + encodeURIComponent(r.sleeve);
+    if (r.sub) u += '&sub=' + encodeURIComponent(r.sub);
+    return u;
+}
+window._resolveCatFilter = _resolveCatFilter;
+window._resolveSubFilter = _resolveSubFilter;
+window._filterHref = _filterHref;
+
+// The set of product-category slugs that belong to a heading (to filter a whole heading).
+function _headingCatSet(heading) {
+    const s = new Set();
+    (heading && heading.cats || []).forEach(c => s.add(_resolveCatFilter(c).cat));
+    return s;
+}
+window._headingCatSet = _headingCatSet;
+
+// Build the header mega-menu from the taxonomy: heading → column, main category →
+// bold item, sub category → child link. Signature headings (CliniFlex) use their
+// own dropdown and are excluded here.
+function _buildMenuFromTaxonomy() {
+    const tax = getTaxonomy();
+    if (!Array.isArray(tax) || !tax.length) return null;
+    const iconFor = { 'doctor-uniform': 'user-md', 'staff-uniform': 'tshirt', 'linen-bedsheets': 'bed', 'hospital-linen': 'bed' };
+    // The first signature heading owns the dedicated CliniFlex dropdown, so it's not
+    // shown as a column. Any OTHER signature headings appear as highlighted columns.
+    const firstSig = tax.find(h => h && h.signature);
+    return tax.filter(h => h && h.slug && h !== firstSig).map(h => ({
+        title: h.label, icon: h.icon || iconFor[h.slug] || 'th-large',
+        href: 'categories.html?heading=' + encodeURIComponent(h.slug),
+        signature: !!h.signature,
+        items: (h.cats || []).map(cat => ({
+            label: cat.label, bold: true, href: _filterHref(_resolveCatFilter(cat)),
+            children: (cat.subs || []).map(sub => ({ label: sub.label, href: _filterHref(_resolveSubFilter(cat, sub)) }))
+        }))
+    }));
+}
+window._buildMenuFromTaxonomy = _buildMenuFromTaxonomy;
+
 function getMegaMenu() {
-    // Prefer the Categories-tree-driven menu once sub-categories exist (every column
-    // has at least one item). Until then, fall back to the previously-authored menu
-    // so the live header never shows empty columns during the transition.
     try {
-        const built = _buildMenuFromCategories();
-        if (built && built.length && built.every(col => col.items && col.items.length)) return built;
-    } catch (e) { /* ignore */ }
-    try {
-        const raw = localStorage.getItem(_MEGA_CACHE_KEY);
-        if (raw) { const m = JSON.parse(raw); if (Array.isArray(m) && m.length) return m; }
+        const built = _buildMenuFromTaxonomy();
+        if (built && built.length) return built;
     } catch (e) { /* ignore */ }
     return DEFAULT_MEGA_MENU;
 }
 window.getMegaMenu = getMegaMenu;
-
-// Turn a sub-category into a menu link object. Subs that carry gender/sleeve link
-// via those params (matching existing products); plain subs link via ?sub=.
-function _subLink(catSlug, s) {
-    const o = { label: s.label || s.slug, cat: catSlug };
-    if (s.gender) o.gender = s.gender;
-    if (s.sleeve) o.sleeve = s.sleeve;
-    if (!s.gender && !s.sleeve && s.slug) o.sub = s.slug;
-    return o;
-}
-// Build the header mega-menu straight from the Categories tree: top-level
-// categories → columns; categories with a Menu-Placement group → bold items under
-// their parent column; each category's sub-categories → child links.
-function _buildMenuFromCategories() {
-    let cats;
-    try { cats = getCategoryList(); } catch (e) { return null; }
-    if (!Array.isArray(cats) || !cats.length) return null;
-    cats = cats.filter(c => c && c.slug && !c.signature); // signature = CliniFlex separate dropdown
-    const iconFor = { 'doctor-uniform': 'user-md', 'staff-uniform': 'tshirt', 'hospital-linen': 'bed', 'bedsheets': 'bed', 'hotel-linen': 'hotel' };
-    const childrenOf = {};
-    cats.forEach(c => { if (c.group) (childrenOf[c.group] = childrenOf[c.group] || []).push(c); });
-    const topLevel = cats.filter(c => !c.group);
-    return topLevel.map(col => {
-        const items = [];
-        (childrenOf[col.slug] || []).forEach(cc => {
-            items.push({ label: cc.label, bold: true, cat: cc.slug, children: (cc.subs || []).map(s => _subLink(cc.slug, s)) });
-        });
-        (col.subs || []).forEach(s => { items.push(Object.assign({ bold: false }, _subLink(col.slug, s))); });
-        return { title: col.label, cat: col.slug, icon: iconFor[col.slug] || 'th-large', items };
-    });
-}
-window._buildMenuFromCategories = _buildMenuFromCategories;
 
 function _megaHref(o) {
     if (o && o.href) return o.href;
@@ -539,18 +578,42 @@ function renderMegaMenu() {
             const cls = it.bold ? ' class="mega-main-item"' : '';
             return `<li><a href="${_megaHref(it)}"${cls}>${esc(it.label)}</a></li>` + kids;
         }).join('');
-        return `<div class="mega-col"><a href="${_megaHref(col)}" class="mega-col-thumb" data-cat="${esc(col.cat || '')}"><i class="fas fa-${esc(col.icon || 'th-large')}"></i></a><h4><a href="${_megaHref(col)}">${esc(col.title)}</a></h4><ul>${items}</ul></div>`;
+        return `<div class="mega-col${col.signature ? ' mega-col-signature' : ''}"><a href="${_megaHref(col)}" class="mega-col-thumb" data-cat="${esc(col.cat || '')}"><i class="fas fa-${esc(col.signature ? 'award' : (col.icon || 'th-large'))}"></i></a><h4><a href="${_megaHref(col)}">${esc(col.title)}${col.signature ? ' <span class="mega-sig-pill"><i class=\"fas fa-star\"></i> Signature</span>' : ''}</a></h4><ul>${items}</ul></div>`;
     }).join('');
     inners.forEach(inner => {
         const cta = inner.querySelector('.mega-cta');
         inner.innerHTML = colsHtml + (cta ? cta.outerHTML : '');
     });
     if (typeof initMegaMenuImages === 'function') initMegaMenuImages();
+    if (typeof renderSignatureNav === 'function') renderSignatureNav();
 }
 window.renderMegaMenu = renderMegaMenu;
 
+// Populate the dedicated highlighted CliniFlex-style dropdown from the (first)
+// signature Main Heading in the taxonomy. Signature headings are shown here rather
+// than as a normal mega-menu column, so they stand out as premium collections.
+function renderSignatureNav() {
+    let sig;
+    try { sig = getTaxonomy().find(h => h && h.signature); } catch (e) { return; }
+    if (!sig) return;
+    document.querySelectorAll('.cliniflex-dropdown').forEach(dd => {
+        // Keep the hero anchor + badge; replace all other generated/static links.
+        Array.from(dd.children).forEach(ch => {
+            if (ch.tagName === 'A' && !ch.classList.contains('cliniflex-dd-hero')) ch.remove();
+        });
+        (sig.cats || []).forEach(cat => {
+            const a = document.createElement('a');
+            a.href = _filterHref(_resolveCatFilter(cat));
+            a.setAttribute('data-sig-link', '1');
+            a.textContent = cat.label;
+            dd.appendChild(a);
+        });
+    });
+}
+window.renderSignatureNav = renderSignatureNav;
+
 // Load the mega-menu structure from Supabase (settings/megamenu) and re-render.
-(function _initMegaMenuSync() {
+(function _initTaxonomySync() {
     function _parse(d) {
         if (!d) return null;
         if (Array.isArray(d.list) && d.list.length) return d.list;
@@ -563,16 +626,17 @@ window.renderMegaMenu = renderMegaMenu;
         for (let i = 0; i < 80; i++) { if (window.db) break; await new Promise(r => setTimeout(r, 50)); }
         if (!window.db) return;
         try {
-            const doc = await window.db.collection('settings').doc('megamenu').get();
+            const doc = await window.db.collection('settings').doc('taxonomy').get();
             if (doc && doc.exists) {
                 const list = _parse(doc.data());
                 if (list && list.length) {
                     const next = JSON.stringify(list);
-                    if (localStorage.getItem(_MEGA_CACHE_KEY) !== next) {
-                        localStorage.setItem(_MEGA_CACHE_KEY, next);
+                    if (localStorage.getItem(_TAX_CACHE_KEY) !== next) {
+                        localStorage.setItem(_TAX_CACHE_KEY, next);
                     }
                     if (typeof renderMegaMenu === 'function') renderMegaMenu();
-                    if (typeof initCustomCategoryNav === 'function') initCustomCategoryNav();
+                    if (typeof renderShopFilters === 'function') renderShopFilters();
+                    if (typeof applyUrlFilterAndRender === 'function' && document.body && document.body.dataset.page === 'categories') applyUrlFilterAndRender();
                 }
             }
         } catch (e) { /* offline / not set — keep default */ }
@@ -971,7 +1035,7 @@ let cart = JSON.parse(localStorage.getItem('ssa_cart') || '[]');
 cart.forEach(item => { const p = productsData.find(x => x.id === item.id); if (p) item.image = p.image; });
 let wishlist = JSON.parse(localStorage.getItem('ssa_wishlist') || '[]');
 let displayedProducts = 12;
-let currentFilter = new URLSearchParams(window.location.search).get('cat') || 'all'; // init from URL immediately — no race condition
+let currentFilter = new URLSearchParams(window.location.search).get('cat') || new URLSearchParams(window.location.search).get('heading') || 'all'; // init from URL immediately — no race condition
 let currentSearch = '';
 // Mirror state to window so the Firestore IIFE can always read the latest values
 function _syncWindowState() {
@@ -1335,6 +1399,7 @@ function bindFilterButtons() {
                 url.searchParams.delete('gender');
                 url.searchParams.delete('sleeve');
                 url.searchParams.delete('sub');
+                url.searchParams.delete('heading');
                 history.replaceState({}, '', url);
             } catch (e) { /* ignore */ }
             _syncWindowState(); renderProducts(currentFilter, displayedProducts, null, null, currentSearch, null);
@@ -1349,7 +1414,7 @@ window.bindFilterButtons = bindFilterButtons;
 // render. Used on first load and on bfcache restore (back/forward navigation).
 function applyUrlFilterAndRender() {
     const params = new URLSearchParams(window.location.search);
-    currentFilter = params.get('cat') || 'all';
+    currentFilter = params.get('cat') || params.get('heading') || 'all';
     window._currentGender = params.get('gender') || null;
     window._currentSleeve = params.get('sleeve') || null;
     window._currentSub = params.get('sub') || null;
@@ -1370,7 +1435,7 @@ window.applyUrlFilterAndRender = applyUrlFilterAndRender;
 function initCategoriesPage() {
     // Parse URL params
     const params = new URLSearchParams(window.location.search);
-    const cat = params.get('cat');
+    const cat = params.get('cat') || params.get('heading');
     const gender = params.get('gender');
     const sleeve = params.get('sleeve');
     const sub = params.get('sub');
@@ -1536,7 +1601,14 @@ function buildProductCard(p) {
 
 function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null, searchQuery = '', sub = undefined) {
     if (sub === undefined) sub = window._currentSub || null;
-    let filtered = filter === 'all' ? [...productsData] : productsData.filter(p => p.category === filter);
+    let filtered;
+    if (filter === 'all') filtered = [...productsData];
+    else {
+        let heading = null;
+        try { heading = getTaxonomy().find(h => h.slug === filter); } catch (e) { /* ignore */ }
+        if (heading) { const cs = _headingCatSet(heading); filtered = productsData.filter(p => cs.has(p.category)); }
+        else filtered = productsData.filter(p => p.category === filter);
+    }
     if (gender) filtered = filtered.filter(p => p.gender === gender || p.gender === 'unisex');
     if (sleeve) filtered = filtered.filter(p => p.sleeve === sleeve);
     if (sub) filtered = filtered.filter(p => (p.subCategory || '') === sub);
