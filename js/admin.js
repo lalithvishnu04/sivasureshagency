@@ -1660,6 +1660,8 @@ function addCategory() {
     if (sigEl) sigEl.checked = false;
     if (groupEl) groupEl.value = '';
     renderCategoriesList();
+    // Keep the product form category dropdown in sync with unsaved edits.
+    populateCategorySelect(document.getElementById('pCategory')?.value || 'scrub-suits');
     showAdminToast('Added "' + label + '". Click Save & Publish to go live.', 'info');
 }
 window.addCategory = addCategory;
@@ -1671,6 +1673,8 @@ function deleteCategory(index) {
     if (!confirm(`Remove the "${c.label}" category from the shop filters?\n\nExisting products keep their data — only the filter chip is hidden.`)) return;
     _adminCategories.splice(index, 1);
     renderCategoriesList();
+    // Reflect removal in the product form dropdown immediately.
+    populateCategorySelect(document.getElementById('pCategory')?.value || 'scrub-suits');
     showAdminToast('Removed "' + c.label + '". Click Save & Publish to go live.', 'info');
 }
 window.deleteCategory = deleteCategory;
@@ -1859,7 +1863,9 @@ window.saveMegaMenu = saveMegaMenu;
 function populateCategorySelect(selected) {
     const sel = document.getElementById('pCategory');
     if (!sel) return;
-    const list = _readCachedCategories();
+    const list = (Array.isArray(_adminCategories) && _adminCategories.length)
+        ? _adminCategories
+        : _readCachedCategories();
     sel.innerHTML = list.map(c =>
         `<option value="${_escHtmlCat(c.slug)}">${c.signature ? '\u2605 ' : ''}${_escHtmlCat(c.label)}</option>`
     ).join('');
