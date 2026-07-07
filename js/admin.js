@@ -1691,7 +1691,6 @@ function renderTaxonomyEditor() {
                         <div class="tax-cat-main">
                             <button type="button" class="tax-toggle" onclick="toggleTaxNode('${cKey}')"><i class="fas fa-chevron-${cOpen ? 'down' : 'right'}"></i></button>
                             <span class="tax-level-badge cat">Category</span>
-                            <label class="tax-img${c.image ? ' has-img' : ''}" title="Category image">${c.image ? `<img src="${c.image}" alt="">` : '<i class="fas fa-image"></i>'}<input type="file" accept="image/*" onchange="handleTaxImage('c',${hi},${ci},-1,this)" hidden></label>
                             <input type="text" class="tax-name" value="${_escHtmlCat(c.label)}" oninput="setMainCatLabel(${hi},${ci},this.value)" placeholder="Main Category name">
                             <code class="tax-slug">${_escHtmlCat(c.slug)}</code>
                             <span class="tax-count">${subs.length} sub</span>
@@ -1701,7 +1700,6 @@ function renderTaxonomyEditor() {
                             ${subs.length ? subs.map((s, si) => `<div class="tax-sub">
                                 <span class="tax-tick">\u21b3</span>
                                 <span class="tax-level-badge sub">Sub</span>
-                                <label class="tax-img${s.image ? ' has-img' : ''}" title="Sub-category image">${s.image ? `<img src="${s.image}" alt="">` : '<i class="fas fa-image"></i>'}<input type="file" accept="image/*" onchange="handleTaxImage('s',${hi},${ci},${si},this)" hidden></label>
                                 <input type="text" class="tax-name" value="${_escHtmlCat(s.label)}" oninput="setSub2Label(${hi},${ci},${si},this.value)" placeholder="Sub Category name">
                                 <code class="tax-slug">${_escHtmlCat(s.slug)}</code>
                                 <button type="button" class="cat-del-btn" title="Remove sub-category" onclick="deleteSub2(${hi},${ci},${si})"><i class="fas fa-trash"></i></button>

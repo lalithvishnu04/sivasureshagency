@@ -190,16 +190,16 @@ a.nav-cliniflex i.fa-award { font-size: 0.82em; color: #f59e0b; animation: cf-ba
 .mega-promo .btn { position: relative; z-index: 1; }
 
 /* Mega menu — image thumbnails per column (redesign) */
-.mega-col-thumb { display: block; height: 92px; border-radius: 13px; background-color: #0f172a; background-image: linear-gradient(150deg, #0d9488, #0f172a); background-size: cover; background-position: center 18%; margin-bottom: 13px; position: relative; overflow: hidden; box-shadow: 0 7px 20px rgba(15,23,42,0.16); transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s ease; }
+.mega-col-thumb { display: block; height: 92px; border-radius: 13px; background-color: #0f172a; background-image: linear-gradient(150deg, #0d9488, #0f172a); background-size: cover; background-position: center top; margin-bottom: 13px; position: relative; overflow: hidden; box-shadow: 0 7px 20px rgba(15,23,42,0.16); transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s ease; }
 .mega-col-thumb::after { content: ''; position: absolute; inset: 0; background: linear-gradient(155deg, rgba(13,148,136,0.10) 0%, rgba(15,23,42,0.55) 100%); transition: opacity 0.4s ease; }
 /* Cross-fade layer for cycling category thumbnails through main product images */
-.mega-col-thumb .mct-fade { content: ''; position: absolute; inset: 0; background-size: cover; background-position: center 18%; opacity: 0; transition: opacity 0.7s ease; z-index: 0; }
+.mega-col-thumb .mct-fade { content: ''; position: absolute; inset: 0; background-size: cover; background-position: center top; opacity: 0; transition: opacity 0.7s ease; z-index: 0; }
 .mega-col-thumb i { position: absolute; left: 9px; bottom: 9px; z-index: 1; width: 31px; height: 31px; border-radius: 9px; background: rgba(255,255,255,0.95); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.86rem; box-shadow: 0 3px 9px rgba(0,0,0,0.22); }
 .mega-col:hover .mega-col-thumb { transform: translateY(-3px) scale(1.02); box-shadow: 0 13px 28px rgba(15,23,42,0.24); }
 .mega-col:hover .mega-col-thumb::after { opacity: 0.78; }
 
 /* CliniFlex dropdown hero image (redesign) */
-.cliniflex-dropdown a.cliniflex-dd-hero { display: block; height: 118px; padding: 0; border-radius: 13px; background-color: #0f172a; background-image: linear-gradient(120deg, #0d9488, #0f172a); background-size: cover; background-position: center 22%; position: relative; overflow: hidden; margin-bottom: 9px; box-shadow: 0 8px 20px rgba(13,148,136,0.32); }
+.cliniflex-dropdown a.cliniflex-dd-hero { display: block; height: 118px; padding: 0; border-radius: 13px; background-color: #0f172a; background-image: linear-gradient(120deg, #0d9488, #0f172a); background-size: cover; background-position: center top; position: relative; overflow: hidden; margin-bottom: 9px; box-shadow: 0 8px 20px rgba(13,148,136,0.32); }
 .cliniflex-dropdown a.cliniflex-dd-hero:hover { background-color: transparent; padding: 0; transform: translateY(-2px); }
 /* "Signature Products" ribbon in the top-right of the hero (plain-text star = font-safe) */
 .cliniflex-dropdown a.cliniflex-dd-hero::before { content: '\2605 Signature Products'; display: block; position: absolute; top: 10px; right: 10px; z-index: 2; font-weight: 800; font-size: 0.6rem; letter-spacing: 0.04em; text-transform: uppercase; color: #0f172a; background: linear-gradient(120deg, #fde68a, #fbbf24); padding: 4px 9px; border-radius: 20px; box-shadow: 0 3px 8px rgba(0,0,0,0.25); opacity: 1; transform: none; }
