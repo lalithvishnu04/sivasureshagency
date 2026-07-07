@@ -1662,6 +1662,8 @@ function addCategory() {
     renderCategoriesList();
     // Keep the product form category dropdown in sync with unsaved edits.
     populateCategorySelect(document.getElementById('pCategory')?.value || 'scrub-suits');
+    // Refresh the menu editor so the new category is selectable in link dropdowns.
+    if (Array.isArray(_adminMega)) renderMegaEditor();
     showAdminToast('Added "' + label + '". Click Save & Publish to go live.', 'info');
 }
 window.addCategory = addCategory;
@@ -1675,6 +1677,7 @@ function deleteCategory(index) {
     renderCategoriesList();
     // Reflect removal in the product form dropdown immediately.
     populateCategorySelect(document.getElementById('pCategory')?.value || 'scrub-suits');
+    if (Array.isArray(_adminMega)) renderMegaEditor();
     showAdminToast('Removed "' + c.label + '". Click Save & Publish to go live.', 'info');
 }
 window.deleteCategory = deleteCategory;
@@ -1764,7 +1767,12 @@ async function loadMegaMenu() {
 window.loadMegaMenu = loadMegaMenu;
 
 function _megaCatOptions(sel) {
-    return _readCachedCategories().map(c => `<option value="${_escHtmlCat(c.slug)}"${sel === c.slug ? ' selected' : ''}>${_escHtmlCat(c.label)}</option>`).join('');
+    // Use the working (possibly unsaved) category draft so a just-added category
+    // is immediately selectable in the menu editor — falls back to the cache.
+    const list = (Array.isArray(_adminCategories) && _adminCategories.length)
+        ? _adminCategories
+        : _readCachedCategories();
+    return list.map(c => `<option value="${_escHtmlCat(c.slug)}"${sel === c.slug ? ' selected' : ''}>${_escHtmlCat(c.label)}</option>`).join('');
 }
 function _megaGenderOptions(sel) {
     return ['', 'male', 'female', 'unisex'].map(g => `<option value="${g}"${(sel || '') === g ? ' selected' : ''}>${g ? g : '\u2014 gender \u2014'}</option>`).join('');
@@ -1780,11 +1788,15 @@ function renderMegaEditor() {
     wrap.innerHTML = _adminMega.map((col, ci) => `
         <div class="mega-col-edit">
             <div class="mce-head">
-                <input class="mce-title" type="text" value="${_escHtmlCat(col.title || '')}" placeholder="Column heading" oninput="megaSet(${ci},null,null,'title',this.value)">
-                <select class="mce-link" onchange="megaSet(${ci},null,null,'cat',this.value)"><option value="">\u2014 link category \u2014</option>${_megaCatOptions(col.cat)}</select>
+                <span class="mce-col-badge">Column ${ci + 1}</span>
+                <input class="mce-title" type="text" value="${_escHtmlCat(col.title || '')}" placeholder="Column heading (e.g. Doctor Uniform)" oninput="megaSet(${ci},null,null,'title',this.value)">
+                <label class="mce-link-wrap"><span>Links to</span>
+                    <select class="mce-link" onchange="megaSet(${ci},null,null,'cat',this.value)"><option value="">\u2014 no link \u2014</option>${_megaCatOptions(col.cat)}</select>
+                </label>
                 <button type="button" class="cat-del-btn" title="Remove column" onclick="deleteMegaColumn(${ci})"><i class="fas fa-trash"></i></button>
             </div>
             <div class="mce-items">
+                ${(col.items && col.items.length) ? `<div class="mce-legend"><span>Bold</span><span>Heading / item label</span><span>Category</span><span>Gender</span><span>Sleeve</span><span></span></div>` : ''}
                 ${(col.items || []).map((it, ii) => `
                     <div class="mce-item">
                         <div class="mce-item-row">
