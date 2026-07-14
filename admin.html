@@ -238,7 +238,7 @@
                         <button class="btn-primary btn-publish-all" onclick="publishTaxonomy(this)"><i class="fas fa-cloud-upload-alt"></i> Save &amp; Publish</button>
                     </div>
                 </div>
-                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>One tree runs the whole site.</strong> Build it in three levels &mdash; <strong>Main Heading</strong> (menu column) ↔ <strong>Main Category</strong> (e.g. Male Doctor Uniform) ↔ <strong>Sub Category</strong> (e.g. Full Sleeve). This powers the header dropdown, the shop filters, and where products are filed. Mark a heading <em>Signature</em> to show it as a separate highlighted collection (like CliniFlex). <strong>Drag by the icon</strong> to reorder headings and categories. Changes sync everywhere on the frontend. Click <strong>Save &amp; Publish</strong> to push everything live.</div></div>
+                <div style="padding:12px 16px;background:rgba(13,148,136,0.05);border-left:3px solid var(--primary);border-radius:4px;display:flex;gap:10px;align-items:center;margin-bottom:16px"><i class="fas fa-info-circle" style="color:var(--primary);font-size:1.1rem;flex-shrink:0"></i><button type="button" onclick="toggleHelpPanel()" style="flex:1;text-align:left;background:none;border:none;cursor:pointer;padding:0;font-size:0.95rem;color:var(--text-mid);text-decoration:underline;font-weight:500">📖 View Instructions</button></div>
                 <div class="settings-panel">
                     <div class="settings-section">
                         <h4 class="settings-section-title"><i class="fas fa-plus-circle"></i> Add Main Heading</h4>
@@ -259,6 +259,23 @@
                         <h4 class="settings-section-title"><i class="fas fa-stream"></i> Category Tree <span class="section-hint">Heading &rarr; Main Category &rarr; Sub Category</span></h4>
                         <p class="settings-section-desc">Rename anything inline. Under each <strong>Heading</strong> add <strong>Main Categories</strong>; under each Main Category add <strong>Sub Categories</strong>. Products are filed against a Main Category (and optionally a Sub Category). Menu thumbnails are pulled automatically from your product images.</p>
                         <div id="taxonomyEditor" class="tax-editor"><p class="empty">Loading...</p></div>
+                    </div>
+                    <!-- Help Panel (Collapsible Instructions) -->
+                    <div id="helpPanel" style="display:none;margin-top:24px;padding:20px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px">
+                        <h4 style="margin:0 0 12px 0;color:var(--text);font-weight:700;display:flex;align-items:center;gap:8px"><i class="fas fa-graduation-cap"></i> Instructions</h4>
+                        <div style="font-size:0.95rem;color:var(--text-mid);line-height:1.6">
+                            <p><strong>One tree runs the whole site.</strong> Build your category structure in three levels:</p>
+                            <ul style="margin:12px 0;padding-left:24px">
+                                <li><strong>Main Heading</strong> &mdash; Top-level menu column (e.g. "Doctor Uniform")</li>
+                                <li><strong>Main Category</strong> &mdash; Underneath headings (e.g. "Male Doctor Uniform")</li>
+                                <li><strong>Sub Category</strong> &mdash; Under main categories (e.g. "Full Sleeve")</li>
+                            </ul>
+                            <p><strong>✓ What this controls:</strong> Header dropdown menu, shop filters, and where products are organized</p>
+                            <p><strong>✓ Signature Collections:</strong> Mark a heading as "Signature" to show it as a premium highlighted collection (like CliniFlex™ Scrubs)</p>
+                            <p><strong>✓ Reordering:</strong> Drag by the <i class="fas fa-grip-vertical"></i> icon to reorder. Changes sync everywhere on the frontend in ~2 min</p>
+                            <p><strong>✓ Publish:</strong> Click "Save & Publish" to push changes live</p>
+                        </div>
+                        <button type="button" onclick="toggleHelpPanel()" style="margin-top:12px;padding:8px 16px;background:var(--primary);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.9rem;font-weight:600">Close</button>
                     </div>
                 </div>
             </div>

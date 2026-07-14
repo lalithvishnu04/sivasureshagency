@@ -1,4 +1,4 @@
-﻿// SSA Admin v36 — color variants: auto-extract dominant colors from image, no native color picker
+﻿// SSA Admin v65 — Dashboard, categories, products, inventory, orders, customers
 // db, auth, fsServerTimestamp, fsIncrement are set by js/db-init.js
 
 // ===== State =====

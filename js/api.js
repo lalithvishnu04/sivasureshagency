@@ -1,5 +1,5 @@
 // ============================================================
-//  SSA API Client  —  js/api.js
+//  SSA API Client (v65) — js/api.js
 //
 //  ⚙️  TO ACTIVATE: after running  firebase deploy --only functions
 //      paste your Firebase Function URL below:

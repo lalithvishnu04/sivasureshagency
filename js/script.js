@@ -1,3 +1,8 @@
+/**
+ * SIVA SURESH AGENCY  —  E-Commerce Frontend (v65)
+ * Main client-side logic: product display, filtering, cart, orders
+ */
+
 // ===== SVG Avatar Generator =====
 function generateProductSVG(product) {
     const category = product.category;

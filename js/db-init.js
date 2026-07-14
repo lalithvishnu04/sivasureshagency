@@ -1,3 +1,7 @@
+/**
+ * DB Initialization & Supabase Setup (v65)
+ * Initializes Supabase client and creates compatibility layer
+ */
 console.log('[backend-init] Starting Supabase initialization...');
 
 (function initSupabaseCompat() {
