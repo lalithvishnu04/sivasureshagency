@@ -1156,7 +1156,7 @@ body.modal-open { overflow: hidden; touch-action: none; }
 
 /* ── 37. Product Marquee Strip ────────────────────────────────── */
 .product-marquee { background: var(--bg-off); padding: 12px 0; overflow: hidden; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.marquee-track { display: flex; gap: 14px; animation: marquee-scroll 25s linear infinite; width: max-content; align-items: center; }
+.marquee-track { display: flex; gap: 14px; animation: marquee-scroll 40s linear infinite; width: max-content; align-items: center; }
 .marquee-track:hover { animation-play-state: paused; }
 .marquee-item { display: flex; align-items: center; gap: 9px; background: #fff; border: 1px solid var(--border); border-radius: 50px; padding: 7px 14px 7px 7px; white-space: nowrap; transition: var(--transition); text-decoration: none; color: var(--text); font-size: 0.82rem; font-weight: 600; }
 .marquee-item:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow); }
@@ -1432,7 +1432,7 @@ body.modal-open { overflow: hidden; touch-action: none; }
     }
 
     .marquee-track {
-        animation: marquee-scroll-mobile 24s linear infinite;
+        animation: marquee-scroll-mobile 38s linear infinite;
         overflow: hidden;
         width: max-content;
         padding: 0 14px;

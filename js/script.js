@@ -1,5 +1,5 @@
 /**
- * SIVA SURESH AGENCY  —  E-Commerce Frontend (v65)
+ * SIVA SURESH AGENCY  —  E-Commerce Frontend (v67)
  * Main client-side logic: product display, filtering, cart, orders
  */
 
@@ -1106,17 +1106,35 @@ async function handlePasswordRecoverySave() {
 // ===== Dynamic Category Rendering =====
 // Render footer category links from taxonomy
 function renderFooterCategories() {
-    const footerCatContainer = document.querySelector('.footer-links:nth-of-type(2) ul');
-    if (!footerCatContainer) return;
-    const tax = getTaxonomy();
-    let html = '';
-    for (const heading of tax) {
-        if (heading.signature) continue; // Skip signature headings
-        for (const cat of (heading.cats || [])) {
-            const filter = _resolveCatFilter(cat);
-            html += `<li><a href="categories.html?cat=${encodeURIComponent(filter.cat)}${filter.gender ? '&gender=' + encodeURIComponent(filter.gender) : ''}">${escapeRichText(cat.label)}</a></li>`;
+    // Use a more robust selector: find the footer-links that contains "Categories" h4, then get its ul
+    const allFooterLinks = document.querySelectorAll('.footer-links');
+    let footerCatContainer = null;
+    
+    for (const section of allFooterLinks) {
+        const h4 = section.querySelector('h4');
+        if (h4 && h4.textContent.includes('Categories')) {
+            footerCatContainer = section.querySelector('ul');
+            break;
         }
     }
+    
+    if (!footerCatContainer) return;
+    
+    const tax = getTaxonomy();
+    let html = '';
+    
+    // Render MAIN HEADINGS from taxonomy (not individual categories)
+    for (const heading of tax) {
+        const firstCat = heading.cats?.[0];
+        if (!firstCat) continue;
+        
+        const filter = _resolveCatFilter(firstCat);
+        const sigBadge = heading.signature ? '★ ' : '';
+        const sigStyle = heading.signature ? ' style="color:var(--primary);font-weight:700;"' : '';
+        
+        html += `<li><a href="categories.html?cat=${encodeURIComponent(filter.cat)}${filter.gender ? '&gender=' + encodeURIComponent(filter.gender) : ''}"${sigStyle}>${sigBadge}${escapeRichText(heading.label)}</a></li>`;
+    }
+    
     if (html) footerCatContainer.innerHTML = html;
 }
 window.renderFooterCategories = renderFooterCategories;
@@ -1163,7 +1181,7 @@ function renderMarqueeItems() {
     
     const tax = getTaxonomy();
     const items = [];
-    const maxPerCategory = 2; // Show max 2 products per category
+    const seenProductNames = new Set(); // Track product names to avoid duplicates
     const categoryImageMap = {}; // Map category slug to products
     
     // Organize products by category slug
@@ -1172,27 +1190,37 @@ function renderMarqueeItems() {
         categoryImageMap[p.category].push(p);
     });
     
-    // Generate marquee items from taxonomy, using actual product images
+    // Generate marquee items from taxonomy, using ONLY main heading-level categories
     for (const heading of tax) {
         if (heading.signature) continue; // Skip signature in main marquee
-        for (const cat of (heading.cats || [])) {
-            const products = categoryImageMap[cat.slug] || [];
+        
+        // Use the heading itself (main category) to find products, not its children
+        const filter = _resolveCatFilter(heading);
+        const products = categoryImageMap[filter.cat] || [];
+        
+        // Take products from this main category, but deduplicate by product name
+        for (const product of products) {
+            if (!product.image) continue;
             
-            // Take up to maxPerCategory products from this category
-            products.slice(0, maxPerCategory).forEach(product => {
-                if (product.image) {
-                    const href = `categories.html?cat=${encodeURIComponent(cat.slug)}`;
-                    const label = product.name.split(' - ')[0]; // Get short name (e.g., "Male Doctor Uniform")
-                    items.push(`<a href="${href}" class="marquee-item"><img src="${product.image}" alt="${label}" loading="lazy"><span>${label}</span></a>`);
-                }
-            });
+            const label = product.name.split(' - ')[0]; // Get short name (e.g., "Male Doctor Uniform")
+            
+            // Skip if we've already shown this product name
+            if (seenProductNames.has(label)) continue;
+            
+            seenProductNames.add(label);
+            const href = `categories.html?cat=${encodeURIComponent(filter.cat)}${filter.gender ? '&gender=' + encodeURIComponent(filter.gender) : ''}`;
+            items.push(`<a href="${href}" class="marquee-item"><img src="${product.image}" alt="${label}" loading="lazy"><span>${label}</span></a>`);
+            
+            // Limit to reasonable number of items
+            if (items.length >= 20) break;
         }
+        if (items.length >= 20) break;
     }
     
-    // Duplicate items for seamless infinite scroll
+    // Duplicate items for seamless infinite scroll (only once to avoid too many duplicates)
     if (items.length > 0) {
-        const html = items.join('') + items.join('');
-        track.innerHTML = html;
+        const html = items.join('');
+        track.innerHTML = html.length > 0 ? html + html : '';
     }
 }
 window.renderMarqueeItems = renderMarqueeItems;
