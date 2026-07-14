@@ -1192,12 +1192,81 @@ function renderMarqueeItems() {
 }
 window.renderMarqueeItems = renderMarqueeItems;
 
+// NEW: Render signature products as Quick Links in footer (auto-synced from taxonomy)
+function renderSignatureQuickLinks() {
+    try {
+        // Get the Quick Links section (first footer-links)
+        const allFooterLinks = document.querySelectorAll('.footer-links');
+        console.log('[Sig-QL] Found footer-links elements:', allFooterLinks.length);
+        
+        if (!allFooterLinks.length) {
+            console.log('[Sig-QL] No footer-links found, skipping');
+            return;
+        }
+        
+        const quickLinksSection = allFooterLinks[0];
+        const quickLinksContainer = quickLinksSection.querySelector('ul');
+        console.log('[Sig-QL] Quick links container found:', !!quickLinksContainer);
+        
+        if (!quickLinksContainer) return;
+        
+        const tax = getTaxonomy();
+        console.log('[Sig-QL] Taxonomy loaded, has signature property');
+        
+        if (!tax || !Array.isArray(tax)) {
+            console.log('[Sig-QL] Taxonomy is invalid');
+            return;
+        }
+        
+        const signatureHeadings = tax.filter(h => h && h.signature);
+        console.log('[Sig-QL] Found signature headings:', signatureHeadings.length, signatureHeadings.map(h => h.label));
+        
+        // If no signature headings, don't modify
+        if (signatureHeadings.length === 0) {
+            console.log('[Sig-QL] No signature headings found');
+            return;
+        }
+        
+        let html = '';
+        for (const heading of signatureHeadings) {
+            const firstCat = heading.cats?.[0];
+            if (!firstCat) continue;
+            
+            const filter = _resolveCatFilter(firstCat);
+            const href = `categories.html?cat=${encodeURIComponent(filter.cat)}${filter.gender ? '&gender=' + encodeURIComponent(filter.gender) : ''}`;
+            const label = escapeRichText(heading.label);
+            const sigBadge = '<i class="fas fa-star"></i> ';
+            
+            html += `<li><a href="${href}" style="color:var(--primary);font-weight:600;">${sigBadge}${label}</a></li>`;
+        }
+        
+        if (html) {
+            console.log('[Sig-QL] Updating with', signatureHeadings.length, 'signature items');
+            // Update the Quick Links section to show signature products
+            quickLinksContainer.innerHTML = html;
+            // Rename section title to emphasize premium
+            const h4 = quickLinksSection.querySelector('h4');
+            if (h4) {
+                h4.textContent = '⭐ Premium Collections';
+                console.log('[Sig-QL] Updated heading to Premium Collections');
+            }
+        } else {
+            console.log('[Sig-QL] No HTML generated');
+        }
+    } catch (e) {
+        console.error('[Sig-QL] Error:', e);
+    }
+}
+window.renderSignatureQuickLinks = renderSignatureQuickLinks;
+
 // ===== DOM Ready =====
 document.addEventListener('DOMContentLoaded', () => {
     initCommon();
     const page = document.body.dataset.page;
     if (page === 'home') initHomePage();
     if (page === 'categories') initCategoriesPage();
+    // Render signature quick links on all pages
+    if (typeof renderSignatureQuickLinks === 'function') renderSignatureQuickLinks();
     if (page === 'contact') initContactPage();
     // Password recovery handler — fires when user clicks the reset link in their email
     window.addEventListener('ssa:passwordRecovery', showPasswordRecoveryModal);

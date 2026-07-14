@@ -1379,15 +1379,23 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
 });
 
 // ===== Toast =====
-function showAdminToast(msg, type = 'success') {
+function showAdminToast(msg, type = 'success', duration = 3000) {
     const toast = document.getElementById('adminToast');
     if (!toast) { console.log('[toast]', type, msg); return; }
     toast.textContent = msg;
     toast.className = 'admin-toast ' + type + ' show';
-    setTimeout(() => toast.classList.remove('show'), 3000);
+    if (duration > 0) setTimeout(() => toast.classList.remove('show'), duration);
 }
 
-// ===== Global Exports =====
+// Show loading indicator during save operations
+function showAdminLoading(show = true) {
+    let loader = document.getElementById('adminSaveLoader');
+    if (show) {
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.id = 'adminSaveLoader';
+            loader.innerHTML = `<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:24px;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);z-index:11000;text-align:center;"><div style="width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;"></div><p style="color:var(--text);font-weight:600;margin:0;font-size:14px;">Saving...</p></div>`;
+            document.body.appendChild(loader);\n        }\n    } else if (loader) {\n        loader.remove();\n    }\n}\n\n// ===== Global Exports =====
 window.handleAdminLogin = handleAdminLogin;
 window.handleAdminLogout = handleAdminLogout;
 window.toggleSidebar = toggleSidebar;
@@ -1398,6 +1406,8 @@ window.openProductModal = openProductModal;
 window.editProduct = editProduct;
 window.saveProduct = saveProduct;
 window.deleteProduct = deleteProduct;
+window.showAdminToast = showAdminToast;
+window.showAdminLoading = showAdminLoading;
 window.syncInventoryFromProducts = syncInventoryFromProducts;
 window.openStockModal = openStockModal;
 window.saveStock = saveStock;
@@ -1869,14 +1879,25 @@ async function saveTaxonomy(silent) {
             subs: (c.subs || []).filter(s => (s.label || '').trim()).map(s => ({ slug: s.slug || _slugify(s.label), label: s.label.trim(), image: s.image || '', map: s.map || {} }))
         }))
     }));
-    if (!clean.length) { showAdminToast('Add at least one heading before saving', 'error'); return false; }
+    if (!clean.length) { showAdminToast('⚠️ Add at least one heading before saving', 'error', 4000); return false; }
     localStorage.setItem(ADMIN_TAX_CACHE_KEY, JSON.stringify(clean));
     if (typeof _markProductsDirty === 'function') _markProductsDirty();
     if (window.db) {
-        try { await window.db.collection('settings').doc('taxonomy').set({ name: JSON.stringify(clean) }); if (!silent) showAdminToast('Category tree published to the live site'); return true; }
-        catch (e) { if (!silent) showAdminToast('Saved locally. Cloud publish failed: ' + (e.message || 'unknown'), 'error'); return false; }
+        showAdminLoading(true);
+        try { 
+            await window.db.collection('settings').doc('taxonomy').set({ name: JSON.stringify(clean) }); 
+            showAdminLoading(false);
+            if (!silent) showAdminToast('✅ Premium collections updated! Frontend will sync in ~2 min', 'success', 5000); 
+            return true; 
+        }
+        catch (e) { 
+            showAdminLoading(false);
+            if (!silent) showAdminToast('⚠️ Saved locally. Cloud sync failed: ' + (e.message || 'unknown'), 'error', 5000); 
+            return false; 
+        }
     }
-    if (!silent) showAdminToast('Saved locally'); return true;
+    if (!silent) showAdminToast('💾 Saved to local storage', 'info', 3000); 
+    return true;
 }
 window.saveTaxonomy = saveTaxonomy;
 async function publishTaxonomy(btn) {
