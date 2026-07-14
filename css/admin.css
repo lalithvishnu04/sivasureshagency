@@ -47,6 +47,15 @@ a{text-decoration:none;color:inherit;}
 button{cursor:pointer;font-family:inherit;}
 img{max-width:100%;display:block;}
 
+/* ── Help Panel Styling ──────────────────────────────── */
+#helpPanel button:hover {
+  background-color: #e0f7ee !important;
+}
+
+#helpArrow {
+  transition: transform 0.3s ease;
+}
+
 /* ── Login Screen ─────────────────────────────────────── */
 .login-screen{display:flex;min-height:100vh;}
 

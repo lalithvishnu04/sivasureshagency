@@ -1,6 +1,20 @@
 ﻿// SSA Admin v65 — Dashboard, categories, products, inventory, orders, customers
 // db, auth, fsServerTimestamp, fsIncrement are set by js/db-init.js
 
+// ===== Help Panel Toggle =====
+function toggleHelpPanel() {
+    const panel = document.getElementById('helpPanel');
+    const content = document.getElementById('helpContent');
+    const arrow = document.getElementById('helpArrow');
+    
+    if (panel && content && arrow) {
+        const isHidden = content.style.display === 'none';
+        content.style.display = isHidden ? 'block' : 'none';
+        arrow.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+        arrow.style.transition = 'transform 0.3s ease';
+    }
+}
+
 // ===== State =====
 let currentOrderFilter = 'all';
 let allOrders = [];
