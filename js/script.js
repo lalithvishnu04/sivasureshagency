@@ -344,8 +344,8 @@ function renderShopFilters() {
 }
 window.renderShopFilters = renderShopFilters;
 
-// Secondary chip row: the active heading's Main Categories (and their Sub
-// Categories, indented). Each applies its resolved product filter.
+// Secondary chip row: the active heading's Main Categories only (no sub-categories).
+// Each applies its resolved product filter.
 function renderSubFilters(activeHeadingSlug) {
     const bar = document.getElementById('shopFilters');
     if (!bar) return;
@@ -363,10 +363,7 @@ function renderSubFilters(activeHeadingSlug) {
     for (const c of cats) {
         const r = _resolveCatFilter(c);
         html += `<button class="subfilter-btn${isActive(r) ? ' active' : ''}" data-filter="${escapeRichText(r.cat)}" data-gender="${escapeRichText(r.gender)}" data-sleeve="${escapeRichText(r.sleeve)}" data-sub="">${escapeRichText(c.label)}</button>`;
-        for (const s of (c.subs || [])) {
-            const rs = _resolveSubFilter(c, s);
-            html += `<button class="subfilter-btn subfilter-sub${isActive(rs) ? ' active' : ''}" data-filter="${escapeRichText(rs.cat)}" data-gender="${escapeRichText(rs.gender)}" data-sleeve="${escapeRichText(rs.sleeve)}" data-sub="${escapeRichText(rs.sub)}">\u21b3 ${escapeRichText(s.label)}</button>`;
-        }
+        // NOTE: Sub-categories are NOT shown here; users filter by Main Category only
     }
     row.innerHTML = html;
     row.querySelectorAll('.subfilter-btn').forEach(btn => {
@@ -1100,6 +1097,101 @@ async function handlePasswordRecoverySave() {
         setTimeout(() => { closeAuthModal(); showToast('Password updated successfully!'); }, 1500);
     } catch (e) { show(e.message || 'Failed to update password'); }
 }
+
+// ===== Dynamic Category Rendering =====
+// Render footer category links from taxonomy
+function renderFooterCategories() {
+    const footerCatContainer = document.querySelector('.footer-links:nth-of-type(2) ul');
+    if (!footerCatContainer) return;
+    const tax = getTaxonomy();
+    let html = '';
+    for (const heading of tax) {
+        if (heading.signature) continue; // Skip signature headings
+        for (const cat of (heading.cats || [])) {
+            const filter = _resolveCatFilter(cat);
+            html += `<li><a href="categories.html?cat=${encodeURIComponent(filter.cat)}${filter.gender ? '&gender=' + encodeURIComponent(filter.gender) : ''}">${escapeRichText(cat.label)}</a></li>`;
+        }
+    }
+    if (html) footerCatContainer.innerHTML = html;
+}
+window.renderFooterCategories = renderFooterCategories;
+
+// Render "Browse by Category" tiles from taxonomy (home page)
+function renderBrowseByCategoryTiles() {
+    const grid = document.querySelector('.categories-grid');
+    if (!grid) return;
+    const tax = getTaxonomy();
+    const iconMap = { 'doctor-uniform': 'user-md', 'staff-uniform': 'tshirt', 'hospital-linen': 'notes-medical', 'bedsheets': 'bed', 'hotel-linen': 'hotel' };
+    let html = '';
+    for (const heading of tax) {
+        const isSig = !!heading.signature;
+        const firstCat = heading.cats?.[0];
+        if (!firstCat) continue;
+        const filter = _resolveCatFilter(firstCat);
+        const href = `categories.html?cat=${encodeURIComponent(filter.cat)}${filter.gender ? '&gender=' + encodeURIComponent(filter.gender) : ''}`;
+        const catIcon = iconMap[filter.cat] || 'th-large';
+        const title = escapeRichText(heading.label);
+        const desc = escapeRichText((firstCat.label || heading.label).slice(0, 40) + '...');
+        const sigBadge = isSig ? '<span class="cat-tile-signature-badge"><i class="fas fa-award"></i> ★ Signature Line</span>' : '';
+        const sigClass = isSig ? 'category-tile--cliniflex' : '';
+        const scrubText = isSig ? '<span class="scrub-brand-text">CliniFlex™</span> ' : '';
+        html += `<a href="${href}" class="category-tile ${sigClass}">
+            <div class="cat-tile-img" data-cat="${filter.cat}">
+                ${sigBadge}
+            </div>
+            <div class="cat-tile-body">
+                <div class="cat-tile-icon"><i class="fas fa-${catIcon}"></i></div>
+                <h3>${scrubText}${title}</h3>
+                <p>${desc}</p>
+                <span class="cat-tile-link">Explore <i class="fas fa-arrow-right"></i></span>
+            </div>
+        </a>`;
+    }
+    if (html) grid.innerHTML = html;
+}
+window.renderBrowseByCategoryTiles = renderBrowseByCategoryTiles;
+
+// Render marquee carousel items dynamically from actual products data (synced with taxonomy)
+function renderMarqueeItems() {
+    const track = document.querySelector('.marquee-track');
+    if (!track || !productsData) return;
+    
+    const tax = getTaxonomy();
+    const items = [];
+    const maxPerCategory = 2; // Show max 2 products per category
+    const categoryImageMap = {}; // Map category slug to products
+    
+    // Organize products by category slug
+    productsData.forEach(p => {
+        if (!categoryImageMap[p.category]) categoryImageMap[p.category] = [];
+        categoryImageMap[p.category].push(p);
+    });
+    
+    // Generate marquee items from taxonomy, using actual product images
+    for (const heading of tax) {
+        if (heading.signature) continue; // Skip signature in main marquee
+        for (const cat of (heading.cats || [])) {
+            const products = categoryImageMap[cat.slug] || [];
+            
+            // Take up to maxPerCategory products from this category
+            products.slice(0, maxPerCategory).forEach(product => {
+                if (product.image) {
+                    const href = `categories.html?cat=${encodeURIComponent(cat.slug)}`;
+                    const label = product.name.split(' - ')[0]; // Get short name (e.g., "Male Doctor Uniform")
+                    items.push(`<a href="${href}" class="marquee-item"><img src="${product.image}" alt="${label}" loading="lazy"><span>${label}</span></a>`);
+                }
+            });
+        }
+    }
+    
+    // Duplicate items for seamless infinite scroll
+    if (items.length > 0) {
+        const html = items.join('') + items.join('');
+        track.innerHTML = html;
+    }
+}
+window.renderMarqueeItems = renderMarqueeItems;
+
 // ===== DOM Ready =====
 document.addEventListener('DOMContentLoaded', () => {
     initCommon();
@@ -1131,6 +1223,8 @@ function initCommon() {
     if (typeof renderMegaMenu === 'function') renderMegaMenu();
     // Inject admin-added categories into the nav mega-menu / CliniFlex dropdown
     if (typeof initCustomCategoryNav === 'function') initCustomCategoryNav();
+    // Render footer categories from taxonomy
+    if (typeof renderFooterCategories === 'function') renderFooterCategories();
     // Enable hover auto-scroll of product tile images
     if (typeof initCardHoverCycle === 'function') initCardHoverCycle();
     // Apply scrub brand name from localStorage to all pages
@@ -1345,6 +1439,10 @@ function initHomePage() {
         const featured = productsData.filter(p => p.badge);
         grid.innerHTML = featured.slice(0, 8).map(p => buildProductCard(p)).join('');
     }
+    // Render Browse by Category tiles from taxonomy
+    if (typeof renderBrowseByCategoryTiles === 'function') renderBrowseByCategoryTiles();
+    // Render marquee carousel items from taxonomy
+    if (typeof renderMarqueeItems === 'function') renderMarqueeItems();
     // Start category tile image scroll and hero dynamic images (immediate)
     initCategoryTileScroll();
     initHeroDynamicImages();

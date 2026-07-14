@@ -1674,8 +1674,9 @@ function renderTaxonomyEditor() {
         const hOpen = _openTaxNodes.has('h:' + hi);
         const cats = h.cats || [];
         return `
-        <div class="tax-heading${h.signature ? ' is-signature' : ''}">
+        <div class="tax-heading${h.signature ? ' is-signature' : ''}" draggable="true" data-heading-idx="${hi}">
             <div class="tax-heading-main">
+                <span class="tax-drag-handle" title="Drag to reorder"><i class="fas fa-grip-vertical"></i></span>
                 <button type="button" class="tax-toggle" onclick="toggleTaxNode('h:${hi}')" title="Expand/collapse"><i class="fas fa-chevron-${hOpen ? 'down' : 'right'}"></i></button>
                 <span class="tax-level-badge heading">Heading</span>
                 ${h.signature ? '<i class="fas fa-star tax-sig-star" title="Signature heading"></i>' : ''}
@@ -1687,8 +1688,9 @@ function renderTaxonomyEditor() {
             ${hOpen ? `<div class="tax-cats">
                 ${cats.map((c, ci) => {
                     const cKey = 'c:' + hi + '/' + ci; const cOpen = _openTaxNodes.has(cKey); const subs = c.subs || [];
-                    return `<div class="tax-cat">
+                    return `<div class="tax-cat" draggable="true" data-heading-idx="${hi}" data-category-idx="${ci}">
                         <div class="tax-cat-main">
+                            <span class="tax-drag-handle" title="Drag to reorder"><i class="fas fa-grip-vertical"></i></span>
                             <button type="button" class="tax-toggle" onclick="toggleTaxNode('${cKey}')"><i class="fas fa-chevron-${cOpen ? 'down' : 'right'}"></i></button>
                             <span class="tax-level-badge cat">Category</span>
                             <input type="text" class="tax-name" value="${_escHtmlCat(c.label)}" oninput="setMainCatLabel(${hi},${ci},this.value)" placeholder="Main Category name">
@@ -1712,8 +1714,69 @@ function renderTaxonomyEditor() {
             </div>` : ''}
         </div>`;
     }).join('');
+    _bindTaxDragHandlers();
 }
 window.renderTaxonomyEditor = renderTaxonomyEditor;
+
+// ===== Drag-Drop Reordering =====
+let _taxDragSource = null;
+function _bindTaxDragHandlers() {
+    const wrap = document.getElementById('taxonomyEditor');
+    if (!wrap) return;
+    // Bind drag handlers to heading and category elements
+    wrap.querySelectorAll('[draggable="true"]').forEach(el => {
+        el.addEventListener('dragstart', (e) => {
+            _taxDragSource = el;
+            el.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        el.addEventListener('dragend', (e) => {
+            wrap.querySelectorAll('[draggable="true"]').forEach(x => x.classList.remove('dragging', 'drag-over'));
+            _taxDragSource = null;
+        });
+        el.addEventListener('dragover', (e) => {
+            if (!_taxDragSource || _taxDragSource === el) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            el.classList.add('drag-over');
+        });
+        el.addEventListener('dragleave', (e) => {
+            if (e.target === el) el.classList.remove('drag-over');
+        });
+        el.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (!_taxDragSource || _taxDragSource === el) return;
+            const srcHi = _taxDragSource.dataset.headingIdx;
+            const srcCi = _taxDragSource.dataset.categoryIdx;
+            const tgtHi = el.dataset.headingIdx;
+            const tgtCi = el.dataset.categoryIdx;
+            if (!_adminTax) _adminTax = _readCachedTax();
+            // Reorder within same heading (categories)
+            if (srcCi !== undefined && tgtCi !== undefined && srcHi === tgtHi) {
+                const h = _adminTax[srcHi];
+                if (h && h.cats) {
+                    const cats = h.cats;
+                    if (srcCi !== tgtCi) {
+                        const temp = cats[srcCi];
+                        cats.splice(srcCi, 1);
+                        cats.splice(tgtCi, 0, temp);
+                    }
+                }
+            }
+            // Reorder headings
+            else if (srcCi === undefined && tgtCi === undefined) {
+                if (srcHi !== tgtHi) {
+                    const temp = _adminTax[srcHi];
+                    _adminTax.splice(srcHi, 1);
+                    _adminTax.splice(tgtHi, 0, temp);
+                }
+            }
+            renderTaxonomyEditor();
+            showAdminToast('Category reordered. Don\u2019t forget to Save & Publish!', 'info');
+        });
+    });
+}
+window._bindTaxDragHandlers = _bindTaxDragHandlers;
 
 function toggleTaxNode(key) { if (_openTaxNodes.has(key)) _openTaxNodes.delete(key); else _openTaxNodes.add(key); renderTaxonomyEditor(); }
 window.toggleTaxNode = toggleTaxNode;
