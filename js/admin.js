@@ -1395,7 +1395,14 @@ function showAdminLoading(show = true) {
             loader = document.createElement('div');
             loader.id = 'adminSaveLoader';
             loader.innerHTML = `<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:24px;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);z-index:11000;text-align:center;"><div style="width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;"></div><p style="color:var(--text);font-weight:600;margin:0;font-size:14px;">Saving...</p></div>`;
-            document.body.appendChild(loader);\n        }\n    } else if (loader) {\n        loader.remove();\n    }\n}\n\n// ===== Global Exports =====
+            document.body.appendChild(loader);
+        }
+    } else if (loader) {
+        loader.remove();
+    }
+}
+
+// ===== Global Exports =====
 window.handleAdminLogin = handleAdminLogin;
 window.handleAdminLogout = handleAdminLogout;
 window.toggleSidebar = toggleSidebar;
