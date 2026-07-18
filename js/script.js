@@ -652,7 +652,9 @@ function renderMegaMenu() {
     const inners = document.querySelectorAll('.mega-menu-inner');
     if (!inners.length) return;
     const esc = (typeof escapeRichText === 'function') ? escapeRichText : (s => String(s == null ? '' : s));
-    const colsHtml = menu.filter(col => (col.items || []).length > 0).map(col => {
+    const visibleCols = menu.filter(col => (col.items || []).length > 0);
+    const colCount = visibleCols.length;
+    const colsHtml = visibleCols.map(col => {
         const items = (col.items || []).map(it => {
             const kids = (it.children || []).map(ch => `<li><a href="${_megaHref(ch)}">${esc(ch.label)}</a></li>`).join('');
             const cls = it.bold ? ' class="mega-main-item"' : '';
@@ -664,6 +666,9 @@ function renderMegaMenu() {
     inners.forEach(inner => {
         const cta = inner.querySelector('.mega-cta');
         inner.innerHTML = colsHtml + (cta ? cta.outerHTML : '');
+        // Set explicit column count — auto-fit/auto-fill can't collapse properly when
+        // a child has grid-column:1/-1 (the CTA bar). Explicit count always fills correctly.
+        if (colCount > 0) inner.style.gridTemplateColumns = `repeat(${colCount}, 1fr)`;
     });
     if (typeof initMegaMenuImages === 'function') initMegaMenuImages();
     if (typeof renderSignatureNav === 'function') renderSignatureNav();
