@@ -1820,10 +1820,11 @@ function renderTaxonomyEditor() {
                 <button type="button" class="tax-toggle" onclick="toggleTaxNode('h:${hi}')" title="Expand/collapse"><i class="fas fa-chevron-${hOpen ? 'down' : 'right'}"></i></button>
                 <span class="tax-level-badge heading">Heading</span>
                 ${h.signature ? '<i class="fas fa-star tax-sig-star" title="Signature heading"></i>' : ''}
-                <input type="text" class="tax-name tax-name-h" value="${_escHtmlCat(h.label)}" oninput="setHeadingLabel(${hi},this.value)" placeholder="Main Heading name">${h.symbol === 'tm' ? '<sup class="tax-sym-preview" title="Trademark symbol will appear here on frontend">™</sup>' : h.symbol === 'r' ? '<sup class="tax-sym-preview" title="Registered symbol will appear here on frontend">®</sup>' : ''}
+                <input type="text" class="tax-name tax-name-h" id="tax-h-input-${hi}" value="${_escHtmlCat(h.label)}" oninput="setHeadingLabel(${hi},this.value)" placeholder="Main Heading name">
+                <button type="button" class="tax-sym-insert" title="Insert ™ at cursor position in name" onclick="insertHeadingSymbol(${hi},'\u2122')">™</button>
+                <button type="button" class="tax-sym-insert" title="Insert ® at cursor position in name" onclick="insertHeadingSymbol(${hi},'\u00ae')">®</button>
                 <span class="tax-count">${cats.length} categor${cats.length === 1 ? 'y' : 'ies'}</span>
                 <label class="tax-sig-toggle" title="Show as a separate highlighted collection (like CliniFlex)"><input type="checkbox" ${h.signature ? 'checked' : ''} onchange="toggleHeadingSignature(${hi},this.checked)"> Signature</label>
-                ${h.signature ? `<button type="button" class="tax-sym-btn${h.symbol === 'tm' ? ' active' : ''}" title="Toggle Trademark symbol (™)" onclick="setHeadingSymbol(${hi},'${h.symbol === 'tm' ? '' : 'tm'}')">™</button><button type="button" class="tax-sym-btn${h.symbol === 'r' ? ' active' : ''}" title="Toggle Registered symbol (®)" onclick="setHeadingSymbol(${hi},'${h.symbol === 'r' ? '' : 'r'}')">®</button>` : ''}
                 <button type="button" class="cat-del-btn" title="Remove heading" onclick="deleteHeading(${hi})"><i class="fas fa-trash"></i></button>
             </div>
             ${hOpen ? `<div class="tax-cats">
@@ -1939,14 +1940,25 @@ function setHeadingLabel(hi, v) { if (!_adminTax) _adminTax = _readCachedTax(); 
 window.setHeadingLabel = setHeadingLabel;
 function toggleHeadingSignature(hi, ch) { if (!_adminTax) _adminTax = _readCachedTax(); if (_adminTax[hi]) _adminTax[hi].signature = !!ch; renderTaxonomyEditor(); }
 window.toggleHeadingSignature = toggleHeadingSignature;
-// Set the trademark/registered symbol for a signature heading ('tm', 'r', or '').
-// Passing the same value that's already set toggles it off (clears it).
-function setHeadingSymbol(hi, v) {
+// Insert ™ or ® at the cursor position inside the heading name input.
+// The symbol becomes part of the label text — admin controls exact placement.
+function insertHeadingSymbol(hi, sym) {
+    const input = document.getElementById('tax-h-input-' + hi);
+    if (input) {
+        const start = input.selectionStart != null ? input.selectionStart : input.value.length;
+        const end   = input.selectionEnd   != null ? input.selectionEnd   : input.value.length;
+        input.value = input.value.slice(0, start) + sym + input.value.slice(end);
+        input.setSelectionRange(start + sym.length, start + sym.length);
+        input.focus();
+    }
     if (!_adminTax) _adminTax = _readCachedTax();
-    if (_adminTax[hi]) _adminTax[hi].symbol = v || '';
-    // Re-render so the preview sup and button active states update immediately
-    renderTaxonomyEditor();
+    if (_adminTax[hi]) _adminTax[hi].label = input ? input.value : (_adminTax[hi].label + sym);
+    // Clear the legacy symbol field — the character is now in the label itself
+    if (_adminTax[hi]) _adminTax[hi].symbol = '';
 }
+window.insertHeadingSymbol = insertHeadingSymbol;
+// Legacy stub kept so old saved taxonomy with symbol:'tm'/'r' doesn't break
+function setHeadingSymbol(hi, v) { if (!_adminTax) _adminTax = _readCachedTax(); if (_adminTax[hi]) _adminTax[hi].symbol = v || ''; renderTaxonomyEditor(); }
 window.setHeadingSymbol = setHeadingSymbol;
 function deleteHeading(hi) { if (!_adminTax) _adminTax = _readCachedTax(); const h = _adminTax[hi]; if (!h) return; if (!confirm(`Remove the "${h.label}" heading and everything under it?`)) return; _adminTax.splice(hi, 1); renderTaxonomyEditor(); if (typeof refreshProductTaxonomy === 'function') refreshProductTaxonomy(); }
 window.deleteHeading = deleteHeading;

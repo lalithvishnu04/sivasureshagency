@@ -1078,12 +1078,10 @@ img{max-width:100%;display:block;}
 .tax-count { flex: 0 0 auto; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); background: var(--surface-1); border: 1px solid var(--border-light); border-radius: 20px; padding: 2px 9px; white-space: nowrap; }
 .tax-sig-toggle { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 700; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
 .tax-sig-toggle input { width: auto; cursor: pointer; }
-/* Compact ™ / ® toggle buttons in taxonomy heading row (replaces dropdown) */
-.tax-sym-btn { flex: 0 0 auto; padding: 2px 7px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--surface-2); color: var(--text-muted); font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; line-height: 1.4; }
-.tax-sym-btn:hover { border-color: var(--primary); color: var(--primary); }
-.tax-sym-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-/* Inline ™/® preview next to heading name input in taxonomy editor */
-.tax-sym-preview { font-size: 0.85rem; font-weight: 800; color: var(--primary); vertical-align: super; line-height: 1; margin-left: 2px; user-select: none; }
+/* ™ / ® insert buttons — click inserts character at cursor in the name input */
+.tax-sym-insert { flex: 0 0 auto; padding: 2px 7px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--surface-2); color: var(--text-muted); font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s; line-height: 1.4; }
+.tax-sym-insert:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-bg, #f0fdfa); }
+.tax-sym-insert:active { transform: scale(0.92); }
 .tax-cats { padding: 10px 12px 12px 30px; display: flex; flex-direction: column; gap: 9px; }
 .tax-cat { border: 1px solid var(--border-light); border-left: 3px solid #3b82f6; border-radius: 10px; background: var(--surface-1); overflow: hidden; }
 .tax-cat-main { display: flex; align-items: center; gap: 9px; padding: 9px 11px; }
