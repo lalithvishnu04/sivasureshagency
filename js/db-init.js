@@ -360,6 +360,7 @@ console.log('[backend-init] Starting Supabase initialization...');
 
     window.getCurrentUser = () => _cachedRawUser;
     window._firebaseReady = true;
+    window._supaClient = client;   // exposed for admin bulk operations only
 
     console.log('[backend-init] Supabase compat ready');
 })();

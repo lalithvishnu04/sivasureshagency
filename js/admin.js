@@ -838,9 +838,6 @@ async function saveProduct(e) {
         } else {
             data.createdAt = fsServerTimestamp();
             data.totalStock = 0;
-            data.deleted = false;
-            data.isActive = true;
-            data.status = 'active';
             await db.collection('products').add(data);
             _invalidateCache('products');
             _markProductsDirty();
@@ -915,16 +912,8 @@ async function deleteProduct(docId) {
     // Capture product name before deletion so we can zero-out inventory
     const toDelete = allProducts.find(p => p.docId === docId);
     try {
-        // Soft-delete: `deleted` + `isActive` columns exist after running supabase_setup.sql v68.
-        // PostgREST silently ignored unknown columns in older schema; adding the columns
-        // ensures the soft-delete persists and getVisibleProducts() filters it out correctly.
-        await db.collection('products').doc(docId).update({
-            deleted: true,
-            isActive: false,
-            active: false,
-            status: 'deleted',
-            updatedAt: fsServerTimestamp()
-        });
+        // Hard-delete the product record
+        await db.collection('products').doc(docId).delete();
         _invalidateCache('products');
         _invalidateCache('inventory');
         _markProductsDirty();
@@ -975,9 +964,6 @@ async function syncInventoryFromProducts() {
                 image: p.image || '',
                 badge: p.badge || '',
                 totalStock: 100,
-                deleted: false,
-                isActive: true,
-                status: 'active',
                 createdAt: fsServerTimestamp()
             });
             // Create inventory entries for each size -- check first to avoid duplicates
@@ -1539,6 +1525,72 @@ window.deleteProduct = deleteProduct;
 window.showAdminToast = showAdminToast;
 window.showAdminLoading = showAdminLoading;
 window.syncInventoryFromProducts = syncInventoryFromProducts;
+
+// Clear ALL inventory and rebuild fresh from every product in the database.
+async function clearAndResyncInventory() {
+    const btn = document.querySelector('button[onclick="clearAndResyncInventory()"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...'; }
+    try {
+        showAdminToast('Clearing inventory...', 'info');
+        // Bulk-delete all inventory rows in one Supabase call
+        if (window._supaClient) {
+            const { error: delErr } = await window._supaClient.from('inventory').delete().not('id', 'is', null);
+            if (delErr) throw new Error('Clear failed: ' + delErr.message);
+        } else {
+            const allInv = await db.collection('inventory').get();
+            for (const doc of allInv.docs) await db.collection('inventory').doc(doc.id).delete();
+        }
+
+        showAdminToast('Building inventory from products...', 'info');
+        // Fetch all products from the database (not the hardcoded seed list)
+        const prodSnap = await db.collection('products').get();
+        const products = prodSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
+
+        const now = new Date().toISOString();
+        const records = [];
+        for (const p of products) {
+            const sizes = Array.isArray(p.sizes) ? p.sizes.filter(Boolean) : [];
+            if (!sizes.length) continue;
+            // Use stored colorVariants first, fallback to category colour map
+            const cvColors = (Array.isArray(p.colorVariants) ? p.colorVariants : [])
+                .map(cv => (cv && cv.name) ? cv.name : null).filter(Boolean);
+            const colors = cvColors.length ? cvColors : getColorsForCategory(p.category || '');
+            const colorList = colors.length ? colors : ['Standard'];
+            for (const size of sizes) {
+                for (const color of colorList) {
+                    records.push({
+                        productName: p.name,
+                        productCategory: p.category || '',
+                        size,
+                        color,
+                        quantity: 50,
+                        status: 'in_stock',
+                        updatedAt: now
+                    });
+                }
+            }
+        }
+
+        // Bulk-insert all rows in one call
+        if (window._supaClient && records.length) {
+            const CHUNK = 500;
+            for (let i = 0; i < records.length; i += CHUNK) {
+                const { error: insErr } = await window._supaClient.from('inventory').insert(records.slice(i, i + CHUNK));
+                if (insErr) throw new Error('Insert failed: ' + insErr.message);
+            }
+        }
+
+        _invalidateCache('inventory');
+        showAdminToast(`Done! ${records.length} inventory entries created from ${products.length} products.`);
+        loadInventory();
+    } catch (err) {
+        console.error('[resync]', err);
+        showAdminToast('Sync failed: ' + err.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> Sync'; }
+    }
+}
+window.clearAndResyncInventory = clearAndResyncInventory;
 window.openStockModal = openStockModal;
 window.saveStock = saveStock;
 window.closeModal = closeModal;
