@@ -1078,6 +1078,8 @@ img{max-width:100%;display:block;}
 .tax-count { flex: 0 0 auto; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); background: var(--surface-1); border: 1px solid var(--border-light); border-radius: 20px; padding: 2px 9px; white-space: nowrap; }
 .tax-sig-toggle { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 700; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
 .tax-sig-toggle input { width: auto; cursor: pointer; }
+.tax-sym-label { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; font-size: 0.73rem; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.tax-sym-select { font-size: 0.73rem; padding: 2px 6px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--surface-2); color: var(--text-main); cursor: pointer; }
 .tax-cats { padding: 10px 12px 12px 30px; display: flex; flex-direction: column; gap: 9px; }
 .tax-cat { border: 1px solid var(--border-light); border-left: 3px solid #3b82f6; border-radius: 10px; background: var(--surface-1); overflow: hidden; }
 .tax-cat-main { display: flex; align-items: center; gap: 9px; padding: 9px 11px; }

@@ -45,6 +45,11 @@ alter table public.products add column if not exists "embroideryEnabled" boolean
 alter table public.products add column if not exists "embroideryPrice" numeric;
 alter table public.products add column if not exists "embroideryPrices" jsonb;
 alter table public.products add column if not exists "subCategory" text;
+-- Soft-delete support (v68)
+alter table public.products add column if not exists deleted boolean not null default false;
+alter table public.products add column if not exists "isActive" boolean not null default true;
+-- Index for fast active-product queries
+create index if not exists idx_products_deleted on public.products(deleted) where deleted = false;
 
 create table if not exists public.inventory (
   id text primary key default ('i_' || replace(gen_random_uuid()::text, '-', '')),

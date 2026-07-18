@@ -433,7 +433,23 @@ async function viewOrder(docId) {
                 <h5><i class="fas fa-box"></i> Items</h5>
                 <table class="od-items">
                     <tr><th>Product</th><th>Size</th><th>Color</th><th>Qty</th><th>Price</th></tr>
-                    ${(o.items || []).map(i => `<tr><td>${i.name}</td><td>${i.selectedSize || '-'}</td><td>${i.selectedColor || '-'}</td><td>${i.qty}</td><td>\u20b9${i.price * i.qty}</td></tr>`).join('')}
+                    ${(o.items || []).map(i => {
+                        const embroidery = i.embroidery || null;
+                        const details = embroidery ? `
+                            <div style="margin-top:6px;font-size:.78rem;color:var(--primary)">
+                                <strong>Embroidery:</strong> ${embroidery.type || 'TEXT'}${embroidery.line1 ? ` • ${embroidery.line1}` : ''}${embroidery.logoFileName ? ` • ${embroidery.logoFileName}` : ''}
+                            </div>
+                        ` : '';
+                        const preview = embroidery?.logoImage ? `
+                            <div style="margin-top:8px">
+                                <img src="${embroidery.logoImage}" alt="Embroidery preview" style="max-width:140px;max-height:90px;border-radius:8px;border:1px solid #e2e8f0;object-fit:contain">
+                                <div style="margin-top:6px">
+                                    <a href="${embroidery.logoImage}" download="${(embroidery.logoFileName || 'embroidery-logo').replace(/[^a-z0-9._-]/gi,'-')}" style="font-size:.78rem;color:var(--primary);font-weight:600">Download image</a>
+                                </div>
+                            </div>
+                        ` : '';
+                        return `<tr><td>${i.name}${details}${preview}</td><td>${i.selectedSize || '-'}</td><td>${i.selectedColor || '-'}</td><td>${i.qty}</td><td>\u20b9${i.price * i.qty}</td></tr>`;
+                    }).join('')}
                 </table>
                 <p style="text-align:right;font-weight:700;margin-top:10px;font-size:1rem;color:var(--primary)">Total: \u20b9${(o.total || 0).toLocaleString()}</p>
             </div>
@@ -491,9 +507,11 @@ async function loadProducts() {
                 return docs;
             })
         );
-        allProducts = Array.isArray(data) ? data : data.docs.map(d => ({ docId: d.id, ...d.data() }));
+        const rawProducts = Array.isArray(data) ? data : data.docs.map(d => ({ docId: d.id, ...d.data() }));
+        const activeProducts = (window.ssaProductHelpers?.getVisibleProducts || ((list) => list || []))(rawProducts);
+        allProducts = activeProducts;
         allProducts.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-        if (allProducts.length === 0) { await autoSeedProducts(); } else { await deduplicateProducts(); renderProducts(); }
+        if (!rawProducts.length) { await autoSeedProducts(); } else { await deduplicateProducts(); renderProducts(); }
     } catch (err) { console.error('Products error:', err); }
 }
 
@@ -594,7 +612,17 @@ function openProductModal(product = null) {
     document.getElementById('productEditId').value = product ? product.docId : '';
     document.getElementById('productModalTitle').innerHTML = product ? '<i class="fas fa-edit"></i> Edit Product' : '<i class="fas fa-plus"></i> Add Product';
     document.getElementById('pName').value = product ? product.name : '';
-    { const _n = _findProductNode(product); refreshProductTaxonomy(_n.catSlug, _n.subSlug); }
+    // Always use fresh taxonomy so the category/subcategory dropdowns reflect the
+    // latest admin category structure (fixes stale subcategory bug, Issue 4).
+    if (_adminTax === null && typeof loadTaxonomy === 'function') {
+        loadTaxonomy(true).then(() => {
+            const _n = _findProductNode(product);
+            refreshProductTaxonomy(_n.catSlug, _n.subSlug);
+        });
+    } else {
+        const _n = _findProductNode(product);
+        refreshProductTaxonomy(_n.catSlug, _n.subSlug);
+    }
     document.getElementById('pPrice').value = product ? product.price : '';
     document.getElementById('pOldPrice').value = product ? product.oldPrice || '' : '';
     document.getElementById('pGender').value = product ? product.gender || '' : '';
@@ -799,13 +827,20 @@ async function saveProduct(e) {
 
     try {
         if (docId) {
+            // Capture old product data before update so we can sync inventory
+            const oldProduct = allProducts.find(p => p.docId === docId);
             await db.collection('products').doc(docId).update(data);
             _invalidateCache('products');
             _markProductsDirty();
+            // Keep inventory in sync whenever product name or sizes change
+            await _syncInventoryAfterProductUpdate(oldProduct, data);
             showAdminToast('Product updated');
         } else {
             data.createdAt = fsServerTimestamp();
             data.totalStock = 0;
+            data.deleted = false;
+            data.isActive = true;
+            data.status = 'active';
             await db.collection('products').add(data);
             _invalidateCache('products');
             _markProductsDirty();
@@ -822,20 +857,98 @@ async function saveProduct(e) {
     }
 }
 
+// Sync inventory records after a product is updated.
+// - Renames productName when product name changes.
+// - Creates inventory entries for new sizes.
+// - Does NOT delete entries for removed sizes (keeps history; admin can clean manually).
+async function _syncInventoryAfterProductUpdate(oldProduct, newData) {
+    if (!oldProduct || !newData) return;
+    try {
+        const oldName = (oldProduct.name || '').trim();
+        const newName = (newData.name || '').trim();
+        const newSizes = Array.isArray(newData.sizes) ? newData.sizes : [];
+
+        if (!oldName) return;
+
+        // Rename productName in all inventory records if name changed
+        if (oldName !== newName && newName) {
+            const invSnap = await db.collection('inventory').where('productName', '==', oldName).get();
+            if (!invSnap.empty) {
+                for (const doc of invSnap.docs) {
+                    await db.collection('inventory').doc(doc.id).update({
+                        productName: newName,
+                        productCategory: newData.category || doc.data().productCategory,
+                        updatedAt: fsServerTimestamp()
+                    });
+                }
+            }
+        }
+
+        // Create inventory entries for any new sizes not already tracked
+        if (newSizes.length) {
+            const effectiveName = newName || oldName;
+            const existingInvSnap = await db.collection('inventory').where('productName', '==', effectiveName).get();
+            const existingSizes = new Set((existingInvSnap.empty ? [] : existingInvSnap.docs.map(d => d.data().size)));
+            const colors = getColorsForCategory(newData.category || oldProduct.category || '');
+            for (const size of newSizes) {
+                if (!existingSizes.has(size)) {
+                    // New size — create a default inventory entry
+                    await db.collection('inventory').add({
+                        productName: effectiveName,
+                        productCategory: newData.category || oldProduct.category || '',
+                        size,
+                        color: colors[0] || 'Default',
+                        quantity: 0,
+                        status: 'out_of_stock',
+                        updatedAt: fsServerTimestamp()
+                    });
+                }
+            }
+        }
+
+        _invalidateCache('inventory');
+    } catch (e) { console.warn('[inventory-sync]', e.message); /* non-fatal */ }
+}
+
 async function deleteProduct(docId) {
     if (!confirm('Are you sure you want to delete this product?')) return;
+    // Capture product name before deletion so we can zero-out inventory
+    const toDelete = allProducts.find(p => p.docId === docId);
     try {
-        await db.collection('products').doc(docId).delete();
+        // Soft-delete: `deleted` + `isActive` columns exist after running supabase_setup.sql v68.
+        // PostgREST silently ignored unknown columns in older schema; adding the columns
+        // ensures the soft-delete persists and getVisibleProducts() filters it out correctly.
+        await db.collection('products').doc(docId).update({
+            deleted: true,
+            isActive: false,
+            active: false,
+            status: 'deleted',
+            updatedAt: fsServerTimestamp()
+        });
         _invalidateCache('products');
+        _invalidateCache('inventory');
         _markProductsDirty();
+        // Zero-out inventory so deleted product doesn't appear in stock reports
+        if (toDelete && toDelete.name) {
+            try {
+                const invSnap = await db.collection('inventory').where('productName', '==', toDelete.name).get();
+                if (!invSnap.empty) {
+                    for (const doc of invSnap.docs) {
+                        await db.collection('inventory').doc(doc.id).update({ quantity: 0, status: 'out_of_stock', updatedAt: fsServerTimestamp() });
+                    }
+                }
+            } catch (_e) { /* non-fatal */ }
+        }
         showAdminToast('Product deleted');
         loadProducts();
+        loadInventory();
     } catch (err) {
         showAdminToast('Error: ' + err.message, 'error');
     }
 }
 
-// Sync products from the local productsData (first-time setup)
+// Sync products from the local productsData (first-time initial setup only).
+// Safe to re-run: never recreates soft-deleted products, never creates duplicates.
 async function syncInventoryFromProducts() {
     const btn = document.querySelector('button[onclick="syncInventoryFromProducts()"]');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...'; }
@@ -843,69 +956,63 @@ async function syncInventoryFromProducts() {
     const products = getLocalProductsData();
     let count = 0;
     try {
-        showAdminToast('Syncing products to Firestore...', 'info');
+        showAdminToast('Syncing products to database...', 'info');
         for (const p of products) {
+            // Fetch ALL records with this name (including soft-deleted).
+            // If any record exists (active OR deleted), skip -- never recreate deleted products.
             const existing = await db.collection('products').where('name', '==', p.name).get();
-            if (existing.empty) {
-                await db.collection('products').add({
-                    name: p.name,
-                    category: p.category,
-                    price: p.price,
-                    oldPrice: p.oldPrice || null,
-                    gender: p.gender || null,
-                    sleeve: p.sleeve || null,
-                    sizes: p.sizes || [],
-                    description: p.description || '',
-                    image: p.image || '',
-                    badge: p.badge || '',
-                    totalStock: 100,
-                    createdAt: fsServerTimestamp()
-                });
-                // Create inventory entries for each size — check first to avoid duplicates
-                const colors = getColorsForCategory(p.category);
-                for (const size of (p.sizes || [])) {
-                    for (const color of colors) {
-                        const invCheck = await db.collection('inventory')
-                            .where('productName', '==', p.name)
-                            .where('size', '==', size)
-                            .get();
-                        if (invCheck.empty) {
-                            await db.collection('inventory').add({
-                                productName: p.name,
-                                productCategory: p.category,
-                                size: size,
-                                color: color,
-                                quantity: 20,
-                                updatedAt: fsServerTimestamp()
-                            });
-                        }
+            if (!existing.empty) continue;
+
+            await db.collection('products').add({
+                name: p.name,
+                category: p.category,
+                price: p.price,
+                oldPrice: p.oldPrice || null,
+                gender: p.gender || null,
+                sleeve: p.sleeve || null,
+                sizes: p.sizes || [],
+                description: p.description || '',
+                image: p.image || '',
+                badge: p.badge || '',
+                totalStock: 100,
+                deleted: false,
+                isActive: true,
+                status: 'active',
+                createdAt: fsServerTimestamp()
+            });
+            // Create inventory entries for each size -- check first to avoid duplicates
+            const colors = getColorsForCategory(p.category);
+            for (const size of (p.sizes || [])) {
+                for (const color of colors) {
+                    const invCheck = await db.collection('inventory')
+                        .where('productName', '==', p.name)
+                        .where('size', '==', size)
+                        .get();
+                    if (invCheck.empty) {
+                        await db.collection('inventory').add({
+                            productName: p.name,
+                            productCategory: p.category,
+                            size: size,
+                            color: color,
+                            quantity: 20,
+                            status: 'in_stock',
+                            updatedAt: fsServerTimestamp()
+                        });
                     }
                 }
-                count++;
             }
+            count++;
         }
-        showAdminToast(`Synced ${count} products to Firestore!`);
+        showAdminToast(count > 0 ? `Synced ${count} new products!` : 'All products already up to date.');
         loadProducts();
         loadInventory();
     } catch (err) {
         console.error('Sync error:', err);
-        const msg = err.code === 'permission-denied'
-            ? 'Permission denied â€” publish Firestore rules in Firebase Console (Firestore > Security tab) then retry.'
-            : 'Sync failed: ' + err.message;
-        showAdminToast(msg, 'error');
-        // Show inline alert so user cannot miss it
-        const panel = document.getElementById('page-inventory') || document.getElementById('page-products');
-        if (panel) {
-            const alert = document.createElement('div');
-            alert.style.cssText = 'background:#fee;border:1px solid #f55;padding:12px 16px;border-radius:8px;margin:12px 0;font-size:0.9rem;color:#c00;';
-            alert.innerHTML = '<strong>Error:</strong> ' + msg + '<br><a href="https://console.firebase.google.com/project/siva-suresh-agency/firestore/databases/-default-/rules" target="_blank" style="color:#0e4a86;">Click here to open Firestore Security Rules &rarr;</a>';
-            panel.prepend(alert);
-        }
+        showAdminToast('Sync failed: ' + err.message, 'error');
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> Sync Products'; }
     }
 }
-
 function getColorsForCategory(category) {
     const colorMap = {
         'scrub-suits': ['Ceil Blue', 'Hunter Green', 'Navy', 'Burgundy', 'Charcoal', 'Caribbean Blue', 'Black'],
@@ -966,7 +1073,9 @@ async function loadInventory() {
                 return docs;
             })
         );
-        allInventory = Array.isArray(data) ? data : data.docs.map(d => ({ docId: d.id, ...d.data() }));
+        const rawInventory = Array.isArray(data) ? data : data.docs.map(d => ({ docId: d.id, ...d.data() }));
+        const activeProductNames = new Set((window.ssaProductHelpers?.getVisibleProducts || ((list) => list || []))(allProducts).map(p => (p.name || '').trim()).filter(Boolean));
+        allInventory = rawInventory.filter(item => (window.ssaProductHelpers?.isInventoryItemActive || ((entry) => true))(item, Array.from(activeProductNames)));
         allInventory.sort((a, b) => (a.productName || '').localeCompare(b.productName || ''));
         renderInventory();
     } catch (err) { console.error('Inventory error:', err); }
@@ -1714,6 +1823,13 @@ function renderTaxonomyEditor() {
                 <input type="text" class="tax-name tax-name-h" value="${_escHtmlCat(h.label)}" oninput="setHeadingLabel(${hi},this.value)" placeholder="Main Heading name">
                 <span class="tax-count">${cats.length} categor${cats.length === 1 ? 'y' : 'ies'}</span>
                 <label class="tax-sig-toggle" title="Show as a separate highlighted collection (like CliniFlex)"><input type="checkbox" ${h.signature ? 'checked' : ''} onchange="toggleHeadingSignature(${hi},this.checked)"> Signature</label>
+                ${h.signature ? `<label class="tax-sym-label" title="Symbol shown next to heading name on frontend">
+                    Symbol:&nbsp;<select class="tax-sym-select" onchange="setHeadingSymbol(${hi},this.value)">
+                        <option value=""${ !h.symbol ? ' selected' : ''}>None</option>
+                        <option value="tm"${ h.symbol === 'tm' ? ' selected' : ''}>&trade; Trademark (™)</option>
+                        <option value="r"${ h.symbol === 'r' ? ' selected' : ''}>&reg; Registered (®)</option>
+                    </select>
+                </label>` : ''}
                 <button type="button" class="cat-del-btn" title="Remove heading" onclick="deleteHeading(${hi})"><i class="fas fa-trash"></i></button>
             </div>
             ${hOpen ? `<div class="tax-cats">
@@ -1829,6 +1945,9 @@ function setHeadingLabel(hi, v) { if (!_adminTax) _adminTax = _readCachedTax(); 
 window.setHeadingLabel = setHeadingLabel;
 function toggleHeadingSignature(hi, ch) { if (!_adminTax) _adminTax = _readCachedTax(); if (_adminTax[hi]) _adminTax[hi].signature = !!ch; renderTaxonomyEditor(); }
 window.toggleHeadingSignature = toggleHeadingSignature;
+// Set the trademark/registered symbol for a signature heading ('tm', 'r', or '')
+function setHeadingSymbol(hi, v) { if (!_adminTax) _adminTax = _readCachedTax(); if (_adminTax[hi]) _adminTax[hi].symbol = v || ''; }
+window.setHeadingSymbol = setHeadingSymbol;
 function deleteHeading(hi) { if (!_adminTax) _adminTax = _readCachedTax(); const h = _adminTax[hi]; if (!h) return; if (!confirm(`Remove the "${h.label}" heading and everything under it?`)) return; _adminTax.splice(hi, 1); renderTaxonomyEditor(); if (typeof refreshProductTaxonomy === 'function') refreshProductTaxonomy(); }
 window.deleteHeading = deleteHeading;
 
@@ -1894,7 +2013,8 @@ window.handleTaxImage = handleTaxImage;
 async function saveTaxonomy(silent) {
     if (!_adminTax) _adminTax = _readCachedTax();
     const clean = _adminTax.filter(h => h && (h.label || '').trim()).map(h => ({
-        slug: h.slug || _slugify(h.label), label: h.label.trim(), icon: h.icon || 'th-large', signature: !!h.signature,
+        slug: h.slug || _slugify(h.label), label: h.label.trim(), icon: h.icon || 'th-large',
+        signature: !!h.signature, symbol: h.symbol || '',
         cats: (h.cats || []).filter(c => (c.label || '').trim()).map(c => ({
             slug: c.slug || _slugify(c.label), label: c.label.trim(), image: c.image || '', map: c.map || {},
             subs: (c.subs || []).filter(s => (s.label || '').trim()).map(s => ({ slug: s.slug || _slugify(s.label), label: s.label.trim(), image: s.image || '', map: s.map || {} }))

@@ -306,7 +306,19 @@ window.getCategoryLabel = getCategoryLabel;
 // Sub-categories live inside each category as an optional `subs` array
 // [{ slug, label, image }]. Products map to one via their `subCategory` slug.
 function getSubCategories(catSlug) {
-    const c = getCategoryList().find(c => c.slug === catSlug);
+    const tax = getTaxonomy();
+    const norm = String(catSlug || '').trim();
+    if (norm) {
+        for (const heading of tax) {
+            for (const cat of (heading && heading.cats) || []) {
+                const resolved = _resolveCatFilter(cat);
+                if (cat.slug === norm || resolved.cat === norm) {
+                    return (Array.isArray(cat.subs) ? cat.subs : []).filter(s => s && s.slug);
+                }
+            }
+        }
+    }
+    const c = getCategoryList().find(item => item.slug === catSlug);
     return (c && Array.isArray(c.subs)) ? c.subs.filter(s => s && s.slug) : [];
 }
 window.getSubCategories = getSubCategories;
@@ -317,6 +329,29 @@ function getSubCategoryLabel(catSlug, subSlug) {
     return String(subSlug || '').replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
 }
 window.getSubCategoryLabel = getSubCategoryLabel;
+
+function _productMatchesSubFilter(product, subSlug) {
+    const sub = String(subSlug || '').trim().toLowerCase();
+    if (!sub) return true;
+    const productSub = String(product?.subCategory || '').trim().toLowerCase();
+    if (productSub && productSub === sub) return true;
+    // Also match when stored value is the human-readable label (not yet slugified)
+    const subNorm = sub.replace(/-/g, ' ');
+    if (productSub && productSub.replace(/-/g, ' ') === subNorm) return true;
+    const name = String(product?.name || '').trim().toLowerCase();
+    const fallbackTerms = {
+        sheets: ['bedsheet', 'sheet'],
+        'pillow-accessories': ['pillow', 'pillow cover', 'pillow covers', 'pillow set'],
+        // "sheets-and-pillow-accessories" covers both sheets and pillow products
+        'sheets-and-pillow-accessories': ['bedsheet', 'sheet', 'pillow'],
+        bedspreads: ['bedspread', 'bed spread'],
+        'abdominal': ['abdominal'],
+        'ot-accessories': ['ot accessories', 'ot cap', 'ot nighty', 'eye pad', 'surgical cap', 'head cap'],
+        'patient-wear': ['patient gown', 'ot nighty', 'patient wear'],
+        'surgeon-aprons': ['surgeon apron', 'apron']
+    };
+    return (fallbackTerms[sub] || []).some(term => name.includes(term));
+}
 
 // Build the shop filter chips on categories.html from the taxonomy headings.
 function _activeHeadingSlug() {
@@ -338,7 +373,7 @@ function renderShopFilters() {
     for (const h of tax) {
         const isSig = !!h.signature;
         const cls = 'filter-btn' + (isSig ? ' filter-btn-scrubs' : '') + (activeH === h.slug ? ' active' : '');
-        const label = escapeRichText(h.label);
+        const label = escapeRichText(h.label) + _headingSymbolStr(h);
         html += `<button class="${cls}" data-filter="${escapeRichText(h.slug)}">`
              + (isSig ? `<i class="fas fa-star"></i> ${label} <span class="scrubs-pill">Signature</span>` : label)
              + `</button>`;
@@ -463,7 +498,10 @@ const DEFAULT_TAXONOMY = [
         { slug: 'female-staff-uniform', label: 'Female Staff Uniform', image: '', map: { cat: 'staff-uniform', gender: 'female' }, subs: [] },
     ] },
     { slug: 'linen-bedsheets', label: 'Linen & Bedsheets', icon: 'bed', cats: [
-        { slug: 'bedsheets', label: 'Bedsheets & Pillow Covers', image: '', map: { cat: 'bedsheets' }, subs: [] },
+        { slug: 'bedsheets', label: 'Bedsheets & Pillow Covers', image: '', map: { cat: 'bedsheets' }, subs: [
+            { slug: 'sheets', label: 'Sheets', image: '', map: { cat: 'bedsheets', sub: 'sheets' } },
+            { slug: 'pillow-accessories', label: 'Pillow Accessories', image: '', map: { cat: 'bedsheets', sub: 'pillow-accessories' } },
+        ] },
         { slug: 'hospital-linen', label: 'Hospital Linen', image: '', map: { cat: 'hospital-linen' }, subs: [
             { slug: 'surgeon-aprons', label: 'Surgeon Aprons', image: '', map: { cat: 'hospital-linen', sub: 'surgeon-aprons' } },
             { slug: 'ot-accessories', label: 'OT Accessories', image: '', map: { cat: 'hospital-linen', sub: 'ot-accessories' } },
@@ -478,8 +516,40 @@ const DEFAULT_TAXONOMY = [
     ] },
 ];
 
+// Return the HTML symbol string for a taxonomy heading based on its `symbol` field.
+// symbol: 'tm' → ™  |  symbol: 'r' → ®  |  anything else → ''
+function _headingSymbolStr(heading) {
+    if (!heading) return '';
+    const sym = heading.symbol || '';
+    if (sym === 'tm') return '<sup style="font-size:0.55em;vertical-align:super">&trade;</sup>';
+    if (sym === 'r')  return '<sup style="font-size:0.55em;vertical-align:super">&reg;</sup>';
+    return '';
+}
+window._headingSymbolStr = _headingSymbolStr;
+
 function getTaxonomy() {
-    try { const raw = localStorage.getItem(_TAX_CACHE_KEY); if (raw) { const t = JSON.parse(raw); if (Array.isArray(t) && t.length) return t; } } catch (e) { /* ignore */ }
+    try {
+        const raw = localStorage.getItem(_TAX_CACHE_KEY);
+        if (raw) {
+            const t = JSON.parse(raw);
+            if (Array.isArray(t) && t.length) {
+                const merged = DEFAULT_TAXONOMY.map(defHeading => {
+                    const storedHeading = (t.find(h => h && h.slug === defHeading.slug) || {});
+                    const mergedCats = (defHeading.cats || []).map(defCat => {
+                        const storedCat = ((storedHeading.cats || []).find(c => c && c.slug === defCat.slug) || {});
+                        const mergedSubs = (defCat.subs || []).map(defSub => {
+                            const storedSub = ((storedCat.subs || []).find(s => s && s.slug === defSub.slug) || {});
+                            return { ...defSub, ...storedSub };
+                        });
+                        return { ...defCat, ...storedCat, subs: mergedSubs };
+                    });
+                    return { ...defHeading, ...storedHeading, cats: mergedCats };
+                });
+                const extras = (t || []).filter(h => h && h.slug && !DEFAULT_TAXONOMY.some(def => def.slug === h.slug));
+                return [...merged, ...extras];
+            }
+        }
+    } catch (e) { /* ignore */ }
     return DEFAULT_TAXONOMY;
 }
 window.getTaxonomy = getTaxonomy;
@@ -498,11 +568,14 @@ function _resolveSubFilter(cat, sub) {
         sub: sm.sub || ((sm.gender || sm.sleeve) ? '' : sub.slug)
     };
 }
-function _filterHref(r) {
+function _filterHref(r, opts = {}) {
+    const includeGender = opts.includeGender !== false;
+    const includeSleeve = opts.includeSleeve !== false;
+    const includeSub = opts.includeSub !== false;
     let u = 'categories.html?cat=' + encodeURIComponent(r.cat);
-    if (r.gender) u += '&gender=' + encodeURIComponent(r.gender);
-    if (r.sleeve) u += '&sleeve=' + encodeURIComponent(r.sleeve);
-    if (r.sub) u += '&sub=' + encodeURIComponent(r.sub);
+    if (includeGender && r.gender) u += '&gender=' + encodeURIComponent(r.gender);
+    if (includeSleeve && r.sleeve) u += '&sleeve=' + encodeURIComponent(r.sleeve);
+    if (includeSub && r.sub) u += '&sub=' + encodeURIComponent(r.sub);
     return u;
 }
 window._resolveCatFilter = _resolveCatFilter;
@@ -748,7 +821,8 @@ window.initCardHoverCycle = initCardHoverCycle;
     function _merge(fpList) {
         if (!fpList || !fpList.length) return false;
         let changed = false;
-        for (const fp of fpList) {
+        const visibleFpList = (window.ssaProductHelpers?.getVisibleProducts || ((list) => list || []) )(fpList);
+        for (const fp of visibleFpList) {
             if (!fp.name) continue;
             const local = productsData.find(p => p.name === fp.name);
             if (local) {
@@ -800,7 +874,8 @@ window.initCardHoverCycle = initCardHoverCycle;
     // single source of truth — anything not present there is treated as deleted.
     function _reconcile(fpList) {
         if (!fpList || !fpList.length) return false;
-        const valid = new Set(fpList.map(fp => (fp.name || '').trim()).filter(Boolean));
+        const visibleFpList = (window.ssaProductHelpers?.getVisibleProducts || ((list) => list || []) )(fpList);
+        const valid = new Set(visibleFpList.map(fp => (fp.name || '').trim()).filter(Boolean));
         let changed = false;
         for (let i = productsData.length - 1; i >= 0; i--) {
             if (!valid.has((productsData[i].name || '').trim())) {
@@ -1131,8 +1206,10 @@ function renderFooterCategories() {
         const filter = _resolveCatFilter(firstCat);
         const sigBadge = heading.signature ? '★ ' : '';
         const sigStyle = heading.signature ? ' style="color:var(--primary);font-weight:700;"' : '';
-        
-        html += `<li><a href="categories.html?cat=${encodeURIComponent(filter.cat)}${filter.gender ? '&gender=' + encodeURIComponent(filter.gender) : ''}"${sigStyle}>${sigBadge}${escapeRichText(heading.label)}</a></li>`;
+        // Use heading slug in URL so the full category view opens (Issue 12)
+        const href = 'categories.html?cat=' + encodeURIComponent(heading.slug);
+        const symbolStr = _headingSymbolStr(heading);
+        html += `<li><a href="${href}"${sigStyle}>${sigBadge}${escapeRichText(heading.label)}${symbolStr}</a></li>`;
     }
     
     if (html) footerCatContainer.innerHTML = html;
@@ -1151,20 +1228,23 @@ function renderBrowseByCategoryTiles() {
         const firstCat = heading.cats?.[0];
         if (!firstCat) continue;
         const filter = _resolveCatFilter(firstCat);
-        const href = `categories.html?cat=${encodeURIComponent(filter.cat)}${filter.gender ? '&gender=' + encodeURIComponent(filter.gender) : ''}`;
-        const catIcon = iconMap[filter.cat] || 'th-large';
-        const title = escapeRichText(heading.label);
-        const desc = escapeRichText((firstCat.label || heading.label).slice(0, 40) + '...');
+        // Use heading slug in URL (Issue 12 fix): ensures "All [Category]" sub-filter is
+        // active on load, not the first sub-category's gender/sleeve-specific filter.
+        const href = 'categories.html?cat=' + encodeURIComponent(heading.slug);
+        const catIcon = iconMap[filter.cat] || iconMap[heading.slug] || 'th-large';
+        const symbolStr = _headingSymbolStr(heading);
+        const title = escapeRichText(heading.label) + symbolStr;
+        const desc = escapeRichText((heading.label).slice(0, 40));
         const sigBadge = isSig ? '<span class="cat-tile-signature-badge"><i class="fas fa-award"></i> ★ Signature Line</span>' : '';
         const sigClass = isSig ? 'category-tile--cliniflex' : '';
-        const scrubText = isSig ? '<span class="scrub-brand-text">CliniFlex™</span> ' : '';
+        const sigPrefix = isSig ? '<span class="scrub-brand-text">' + escapeRichText(heading.label) + symbolStr + '</span>' : '';
         html += `<a href="${href}" class="category-tile ${sigClass}">
             <div class="cat-tile-img" data-cat="${filter.cat}">
                 ${sigBadge}
             </div>
             <div class="cat-tile-body">
                 <div class="cat-tile-icon"><i class="fas fa-${catIcon}"></i></div>
-                <h3>${scrubText}${title}</h3>
+                <h3>${sigPrefix || title}</h3>
                 <p>${desc}</p>
                 <span class="cat-tile-link">Explore <i class="fas fa-arrow-right"></i></span>
             </div>
@@ -1208,7 +1288,7 @@ function renderMarqueeItems() {
             if (seenProductNames.has(label)) continue;
             
             seenProductNames.add(label);
-            const href = `categories.html?cat=${encodeURIComponent(filter.cat)}${filter.gender ? '&gender=' + encodeURIComponent(filter.gender) : ''}`;
+            const href = _filterHref(filter, { includeGender: false, includeSleeve: false, includeSub: false });
             items.push(`<a href="${href}" class="marquee-item"><img src="${product.image}" alt="${label}" loading="lazy"><span>${label}</span></a>`);
             
             // Limit to reasonable number of items
@@ -1266,7 +1346,7 @@ function renderSignatureQuickLinks() {
             if (!firstCat) continue;
             
             const filter = _resolveCatFilter(firstCat);
-            const href = `categories.html?cat=${encodeURIComponent(filter.cat)}${filter.gender ? '&gender=' + encodeURIComponent(filter.gender) : ''}`;
+            const href = _filterHref(filter, { includeGender: false, includeSleeve: false, includeSub: false });
             const label = escapeRichText(heading.label);
             const sigBadge = '<i class="fas fa-star"></i> ';
             
@@ -1620,9 +1700,12 @@ window.bindFilterButtons = bindFilterButtons;
 function applyUrlFilterAndRender() {
     const params = new URLSearchParams(window.location.search);
     currentFilter = params.get('cat') || params.get('heading') || 'all';
-    window._currentGender = params.get('gender') || null;
-    window._currentSleeve = params.get('sleeve') || null;
-    window._currentSub = params.get('sub') || null;
+    const explicitGender = params.get('gender');
+    const explicitSleeve = params.get('sleeve');
+    const explicitSub = params.get('sub');
+    window._currentGender = explicitGender || null;
+    window._currentSleeve = explicitSleeve || null;
+    window._currentSub = explicitSub || null;
     currentSearch = '';
     displayedProducts = 12;
     const psi = document.getElementById('productSearchInput');
@@ -1816,7 +1899,7 @@ function renderProducts(filter = 'all', count = 12, gender = null, sleeve = null
     }
     if (gender) filtered = filtered.filter(p => p.gender === gender || p.gender === 'unisex');
     if (sleeve) filtered = filtered.filter(p => p.sleeve === sleeve);
-    if (sub) filtered = filtered.filter(p => (p.subCategory || '') === sub);
+    if (sub) filtered = filtered.filter(p => _productMatchesSubFilter(p, sub));
     if (searchQuery) {
         const q = searchQuery.toLowerCase();
         filtered = filtered.filter(p =>
@@ -3017,7 +3100,7 @@ function placeOrder() {
     const order = {
         id: 'SSA' + Date.now().toString(36).toUpperCase(),
         date: new Date().toISOString(),
-        items: cart.map(i => ({ name: i.name, selectedSize: i.selectedSize, selectedColor: i.selectedColor || null, qty: i.qty, price: i.price })),
+        items: cart.map(i => ({ name: i.name, selectedSize: i.selectedSize, selectedColor: i.selectedColor || null, qty: i.qty, price: i.price, embroidery: i.embroidery || null })),
         total: total > 2000 ? total : total + 150,
         payment: pm ? pm.value.toUpperCase() : 'COD',
         status: 'Processing',
@@ -3386,10 +3469,8 @@ function openImageLightbox(imgIdOrSrc) {
         ? (document.getElementById(imgIdOrSrc)?.src || imgIdOrSrc) : imgIdOrSrc;
     if (!src) return;
 
-    // Use product image list for navigation if available
     const imgs = (window._lbImages && window._lbImages.length > 1) ? window._lbImages : [src];
     let idx = window._lbIndex || 0;
-    // Sync index to current src
     const srcIdx = imgs.indexOf(src);
     if (srcIdx >= 0) idx = srcIdx;
 
@@ -3397,23 +3478,111 @@ function openImageLightbox(imgIdOrSrc) {
     lb.id = '_imgLightbox';
     lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:99999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;animation:_pmFadeIn .18s ease';
 
+    let zoom = 1;
+    let panX = 0;
+    let panY = 0;
+    let dragActive = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let touchStartX = 0;
+
+    const applyTransform = () => {
+        const img = lb.querySelector('img');
+        if (img) img.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    };
+
     function render() {
         const hasMulti = imgs.length > 1;
         lb.innerHTML = `
-            <img src="${imgs[idx]}" style="max-width:92vw;max-height:88vh;border-radius:10px;object-fit:contain;box-shadow:0 24px 72px rgba(0,0,0,0.7);pointer-events:none;user-select:none">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px">
+                <img src="${imgs[idx]}" style="max-width:92vw;max-height:88vh;border-radius:12px;object-fit:contain;box-shadow:0 24px 72px rgba(0,0,0,0.7);pointer-events:auto;user-select:none;transform:translate(0px,0px) scale(1);transition:transform .2s ease">
+            </div>
             <button onclick="document.getElementById('_imgLightbox').remove()" style="position:absolute;top:20px;right:24px;background:rgba(255,255,255,0.15);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)">&#x2715;</button>
+            <div style="position:absolute;bottom:20px;right:24px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                <button id="_lbZoomOut" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:42px;height:42px;border-radius:999px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)" onclick="event.stopPropagation();window._lbZoom(-0.25)">&#8722;</button>
+                <button id="_lbReset" style="background:rgba(255,255,255,0.15);border:none;color:#fff;padding:0 14px;height:42px;border-radius:999px;font-size:0.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)" onclick="event.stopPropagation();window._lbReset()">Reset</button>
+                <button id="_lbZoomIn" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:42px;height:42px;border-radius:999px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)" onclick="event.stopPropagation();window._lbZoom(0.25)">&#43;</button>
+            </div>
             ${hasMulti ? `
             <button id="_lbPrev" style="position:absolute;left:20px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);border:none;color:#fff;width:48px;height:48px;border-radius:50%;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:background 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'" onclick="event.stopPropagation();_lbNav(-1)">&#8592;</button>
             <button id="_lbNext" style="position:absolute;right:20px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);border:none;color:#fff;width:48px;height:48px;border-radius:50%;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:background 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'" onclick="event.stopPropagation();_lbNav(1)">&#8594;</button>
             <div style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:7px">${imgs.map((_,i) => `<span style="width:8px;height:8px;border-radius:50%;background:${i===idx?'#fff':'rgba(255,255,255,0.4)'};display:inline-block;cursor:pointer" onclick="event.stopPropagation();_lbNav(${i-idx})"></span>`).join('')}</div>
             ` : ''}
         `;
+        applyTransform();
+        const img = lb.querySelector('img');
+        if (img) {
+            img.addEventListener('dblclick', (e) => { e.stopPropagation(); zoom = zoom > 1 ? 1 : 2; panX = 0; panY = 0; applyTransform(); });
+            img.addEventListener('mousedown', (e) => {
+                if (zoom === 1) return;
+                dragActive = true; dragStartX = e.clientX; dragStartY = e.clientY;
+            });
+            img.addEventListener('mousemove', (e) => {
+                if (!dragActive || zoom === 1) return;
+                panX += e.clientX - dragStartX;
+                panY += e.clientY - dragStartY;
+                dragStartX = e.clientX; dragStartY = e.clientY;
+                applyTransform();
+            });
+            img.addEventListener('mouseup', () => { dragActive = false; });
+            img.addEventListener('mouseleave', () => { dragActive = false; });
+            // Pinch-to-zoom state (Issue 7)
+            let pinchStartDist = 0, pinchStartZoom = 1;
+            img.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    // Pinch gesture starting
+                    e.preventDefault();
+                    pinchStartDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    pinchStartZoom = zoom;
+                } else if (e.touches.length === 1) {
+                    touchStartX = e.touches[0].clientX;
+                    const touchStartY = e.touches[0].clientY;
+                    if (zoom > 1) { dragActive = true; dragStartX = touchStartX; dragStartY = touchStartY; }
+                }
+            }, { passive: false });
+            img.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const dist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    zoom = Math.max(1, Math.min(4, pinchStartZoom * (dist / pinchStartDist)));
+                    if (zoom === 1) { panX = 0; panY = 0; }
+                    applyTransform();
+                } else if (e.touches.length === 1) {
+                    if (!dragActive) return;
+                    const x = e.touches[0].clientX; const y = e.touches[0].clientY;
+                    panX += x - dragStartX; panY += y - dragStartY; dragStartX = x; dragStartY = y; applyTransform();
+                    e.preventDefault();
+                }
+            }, { passive: false });
+            img.addEventListener('touchend', () => {
+                dragActive = false;
+                if (zoom === 1) return;
+                if (touchStartX && Math.abs(touchStartX - dragStartX) > 70) {
+                    window._lbNav(touchStartX > dragStartX ? -1 : 1);
+                }
+            });
+            img.addEventListener('wheel', (e) => { e.preventDefault(); window._lbZoom(e.deltaY > 0 ? -0.15 : 0.15); }, { passive: false });
+        }
     }
 
     window._lbNav = function(delta) {
         idx = (idx + delta + imgs.length) % imgs.length;
         window._lbIndex = idx;
-        render();
+        zoom = 1; panX = 0; panY = 0; render();
+    };
+    window._lbZoom = function(delta) {
+        zoom = Math.max(1, Math.min(3, zoom + delta));
+        if (zoom === 1) { panX = 0; panY = 0; }
+        applyTransform();
+    };
+    window._lbReset = function() {
+        zoom = 1; panX = 0; panY = 0; applyTransform();
     };
 
     render();
@@ -3423,10 +3592,54 @@ function openImageLightbox(imgIdOrSrc) {
         if (e.key === 'Escape') { lb.remove(); document.removeEventListener('keydown', lbKey); }
         else if (e.key === 'ArrowLeft') window._lbNav(-1);
         else if (e.key === 'ArrowRight') window._lbNav(1);
+        // Zoom shortcuts: '+' / '=' zoom in, '-' zoom out, '0' reset
+        else if (e.key === '+' || e.key === '=') { e.preventDefault(); window._lbZoom(0.25); }
+        else if (e.key === '-') { e.preventDefault(); window._lbZoom(-0.25); }
+        else if (e.key === '0') { e.preventDefault(); window._lbReset(); }
     });
     document.body.appendChild(lb);
 }
 window.openImageLightbox = openImageLightbox;
+
+// ── Global keyboard shortcuts (Issue 10) ─────────────────────────────────────
+// '/'     → open search overlay
+// 'Escape'→ close any open modal/search/cart
+// 'h'     → go to homepage
+// 's'     → go to shop (categories)
+// (Lightbox-specific zoom shortcuts '+'/'-'/'0' are inside openImageLightbox.)
+(function _registerGlobalShortcuts() {
+    document.addEventListener('keydown', function _globalShortcuts(e) {
+        const tag = (document.activeElement || {}).tagName || '';
+        const isEditable = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || !!(document.activeElement?.isContentEditable);
+        // If a lightbox is open it handles its own shortcuts
+        if (document.getElementById('_imgLightbox')) return;
+        if (isEditable) return;
+        switch (e.key) {
+            case '/': {
+                e.preventDefault();
+                const st = document.getElementById('searchToggle');
+                if (st) st.click();
+                break;
+            }
+            case 'Escape': {
+                // Close search overlay, cart panel, or any open modal
+                const searchOverlay = document.getElementById('searchOverlay');
+                if (searchOverlay?.classList.contains('active')) { searchOverlay.classList.remove('active'); break; }
+                const cartPanel = document.getElementById('cartPanel');
+                if (cartPanel?.classList.contains('active')) { cartPanel.classList.remove('active'); break; }
+                const openModal = document.querySelector('.modal-overlay.active, .modal.active');
+                if (openModal) { openModal.classList.remove('active'); }
+                break;
+            }
+            case 'h':
+                window.location.href = 'index.html';
+                break;
+            case 's':
+                window.location.href = 'categories.html';
+                break;
+        }
+    });
+})();
 
 // ===== Embroidery =====
 function toggleEmbroidery(pid) {
@@ -3481,7 +3694,10 @@ function previewEmbLogo(input, pid) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = e => {
-            if (img) img.src = e.target.result;
+            const dataUrl = e.target.result;
+            if (!window._embroideryUploads) window._embroideryUploads = {};
+            window._embroideryUploads[pid] = { dataUrl, fileName: input.files[0].name };
+            if (img) img.src = dataUrl;
             if (name) name.textContent = input.files[0].name;
             if (preview) preview.style.display = '';
         };
@@ -3497,8 +3713,9 @@ function getEmbroideryData(pid) {
     const type = typeBtn?.dataset?.type || 'TEXT';
     const price = typeBtn ? (Number(typeBtn.dataset.embPrice) || 0) : 0;
     const logoPos = document.getElementById(`embLogoPos-${pid}`)?.value || '';
+    const logoUpload = window._embroideryUploads?.[pid] || null;
     if (type === 'LOGO') {
-        return { type: 'LOGO', logoPosition: logoPos, price };
+        return { type: 'LOGO', logoPosition: logoPos, logoImage: logoUpload?.dataUrl || '', logoFileName: logoUpload?.fileName || '', price };
     }
     const line1 = document.getElementById(`embL1-${pid}`)?.value?.trim() || '';
     if (!line1) return null;
@@ -3512,7 +3729,7 @@ function getEmbroideryData(pid) {
         font: body.querySelector('.emb-font.active')?.dataset?.f || 'Cursive',
         price
     };
-    if (type === 'TEXT & LOGO') { data.logoPosition = logoPos; }
+    if (type === 'TEXT & LOGO') { data.logoPosition = logoPos; data.logoImage = logoUpload?.dataUrl || ''; data.logoFileName = logoUpload?.fileName || ''; }
     return data;
 }
 window.getEmbroideryData = getEmbroideryData;
