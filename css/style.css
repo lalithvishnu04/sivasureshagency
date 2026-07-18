@@ -161,7 +161,7 @@ a.nav-cliniflex i.fa-award { font-size: 0.82em; color: #f59e0b; animation: cf-ba
 .mega-menu::before { content: ''; position: absolute; top: -16px; left: 0; right: 0; height: 16px; background: transparent; }
 .nav-dropdown:hover .mega-menu { opacity: 1; visibility: visible; pointer-events: all; transition-delay: 0s; transform: translateX(-50%) translateY(0); }
 .nav-dropdown:hover .nav-arrow { transform: rotate(180deg); }
-.mega-menu-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 20px; align-items: start; }
+.mega-menu-inner { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 20px; align-items: start; }
 .mega-col { position: relative; }
 .mega-col h4 { font-size: 0.9rem; font-weight: 800; color: var(--text); margin-bottom: 12px; padding-bottom: 9px; display: flex; align-items: center; gap: 5px; border-bottom: 1px solid var(--border); letter-spacing: -0.01em; }
 .mega-col h4 a { color: inherit; transition: color 0.2s ease; }
