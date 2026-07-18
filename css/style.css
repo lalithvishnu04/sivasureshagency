@@ -930,123 +930,20 @@ body.modal-open { overflow: hidden; touch-action: none; }
 @media (max-width: 1024px) { .hero-prod-img { width: 300px; } .hero-prod-img img { height: 360px; } }
 @media (max-width: 768px) { .hero-prod-img { display: none; } .hero-content { padding-top: 76px; } }
 
-/* ── 34. Mobile Bottom Navigation ────────────────────────────── */
-.mobile-bottom-nav { display: none; }
+/* ── 34. Mobile Header Navigation Icons ──────────────────────── */
+/* Home and Shop quick-access icons are shown in the top header nav-actions
+   on mobile (where nav-links are hidden behind the hamburger). Hidden on
+   desktop (≥769 px) where the nav-links already show these pages. */
+.nav-icon-mobile { display: none; }
 @media (max-width: 768px) {
-    .mobile-bottom-nav {
-        display: flex;
-        position: fixed;
-        bottom: 0; left: 0; right: 0;
-        background: rgba(255,255,255,0.97);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-top: 1px solid rgba(0,0,0,0.06);
-        z-index: 8500;
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-        box-shadow: 0 -4px 24px rgba(0,0,0,0.08);
-        align-items: stretch;
-        height: 60px;
-    }
-    body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
-    .chatbot-container { bottom: 72px; right: 14px; }
-    .back-to-top { bottom: 148px; right: 14px; }
-    .whatsapp-float { bottom: 72px; left: 14px; }
+    .nav-icon-mobile { display: inline-flex; }
+    /* Active state: teal colour for the current-page icon */
+    .nav-icon-mobile.active { color: var(--primary); background: var(--primary-light); }
+    /* Tighten the icon row on mobile so all 5 icons (Home,Shop,Search,Cart,Account) fit */
+    .nav-actions { gap: 2px; }
+    /* Wishlist is accessible via hamburger menu — hide header icon on mobile to save space */
+    .wishlist-nav-btn { display: none !important; }
 }
-
-/* Nav items */
-.mbn-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    padding: 8px 4px 6px;
-    font-size: 0.6rem;
-    font-weight: 700;
-    color: #9ca3af;
-    background: none;
-    border: none;
-    font-family: var(--font);
-    cursor: pointer;
-    text-decoration: none;
-    position: relative;
-    transition: color 0.2s ease;
-    letter-spacing: 0.02em;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    min-width: 0;
-}
-.mbn-item i {
-    font-size: 1.1rem;
-    transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), color 0.2s ease;
-    line-height: 1;
-}
-.mbn-item span { line-height: 1; white-space: nowrap; }
-
-/* Active + hover state */
-.mbn-item.active { color: var(--primary); }
-.mbn-item:hover  { color: var(--primary); }
-.mbn-item.active i { transform: scale(1.18); color: var(--primary); }
-
-/* Active dot indicator */
-.mbn-item.active::after {
-    content: '';
-    position: absolute;
-    bottom: 3px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--primary);
-}
-
-/* Cart badge */
-.mbn-badge {
-    position: absolute;
-    top: 4px;
-    right: calc(50% - 22px);
-    background: var(--red);
-    color: #fff;
-    min-width: 16px;
-    height: 16px;
-    border-radius: 8px;
-    font-size: 0.54rem;
-    font-weight: 800;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #fff;
-    padding: 0 3px;
-    pointer-events: none;
-}
-
-/* Shop (centre) item — same proportions, teal accent */
-.mbn-shop-wrap {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    background: transparent;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: inherit;
-    font-size: 1.02rem;
-    box-shadow: none;
-    transition: var(--transition);
-    flex-shrink: 0;
-}
-.mbn-item.mbn-shop { padding-top: 8px; color: var(--text-muted); }
-.mbn-item.mbn-shop span { margin-top: 3px; }
-.mbn-item.mbn-shop:hover .mbn-shop-wrap,
-.mbn-item.mbn-shop.active .mbn-shop-wrap {
-    background: transparent;
-    box-shadow: none;
-    transform: none;
-}
-.mbn-item.mbn-shop.active { color: var(--primary); }
-.mbn-item.mbn-shop.active::after { display: none; } /* no dot for shop */
 
 /* ── Mobile-wide enhancements ─────────────────────────────────── */
 @media (max-width: 768px) {
@@ -1093,7 +990,6 @@ body.modal-open { overflow: hidden; touch-action: none; }
 /* Extra small phones */
 @media (max-width: 360px) {
     .shop-grid { grid-template-columns: 1fr; }
-    .mbn-item { font-size: 0.55rem; }
 }
 
 /* ── 35. Auth Modal Split Layout ─────────────────────────────── */
