@@ -652,7 +652,7 @@ function renderMegaMenu() {
     const inners = document.querySelectorAll('.mega-menu-inner');
     if (!inners.length) return;
     const esc = (typeof escapeRichText === 'function') ? escapeRichText : (s => String(s == null ? '' : s));
-    const colsHtml = menu.map(col => {
+    const colsHtml = menu.filter(col => (col.items || []).length > 0).map(col => {
         const items = (col.items || []).map(it => {
             const kids = (it.children || []).map(ch => `<li><a href="${_megaHref(ch)}">${esc(ch.label)}</a></li>`).join('');
             const cls = it.bold ? ' class="mega-main-item"' : '';
