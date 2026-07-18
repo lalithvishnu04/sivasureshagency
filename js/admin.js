@@ -1820,16 +1820,10 @@ function renderTaxonomyEditor() {
                 <button type="button" class="tax-toggle" onclick="toggleTaxNode('h:${hi}')" title="Expand/collapse"><i class="fas fa-chevron-${hOpen ? 'down' : 'right'}"></i></button>
                 <span class="tax-level-badge heading">Heading</span>
                 ${h.signature ? '<i class="fas fa-star tax-sig-star" title="Signature heading"></i>' : ''}
-                <input type="text" class="tax-name tax-name-h" value="${_escHtmlCat(h.label)}" oninput="setHeadingLabel(${hi},this.value)" placeholder="Main Heading name">
+                <input type="text" class="tax-name tax-name-h" value="${_escHtmlCat(h.label)}" oninput="setHeadingLabel(${hi},this.value)" placeholder="Main Heading name">${h.symbol === 'tm' ? '<sup class="tax-sym-preview" title="Trademark symbol will appear here on frontend">™</sup>' : h.symbol === 'r' ? '<sup class="tax-sym-preview" title="Registered symbol will appear here on frontend">®</sup>' : ''}
                 <span class="tax-count">${cats.length} categor${cats.length === 1 ? 'y' : 'ies'}</span>
                 <label class="tax-sig-toggle" title="Show as a separate highlighted collection (like CliniFlex)"><input type="checkbox" ${h.signature ? 'checked' : ''} onchange="toggleHeadingSignature(${hi},this.checked)"> Signature</label>
-                ${h.signature ? `<label class="tax-sym-label" title="Symbol shown next to heading name on frontend">
-                    Symbol:&nbsp;<select class="tax-sym-select" onchange="setHeadingSymbol(${hi},this.value)">
-                        <option value=""${ !h.symbol ? ' selected' : ''}>None</option>
-                        <option value="tm"${ h.symbol === 'tm' ? ' selected' : ''}>&trade; Trademark (™)</option>
-                        <option value="r"${ h.symbol === 'r' ? ' selected' : ''}>&reg; Registered (®)</option>
-                    </select>
-                </label>` : ''}
+                ${h.signature ? `<button type="button" class="tax-sym-btn${h.symbol === 'tm' ? ' active' : ''}" title="Toggle Trademark symbol (™)" onclick="setHeadingSymbol(${hi},'${h.symbol === 'tm' ? '' : 'tm'}')">™</button><button type="button" class="tax-sym-btn${h.symbol === 'r' ? ' active' : ''}" title="Toggle Registered symbol (®)" onclick="setHeadingSymbol(${hi},'${h.symbol === 'r' ? '' : 'r'}')">®</button>` : ''}
                 <button type="button" class="cat-del-btn" title="Remove heading" onclick="deleteHeading(${hi})"><i class="fas fa-trash"></i></button>
             </div>
             ${hOpen ? `<div class="tax-cats">
@@ -1945,8 +1939,14 @@ function setHeadingLabel(hi, v) { if (!_adminTax) _adminTax = _readCachedTax(); 
 window.setHeadingLabel = setHeadingLabel;
 function toggleHeadingSignature(hi, ch) { if (!_adminTax) _adminTax = _readCachedTax(); if (_adminTax[hi]) _adminTax[hi].signature = !!ch; renderTaxonomyEditor(); }
 window.toggleHeadingSignature = toggleHeadingSignature;
-// Set the trademark/registered symbol for a signature heading ('tm', 'r', or '')
-function setHeadingSymbol(hi, v) { if (!_adminTax) _adminTax = _readCachedTax(); if (_adminTax[hi]) _adminTax[hi].symbol = v || ''; }
+// Set the trademark/registered symbol for a signature heading ('tm', 'r', or '').
+// Passing the same value that's already set toggles it off (clears it).
+function setHeadingSymbol(hi, v) {
+    if (!_adminTax) _adminTax = _readCachedTax();
+    if (_adminTax[hi]) _adminTax[hi].symbol = v || '';
+    // Re-render so the preview sup and button active states update immediately
+    renderTaxonomyEditor();
+}
 window.setHeadingSymbol = setHeadingSymbol;
 function deleteHeading(hi) { if (!_adminTax) _adminTax = _readCachedTax(); const h = _adminTax[hi]; if (!h) return; if (!confirm(`Remove the "${h.label}" heading and everything under it?`)) return; _adminTax.splice(hi, 1); renderTaxonomyEditor(); if (typeof refreshProductTaxonomy === 'function') refreshProductTaxonomy(); }
 window.deleteHeading = deleteHeading;

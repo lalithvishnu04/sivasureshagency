@@ -603,7 +603,7 @@ function _buildMenuFromTaxonomy() {
     return tax.filter(h => h && h.slug && h !== firstSig).map(h => {
         const catSlugs = Array.from(_headingCatSet(h)).filter(Boolean);
         return {
-            title: h.label, icon: h.icon || iconFor[h.slug] || 'th-large',
+            title: h.label, symbol: h.symbol || '', icon: h.icon || iconFor[h.slug] || 'th-large',
             href: 'categories.html?heading=' + encodeURIComponent(h.slug),
             cat: catSlugs[0] || '',
             cats: catSlugs,
@@ -658,7 +658,8 @@ function renderMegaMenu() {
             const cls = it.bold ? ' class="mega-main-item"' : '';
             return `<li><a href="${_megaHref(it)}"${cls}>${esc(it.label)}</a></li>` + kids;
         }).join('');
-        return `<div class="mega-col${col.signature ? ' mega-col-signature' : ''}"><a href="${_megaHref(col)}" class="mega-col-thumb" data-cat="${esc(col.cat || '')}" data-cats="${esc((col.cats || []).join(','))}"><i class="fas fa-${esc(col.signature ? 'award' : (col.icon || 'th-large'))}"></i></a><h4><a href="${_megaHref(col)}">${esc(col.title)}${col.signature ? ' <span class="mega-sig-pill"><i class=\"fas fa-star\"></i> Signature</span>' : ''}</a></h4><ul>${items}</ul></div>`;
+        const sym = col.symbol === 'tm' ? '<sup style="font-size:0.6em;vertical-align:super">™</sup>' : col.symbol === 'r' ? '<sup style="font-size:0.6em;vertical-align:super">®</sup>' : '';
+        return `<div class="mega-col${col.signature ? ' mega-col-signature' : ''}"><a href="${_megaHref(col)}" class="mega-col-thumb" data-cat="${esc(col.cat || '')}" data-cats="${esc((col.cats || []).join(','))}"><i class="fas fa-${esc(col.signature ? 'award' : (col.icon || 'th-large'))}"></i></a><h4><a href="${_megaHref(col)}">${esc(col.title)}${sym}${col.signature ? ' <span class="mega-sig-pill"><i class=\"fas fa-star\"></i> Signature</span>' : ''}</a></h4><ul>${items}</ul></div>`;
     }).join('');
     inners.forEach(inner => {
         const cta = inner.querySelector('.mega-cta');

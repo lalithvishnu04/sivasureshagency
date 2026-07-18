@@ -153,7 +153,7 @@ a.nav-cliniflex i.fa-award { font-size: 0.82em; color: #f59e0b; animation: cf-ba
     .nav-dropdown::before { content: ''; position: absolute; top: 100%; left: -14px; right: -14px; height: 16px; background: transparent; z-index: 99; }
     .nav-cliniflex-dropdown::before { left: -14px; right: -14px; }
 }
-.mega-menu { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%) translateY(12px); width: 860px; max-width: 94vw; background: #fff; border-radius: 18px; box-shadow: 0 26px 74px rgba(15,23,42,0.18), 0 4px 14px rgba(15,23,42,0.06); padding: 30px 30px 24px; opacity: 0; visibility: hidden; transition: opacity 0.25s ease, transform 0.32s cubic-bezier(0.16,1,0.3,1), visibility 0.25s ease; transition-delay: 0.3s; pointer-events: none; z-index: 100; border: 1px solid var(--border); overflow: hidden; }
+.mega-menu { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%) translateY(12px); width: min(94vw, 1100px); max-width: 94vw; background: #fff; border-radius: 18px; box-shadow: 0 26px 74px rgba(15,23,42,0.18), 0 4px 14px rgba(15,23,42,0.06); padding: 30px 30px 24px; opacity: 0; visibility: hidden; transition: opacity 0.25s ease, transform 0.32s cubic-bezier(0.16,1,0.3,1), visibility 0.25s ease; transition-delay: 0.3s; pointer-events: none; z-index: 100; border: 1px solid var(--border); overflow: hidden; }
 /* Top accent bar */
 .mega-menu::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--primary), #14b8a6, #5eead4); }
 /* Invisible bridge fills the gap between the nav item and the menu so the cursor
@@ -161,7 +161,7 @@ a.nav-cliniflex i.fa-award { font-size: 0.82em; color: #f59e0b; animation: cf-ba
 .mega-menu::before { content: ''; position: absolute; top: -16px; left: 0; right: 0; height: 16px; background: transparent; }
 .nav-dropdown:hover .mega-menu { opacity: 1; visibility: visible; pointer-events: all; transition-delay: 0s; transform: translateX(-50%) translateY(0); }
 .nav-dropdown:hover .nav-arrow { transform: rotate(180deg); }
-.mega-menu-inner { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.mega-menu-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 20px; }
 .mega-col { position: relative; }
 .mega-col h4 { font-size: 0.9rem; font-weight: 800; color: var(--text); margin-bottom: 12px; padding-bottom: 9px; display: flex; align-items: center; gap: 5px; border-bottom: 1px solid var(--border); letter-spacing: -0.01em; }
 .mega-col h4 a { color: inherit; transition: color 0.2s ease; }
