@@ -345,10 +345,7 @@ function _productMatchesSubFilter(product, subSlug) {
         // "sheets-and-pillow-accessories" covers both sheets and pillow products
         'sheets-and-pillow-accessories': ['bedsheet', 'sheet', 'pillow'],
         bedspreads: ['bedspread', 'bed spread'],
-        'abdominal': ['abdominal'],
-        'ot-accessories': ['ot accessories', 'ot cap', 'ot nighty', 'eye pad', 'surgical cap', 'head cap'],
-        'patient-wear': ['patient gown', 'ot nighty', 'patient wear'],
-        'surgeon-aprons': ['surgeon apron', 'apron']
+        'abdominal': ['abdominal']
     };
     return (fallbackTerms[sub] || []).some(term => name.includes(term));
 }
@@ -502,11 +499,7 @@ const DEFAULT_TAXONOMY = [
             { slug: 'sheets', label: 'Sheets', image: '', map: { cat: 'bedsheets', sub: 'sheets' } },
             { slug: 'pillow-accessories', label: 'Pillow Accessories', image: '', map: { cat: 'bedsheets', sub: 'pillow-accessories' } },
         ] },
-        { slug: 'hospital-linen', label: 'Hospital Linen', image: '', map: { cat: 'hospital-linen' }, subs: [
-            { slug: 'surgeon-aprons', label: 'Surgeon Aprons', image: '', map: { cat: 'hospital-linen', sub: 'surgeon-aprons' } },
-            { slug: 'ot-accessories', label: 'OT Accessories', image: '', map: { cat: 'hospital-linen', sub: 'ot-accessories' } },
-            { slug: 'patient-wear', label: 'Patient Wear', image: '', map: { cat: 'hospital-linen', sub: 'patient-wear' } },
-        ] },
+        { slug: 'hospital-linen', label: 'Hospital Linen', image: '', map: { cat: 'hospital-linen' }, subs: [] },
         { slug: 'hotel-linen', label: 'Hotel Linen', image: '', map: { cat: 'hotel-linen' }, subs: [] },
     ] },
     { slug: 'scrub-suits', label: 'CliniFlex\u2122 Scrubs', icon: 'award', signature: true, cats: [
@@ -533,29 +526,18 @@ function getTaxonomy() {
         if (raw) {
             const t = JSON.parse(raw);
             if (Array.isArray(t) && t.length) {
-                // Use STORED taxonomy as the primary source — preserves admin's order,
-                // labels, and structure. Only enrich with DEFAULT data for known slugs
-                // (fills in missing map/icon/subs that may not be stored yet).
+                // Use STORED taxonomy ONLY — no hardcoded defaults.
+                // Admin controls everything; frontend shows only what admin configured.
                 return t.map(storedH => {
                     if (!storedH || !storedH.slug) return null;
-                    const defH = DEFAULT_TAXONOMY.find(d => d.slug === storedH.slug);
                     const storedCats = Array.isArray(storedH.cats) ? storedH.cats : [];
-                    const cats = storedCats.length
-                        ? storedCats.map(storedC => {
-                            if (!storedC || !storedC.slug) return null;
-                            const defC = defH && (defH.cats || []).find(c => c.slug === storedC.slug);
-                            const storedSubs = Array.isArray(storedC.subs) ? storedC.subs : [];
-                            const subs = storedSubs.length
-                                ? storedSubs.map(storedS => {
-                                    if (!storedS || !storedS.slug) return null;
-                                    const defS = defC && (defC.subs || []).find(s => s.slug === storedS.slug);
-                                    return defS ? { ...defS, ...storedS } : storedS;
-                                }).filter(Boolean)
-                                : (defC ? (defC.subs || []) : []);
-                            return defC ? { ...defC, ...storedC, subs } : { ...storedC, subs };
-                        }).filter(Boolean)
-                        : (defH ? (defH.cats || []) : []);
-                    return defH ? { ...defH, ...storedH, cats } : { ...storedH, cats };
+                    const cats = storedCats.map(storedC => {
+                        if (!storedC || !storedC.slug) return null;
+                        // Use ONLY stored subcategories — no defaults
+                        const storedSubs = Array.isArray(storedC.subs) ? storedC.subs : [];
+                        return { ...storedC, subs: storedSubs };
+                    }).filter(Boolean);
+                    return { ...storedH, cats };
                 }).filter(Boolean);
             }
         }
