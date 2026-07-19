@@ -575,14 +575,19 @@ function _getAdminCategoryLabel(categorySlug) {
     const tax = _adminTax || _readCachedTax();
     if (!categorySlug || !tax) return (categorySlug || '').replace(/-/g, ' ');
     
-    // Search in taxonomy for matching category
+    // First, search in taxonomy for matching category slug
     for (const heading of tax) {
         for (const cat of (heading.cats || [])) {
             if (cat.slug === categorySlug) return cat.label || categorySlug;
         }
     }
     
-    // Fallback: just replace hyphens
+    // Fallback: search for matching heading slug (legacy products may use old heading slugs)
+    for (const heading of tax) {
+        if (heading.slug === categorySlug) return heading.label || categorySlug;
+    }
+    
+    // Final fallback: just replace hyphens with spaces
     return (categorySlug || '').replace(/-/g, ' ');
 }
 
