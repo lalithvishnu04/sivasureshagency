@@ -570,6 +570,22 @@ async function autoSeedProducts() {
     renderProducts();
 }
 
+// Get category label from taxonomy (maps category slug to admin-defined label)
+function _getAdminCategoryLabel(categorySlug) {
+    const tax = _adminTax || _readCachedTax();
+    if (!categorySlug || !tax) return (categorySlug || '').replace(/-/g, ' ');
+    
+    // Search in taxonomy for matching category
+    for (const heading of tax) {
+        for (const cat of (heading.cats || [])) {
+            if (cat.slug === categorySlug) return cat.label || categorySlug;
+        }
+    }
+    
+    // Fallback: just replace hyphens
+    return (categorySlug || '').replace(/-/g, ' ');
+}
+
 function renderProducts() {
     const search = (document.getElementById('productSearch')?.value || '').toLowerCase();
     let filtered = allProducts;
@@ -594,7 +610,7 @@ function renderProducts() {
         const stockLabel = worstStatus === 'out_of_stock' ? 'Out of Stock' : worstStatus === 'low_stock' ? 'Low Stock' : 'In Stock';
         return `        <tr>
             <td><img src="${p.image || ''}" alt="" class="product-thumb"></td>
-            <td class="td-name"><strong>${p.name}</strong><small>${(p.category || '').replace(/-/g, ' ')}</small></td>
+            <td class="td-name"><strong>${p.name}</strong><small>${_getAdminCategoryLabel(p.category)}</small></td>
             <td>${p.gender ? `<span class="size-chip" style="background:#e0e7ff;color:#3730a3">${p.gender}</span>` : '-'}</td>
             <td>\u20b9${p.price}</td>
             <td>${p.badge ? `<span class="size-chip" style="background:#fef3c7;color:#92400e">${p.badge}</span>` : '-'}</td>
