@@ -22,7 +22,7 @@ let allProducts = [];
 let allInventory = [];
 let allCustomers = [];
 
-// ===== In-memory cache (90s TTL) — prevents repeated Firestore reads =====
+// ===== In-memory cache (90s TTL) — prevents repeated Supabase reads =====
 const _cache = {};
 const _CACHE_TTL = 90_000;
 async function _cachedGet(name, queryFn) {
@@ -42,18 +42,17 @@ function _markProductsDirty() {
     try { localStorage.setItem('_ssa_products_dirty', String(Date.now())); } catch (e) { /* ignore */ }
 }
 
-// ===== API helper — use backend API when available, else Firestore =====
-// For admin reads we use the API; writes always go direct to Firestore
-// (writes are low-volume and need the admin auth token only Firestore checks).
-async function _adminApiOr(apiMethod, firestoreFn) {
+// ===== API helper — use backend API when available, else Supabase =====
+// For admin reads we use the API; writes always go direct to Supabase.
+async function _adminApiOr(apiMethod, supabaseFn) {
     if (window.ssaApi && window.ssaApi.enabled) {
         try { return await window.ssaApi[apiMethod](); }
-        catch (e) { console.warn('[admin-api] falling back to Firestore:', e.message); }
+        catch (e) { console.warn('[admin-api] falling back to Supabase:', e.message); }
     }
-    return firestoreFn();
+    return supabaseFn();
 }
 
-// ===== Wait for Firebase to initialize =====
+// ===== Wait for Supabase to initialize =====
 let authInitAttempts = 0;
 function initializeAuthListener() {
     authInitAttempts++;
@@ -108,15 +107,15 @@ function showLoginScreen() {
 // Wait for window.db to be ready then load dashboard
 function waitForDbThenLoad(attempts) {
     attempts = attempts || 0;
-    if (window.db && window._firebaseReady) {
-        console.log('[admin.js] Firestore ready — loading dashboard');
+    if (window.db && window._dbReady) {
+        console.log('[admin.js] Supabase ready — loading dashboard');
         loadDashboard();
         // Refresh the category list from Supabase up-front so the product
         // category dropdown reflects live categories even before the Categories
         // tab is opened.
         if (typeof loadTaxonomy === 'function') { try { loadTaxonomy(true); } catch (e) { /* ignore */ } }
     } else if (attempts > 60) {
-        console.error('[admin.js] Firestore not ready after 3s');
+        console.error('[admin.js] Supabase not ready after 3s');
         showAdminToast('Database connection failed. Please refresh.', 'error');
     } else {
         setTimeout(() => waitForDbThenLoad(attempts + 1), 50);
@@ -258,7 +257,7 @@ window.restoreSidebarCollapseState = restoreSidebarCollapseState;
 // ===== Dashboard =====
 async function loadDashboard() {
     try {
-        // ── Try backend API (1 HTTP call vs 4 Firestore reads) ──
+        // ── Try backend API (1 HTTP call vs 4 Supabase reads) ──
         if (window.ssaApi && window.ssaApi.enabled) {
             try {
                 const d = await window.ssaApi.adminDashboard();
@@ -270,10 +269,10 @@ async function loadDashboard() {
                 if (repeatEl) repeatEl.textContent = d?.analytics?.repeatRate ? (Number(d.analytics.repeatRate) + '%') : '-';
                 if (topEl) topEl.textContent = d?.analytics?.topProduct || '-';
                 return;
-            } catch (e) { console.warn('[dashboard] API failed, using Firestore:', e.message); }
+            } catch (e) { console.warn('[dashboard] API failed, using Supabase:', e.message); }
         }
 
-        // ── Sequential Firestore fallback (cached 90s) ────────
+        // ── Sequential Supabase fallback (cached 90s) ────────
         const ordersSnap    = await _cachedGet('orders',    () => db.collection('orders').get());
         const customersSnap = await _cachedGet('customers', () => db.collection('customers').get());
         const invSnap       = await _cachedGet('inventory', () => db.collection('inventory').get());
@@ -518,15 +517,27 @@ async function saveOrderUpdate(docId) {
     const trackingId = document.getElementById('orderTracking').value.trim();
     const estimatedDelivery = document.getElementById('orderEstDelivery')?.value?.trim() || null;
     try {
-        const updateData = { status, trackingId, updatedAt: fsServerTimestamp() };
-        if (estimatedDelivery) updateData.estimatedDelivery = estimatedDelivery;
-        // Always write directly to Firestore (write operations are low-volume)
-        await db.collection('orders').doc(docId).update(updateData);
+        // Core update: status + trackingId (always works — these columns exist)
+        await db.collection('orders').doc(docId).update({ status, trackingId, updatedAt: fsServerTimestamp() });
+
+        // Optional: estimated delivery (column may not exist yet — fails silently)
+        if (estimatedDelivery) {
+            try {
+                await db.collection('orders').doc(docId).update({ estimatedDelivery });
+            } catch (e) {
+                console.warn('[admin] estimatedDelivery column missing in DB. Run tools/migration.sql to add it.', e.message);
+            }
+        }
+
         _invalidateCache('orders');
         if (window.ssaApi && window.ssaApi.enabled) window.ssaApi.invalidate('/api/admin/orders');
         // Update the in-memory order object so the view reflects the change immediately
         const idx = allOrders.findIndex(x => x.docId === docId);
-        if (idx !== -1) { allOrders[idx].status = status; allOrders[idx].trackingId = trackingId; if (estimatedDelivery) allOrders[idx].estimatedDelivery = estimatedDelivery; }
+        if (idx !== -1) {
+            allOrders[idx].status = status;
+            allOrders[idx].trackingId = trackingId;
+            if (estimatedDelivery) allOrders[idx].estimatedDelivery = estimatedDelivery;
+        }
         showAdminToast('Order updated successfully');
         closeModal('orderModal');
         loadOrders();
@@ -582,7 +593,7 @@ async function deduplicateProducts() {
 async function autoSeedProducts() {
     const products = getLocalProductsData();
     let count = 0;
-    showAdminToast('Seeding products to Firestore...', 'info');
+    showAdminToast('Seeding products to Supabase...', 'info');
     for (const p of products) {
         const existing = await db.collection('products').where('name', '==', p.name).get();
         if (existing.empty) {
@@ -607,7 +618,7 @@ async function autoSeedProducts() {
             count++;
         }
     }
-    showAdminToast(`Auto-seeded ${count} products to Firestore!`);
+    showAdminToast(`Auto-seeded ${count} products to Supabase!`);
     const snap = await db.collection('products').orderBy('name').get();
     allProducts = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
     renderProducts();
@@ -2876,7 +2887,7 @@ function saveSettings() {
     const suffix = document.getElementById('sScrubBrandSuffix')?.value || '™';
     const cfg = { name, suffix };
     localStorage.setItem('ssa_scrub_brand', JSON.stringify(cfg));
-    // Optionally persist to Firestore so other devices/sessions pick it up
+    // Optionally persist to Supabase so other devices/sessions pick it up
     if (window.db) {
         window.db.collection('settings').doc('scrubBrand').set(cfg)
             .then(() => showAdminToast('Settings saved — brand name updated to "' + name + suffix + '"'))
@@ -3308,7 +3319,7 @@ function handleProductImageUpload(event) {
             const preview = document.getElementById('pImagePreview');
             if (preview) { preview.src = dataUrl; preview.classList.add('show'); }
 
-            // Store data URL as the image value (saved to Firestore with the product)
+            // Store data URL as the image value (saved to Supabase with the product)
             document.getElementById('pImage').value = dataUrl;
 
             if (btn) { btn.disabled = false; btn.innerHTML = origText; }

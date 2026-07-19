@@ -454,10 +454,13 @@
             const updateData = { rating, rating_at: new Date().toISOString() };
             if (comment) updateData.ratingComment = comment;
             // Don't store base64 image in DB - too large; store in localStorage only
+            // Use the Supabase client; match on orderId field (not the DB row id)
             if (window._supabase) {
-                await window._supabase.from('orders').update(updateData).eq('id', orderId);
-            } else if (window.db && window.db.updateRating) {
-                await window.db.updateRating(orderId, rating);
+                await window._supabase.from('orders').update(updateData).eq('orderId', orderId);
+            } else if (window.db) {
+                // Fallback via compatibility wrapper
+                const snap = await window.db.collection('orders').where('orderId', '==', orderId).get();
+                if (!snap.empty) await window.db.collection('orders').doc(snap.docs[0].id).update(updateData);
             }
         } catch (err) {
             console.warn('[Rating] Save failed:', err);

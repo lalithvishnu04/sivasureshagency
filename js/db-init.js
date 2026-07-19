@@ -22,12 +22,14 @@ console.log('[backend-init] Starting Supabase initialization...');
     if (!window.supabase || !window.supabase.createClient) {
         console.error('[backend-init] Supabase SDK not loaded');
         window._firebaseReady = false;
+        window._dbReady = false;
         return;
     }
 
     if (!url || !anonKey) {
         console.warn('[backend-init] Missing Supabase URL/Anon Key in js/backend-config.js');
         window._firebaseReady = false;
+        window._dbReady = false;
         return;
     }
 
@@ -239,7 +241,8 @@ console.log('[backend-init] Starting Supabase initialization...');
 
         async update(obj) {
             const row = _plainForWrite(obj);
-            row.updatedAt = _serverNow();
+            // Do NOT auto-inject updatedAt — not all tables have this column.
+            // Callers must pass it explicitly via fsServerTimestamp() if needed.
 
             const incEntries = Object.entries(obj || {}).filter(([, v]) => _isIncrement(v));
             if (incEntries.length) {
@@ -299,6 +302,7 @@ console.log('[backend-init] Starting Supabase initialization...');
     }
 
     window.db = { collection: (name) => new ColRef(name) };
+    // Keep fireDb as a deprecated alias so old code still works during transition
     window.fireDb = window.db;
 
     window.fsServerTimestamp = () => ({ _fsOp: 'serverTime' });
@@ -359,8 +363,10 @@ console.log('[backend-init] Starting Supabase initialization...');
     };
 
     window.getCurrentUser = () => _cachedRawUser;
-    window._firebaseReady = true;
-    window._supaClient = client;   // exposed for admin bulk operations only
+    window._firebaseReady = true;  // kept for backward compat
+    window._dbReady = true;
+    window._supaClient = client;   // raw Supabase client for direct queries
+    window._supabase = client;     // alias used by some modules
 
-    console.log('[backend-init] Supabase compat ready');
+    console.log('[backend-init] Supabase ready');
 })();

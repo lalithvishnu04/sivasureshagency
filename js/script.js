@@ -2618,10 +2618,9 @@ async function handleRegister() {
     localStorage.setItem('ssa_users', JSON.stringify(users));
     currentUser = { name: firstName + ' ' + lastName, email, phone };
     localStorage.setItem('ssa_user', JSON.stringify(currentUser));
-    // Save customer to Firebase (async but we continue immediately)
-    console.log('[register] Saving customer to Firestore...');
-    if (typeof saveCustomerToFirebase === 'function') {
-        saveCustomerToFirebase({ firstName, lastName, email, phone })
+    // Save customer to Supabase (async but we continue immediately)
+    if (typeof saveCustomerToDb === 'function') {
+        saveCustomerToDb({ firstName, lastName, email, phone })
             .catch(err => console.error('[register] Async save failed:', err));
     }
     closeAuthModal(); updateAuthUI(); showToast(`Welcome, ${firstName}!`);
@@ -2632,10 +2631,9 @@ async function openAccountPanel() {
     modal.innerHTML = `<div class="modal account-modal-v2"><button class="acct-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button><div style="text-align:center;padding:50px 30px;"><div class="loader"><div class="loader-ring"></div><span class="loader-text">SSA</span></div><p style="margin-top:14px;color:var(--text-muted);font-size:0.88rem;">Loading your account...</p></div></div>`;
     modal.classList.add('active');
     let firestoreOrders = [];
-    if (window.fireDb) {
+    if (window.db) {
         try {
-            if (window.auth) { try { await window.auth.signInAnonymously(); } catch(e) {} }
-            const snap = await fireDb.collection('orders').where('customerEmail', '==', currentUser.email).get();
+            const snap = await db.collection('orders').where('customerEmail', '==', currentUser.email).get();
             firestoreOrders = snap.docs.map(d => ({
                 id: d.data().orderId,
                 date: d.data().createdAt?.seconds ? new Date(d.data().createdAt.seconds*1000).toISOString() : new Date().toISOString(),
@@ -3134,8 +3132,8 @@ function placeOrder() {
     const key = 'ssa_orders_' + currentUser.email;
     const orders = JSON.parse(localStorage.getItem(key) || '[]');
     orders.unshift(order); localStorage.setItem(key, JSON.stringify(orders));
-    // Save to Firebase
-    if (typeof saveOrderToFirebase === 'function') saveOrderToFirebase(order, shipping);
+    // Save to Supabase
+    if (typeof saveOrderToDb === 'function') saveOrderToDb(order, shipping);
     document.getElementById('checkoutModal').classList.remove('active');
     document.getElementById('orderId').textContent = order.id;
     document.getElementById('successModal').classList.add('active');

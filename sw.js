@@ -1,8 +1,8 @@
-﻿// ============================================================
-//  Siva Suresh Agency — Service Worker
+// ============================================================
+//  Siva Suresh Agency � Service Worker
 //  Auto cache-busting: bump CACHE_VERSION with each deploy
 // ============================================================
-const CACHE_VERSION = 'v78';
+const CACHE_VERSION = 'v79';
 const CACHE_NAME = `ssa-${CACHE_VERSION}`;
 
 // Install: activate immediately (skip waiting)
@@ -22,10 +22,10 @@ self.addEventListener('activate', event => {
 });
 
 // Fetch strategy:
-//   HTML documents  → Network-first  (always fresh)
-//   JS/CSS ?v=xx    → Cache-first    (version string = bust)
-//   Images          → Cache-first
-//   Everything else → Network passthrough
+//   HTML documents  ? Network-first  (always fresh)
+//   JS/CSS ?v=xx    ? Cache-first    (version string = bust)
+//   Images          ? Cache-first
+//   Everything else ? Network passthrough
 self.addEventListener('fetch', event => {
     const req = event.request;
     const url = new URL(req.url);
