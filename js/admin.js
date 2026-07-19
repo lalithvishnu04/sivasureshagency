@@ -95,6 +95,8 @@ function showAdminPanel(user) {
     if (document.getElementById('adminNameTop')) document.getElementById('adminNameTop').textContent = name;
     const av = document.getElementById('sidebarAvatar');
     if (av) av.textContent = name.charAt(0).toUpperCase();
+    // Restore sidebar collapsed state from previous session
+    restoreSidebarCollapseState();
     // Wait for the DB layer to be ready before loading data
     waitForDbThenLoad();
 }
@@ -230,6 +232,28 @@ document.querySelectorAll('.nav-item').forEach(item => {
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');
 }
+
+// ── Sidebar collapse / expand (desktop) ─────────────────────────
+// Inspired by style35.css pattern: toggles between 248px and 68px
+// icon-only mode. State persists in localStorage.
+function toggleSidebarCollapse() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    const isNowCollapsed = sidebar.classList.toggle('collapsed');
+    try { localStorage.setItem('ssa_sidebar_collapsed', isNowCollapsed ? '1' : '0'); } catch(_) {}
+}
+
+// Restore sidebar collapsed state after login renders the panel
+function restoreSidebarCollapseState() {
+    try {
+        if (localStorage.getItem('ssa_sidebar_collapsed') === '1') {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) sidebar.classList.add('collapsed');
+        }
+    } catch(_) {}
+}
+window.toggleSidebarCollapse = toggleSidebarCollapse;
+window.restoreSidebarCollapseState = restoreSidebarCollapseState;
 
 // ===== Dashboard =====
 async function loadDashboard() {

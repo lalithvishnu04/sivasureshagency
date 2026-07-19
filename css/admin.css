@@ -1623,6 +1623,165 @@ img{max-width:100%;display:block;}
   box-shadow: 0 0 0 3px rgba(13,148,136,0.14), inset 0 1px 3px rgba(0,0,0,0.04);
 }
 
+/* ================================================================
+   SIDEBAR COLLAPSE / EXPAND  (style35.css pattern)
+   Toggle between 248px expanded and 68px icon-only collapsed.
+   Works on desktop only — mobile keeps the slide-in behaviour.
+   ================================================================ */
+:root { --sidebar-w-collapsed: 68px; }
+
+/* ── Nav label spans (text that hides when collapsed) ── */
+.nav-label {
+  display: inline;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: opacity 0.28s ease, max-width 0.3s cubic-bezier(0.4,0,0.2,1);
+  max-width: 160px;
+  opacity: 1;
+  vertical-align: middle;
+}
+
+/* ── Collapse toggle button inside the sidebar header ── */
+.sidebar-collapse-btn {
+  display: none; /* shown only on desktop via media query below */
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+  border: 1.5px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  font-size: 0.7rem;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.sidebar-collapse-btn:hover {
+  background: rgba(13,148,136,0.25);
+  border-color: var(--primary);
+  color: #fff;
+}
+.sidebar-collapse-btn i {
+  transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  display: block;
+}
+
+/* ── Desktop only: enable collapse ── */
+@media (min-width: 769px) {
+  .sidebar-collapse-btn { display: flex; }
+
+  /* Smooth width + transition on desktop */
+  .sidebar {
+    transition: width 0.32s cubic-bezier(0.4,0,0.2,1),
+                transform 0.32s cubic-bezier(0.4,0,0.2,1);
+    overflow: hidden;
+  }
+  .main-content {
+    transition: margin-left 0.32s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* ── Collapsed state ── */
+  .sidebar.collapsed {
+    width: var(--sidebar-w-collapsed);
+    overflow: visible; /* allow tooltip to escape */
+  }
+
+  /* Chevron flips when collapsed */
+  .sidebar.collapsed .sidebar-collapse-btn i {
+    transform: rotate(180deg);
+  }
+
+  /* Sidebar header shrinks to logo only */
+  .sidebar.collapsed .sidebar-header {
+    padding: 20px 10px 16px;
+    justify-content: center;
+    gap: 0;
+  }
+  .sidebar.collapsed .sidebar-header-text {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+  }
+  .sidebar.collapsed .sidebar-collapse-btn {
+    position: absolute;
+    right: -14px;
+    top: 28px;
+    width: 26px; height: 26px;
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    z-index: 300;
+    box-shadow: 0 2px 8px rgba(13,148,136,0.4);
+  }
+
+  /* Nav items: center icon, hide label */
+  .sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 10px 8px;
+  }
+  .sidebar.collapsed .nav-label {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+  }
+  .sidebar.collapsed .nav-badge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    min-width: 16px;
+    padding: 1px 4px;
+    font-size: 0.55rem;
+  }
+
+  /* Footer: hide text, center icons */
+  .sidebar.collapsed .sidebar-user {
+    justify-content: center;
+    padding: 10px 4px;
+  }
+  .sidebar.collapsed .sidebar-user-info {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    margin: 0;
+  }
+  .sidebar.collapsed .sidebar-footer > button {
+    justify-content: center;
+    padding: 10px 4px;
+  }
+
+  /* Tooltip: show nav item title on hover when collapsed */
+  .sidebar.collapsed .nav-item[title]::after {
+    content: attr(title);
+    position: absolute;
+    left: calc(100% + 14px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(15,23,42,0.95);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+    z-index: 500;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  }
+  .sidebar.collapsed .nav-item[title]:hover::after {
+    opacity: 1;
+  }
+
+  /* Main content shifts when sidebar collapses */
+  .sidebar.collapsed ~ .main-content {
+    margin-left: var(--sidebar-w-collapsed);
+  }
+}
+
 /* ── Color Variant Cards ─────────────────────────────────── */
 /* ── Color Variant Cards ─────────────────────────────────── */
 .cv-card {
