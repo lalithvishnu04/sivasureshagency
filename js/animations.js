@@ -137,56 +137,40 @@
 
     /* ──────────────────────────────────────────────────────────
        3. SIGNATURE BUTTON ANIMATION
-       Adapted from style28.css (Netflix-style vertical bars).
-       We inject thin colored <span> bars into every button that
-       carries the .sig-btn class, then CSS handles the hover
-       transform. Random transition-delay creates the stagger.
+       Adapted from style28.css — sweeping sheen on hover.
+       CSS ::after pseudo-element handles the visual effect;
+       JS only applies the .sig-btn class to the right elements.
+       No span injection needed (old bar approach was z-index:-1
+       which made bars invisible behind opaque button backgrounds).
     ────────────────────────────────────────────────────────── */
     function initSignatureButtons() {
-        const BAR_COUNT = 60;
 
-        function injectBars(btn) {
-            if (btn._barsInjected) return;
-            btn._barsInjected = true;
-            const frag = document.createDocumentFragment();
-            for (let i = 0; i < BAR_COUNT; i++) {
-                const span = document.createElement('span');
-                span.className = 'sig-bar';
-                span.style.left = (i / BAR_COUNT * 100) + '%';
-                span.style.transitionDelay = (Math.random() * 0.4).toFixed(3) + 's';
-                frag.appendChild(span);
-            }
-            btn.appendChild(frag);
+        function markBtn(btn) {
+            if (btn._sigMarked) return;
+            btn._sigMarked = true;
+            btn.classList.add('sig-btn');
         }
 
-        // Identify CliniFlex / signature buttons:
-        // - buttons/links with .btn-signature-anim
-        // - CliniFlex hero CTA buttons
-        // - "Shop CliniFlex" / "Shop Now" buttons in signature section
-        function markAndInject() {
-            // Mark by selector — adapt as needed
+        function markAll() {
+            // Explicitly declared signature buttons
             $$([
                 '.btn-signature-anim',
                 '.cliniflex-dropdown .btn',
                 '.mega-col-signature .btn',
                 '[data-sig-btn]',
-            ].join(',')).forEach(btn => {
-                btn.classList.add('sig-btn');
-                injectBars(btn);
-            });
+            ].join(',')).forEach(markBtn);
 
-            // Also mark CliniFlex hero section CTA in the hero slides
-            $$('.hero-btns .btn-white, .hero-btns .btn-glass').forEach(btn => {
-                btn.classList.add('sig-btn');
-                injectBars(btn);
-            });
+            // Hero slide CTA buttons — first slide (CliniFlex) gets the effect
+            $$('.hero-slide:first-child .btn, .hero-btns .btn-glass, .hero-btns .btn-white').forEach(markBtn);
+
+            // CliniFlex category tile — the "Explore →" link and any btn inside
+            $$('.category-tile--cliniflex .cat-tile-link, .category-tile--cliniflex .btn').forEach(markBtn);
         }
 
-        markAndInject();
-
-        // Re-run after dynamic content renders
-        setTimeout(markAndInject, 1500);
-        setTimeout(markAndInject, 3000);
+        markAll();
+        // Re-run after hero slider and dynamic category tiles render
+        setTimeout(markAll, 800);
+        setTimeout(markAll, 2500);
     }
 
 
@@ -583,25 +567,18 @@
 
     /* ──────────────────────────────────────────────────────────
        9. ADMIN SIDEBAR
-       Guard against double-animation when the sidebar is
-       dynamically rendered. Also adds a subtle entrance.
+       CSS handles the stagger entrance via nth-child delays +
+       animation-fill-mode: forwards. The old JS reset was
+       clearing animations at 700ms — BEFORE the last items
+       finished (delay 0.50s + duration 0.55s = 1.05s total),
+       which made the animation invisible. Removed entirely.
     ────────────────────────────────────────────────────────── */
     function initAdminSidebar() {
-        // The CSS handles stagger animation via nth-child.
-        // We just need to ensure the animation runs once.
         const sidebar = $('.sidebar');
         if (!sidebar) return;
-
-        // After animations complete, remove the animation class to allow
-        // normal hover transitions without re-triggering entrance.
-        const MAX_DELAY = 500;
-        setTimeout(() => {
-            $$('.nav-item', sidebar).forEach(item => {
-                item.style.opacity = '1';
-                item.style.transform = 'none';
-                item.style.animation = 'none';
-            });
-        }, MAX_DELAY + 200);
+        // CSS animation with forwards fill-mode holds the final state.
+        // No JS reset needed — hover transitions still work fine
+        // because CSS specificity on :hover rules overrides the fill.
     }
 
 

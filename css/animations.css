@@ -117,6 +117,8 @@
 }
 
 .shop-card:hover {
+    /* Override style.css translateY(-5px) — keep 3D tilt + lift together */
+    transform: perspective(1200px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-5px) translateZ(4px) !important;
     box-shadow: 0 20px 60px rgba(13,148,136,0.18), 0 6px 18px rgba(0,0,0,0.1);
     border-color: rgba(13,148,136,0.2);
 }
@@ -151,6 +153,8 @@
 }
 
 .category-tile:hover {
+    /* Override style.css translateY(-6px) — keep 3D tilt + lift together */
+    transform: perspective(1200px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-6px) translateZ(4px) !important;
     box-shadow: 0 24px 60px rgba(13,148,136,0.2), 0 6px 20px rgba(0,0,0,0.09);
 }
 
@@ -183,57 +187,55 @@
       product buttons.
    ═══════════════════════════════════════════════════════════════ */
 
+/* Signature button — sweeping sheen on hover (CSS-only, no span injection) */
 .sig-btn {
     position: relative;
     overflow: hidden;
-    letter-spacing: 0.03em;
-    transition: letter-spacing 0.35s ease, filter 0.35s ease, color 0.25s ease, background 0.25s ease !important;
-    z-index: 1;
+    letter-spacing: 0.02em;
+    transition: letter-spacing 0.42s ease, filter 0.42s ease, box-shadow 0.35s ease !important;
+}
+
+/* White sheen stripe that sweeps left → right on hover — visible on any background */
+.sig-btn::after {
+    content: '';
+    position: absolute;
+    top: -15%;
+    left: -130%;
+    width: 60%;
+    height: 130%;
+    background: linear-gradient(
+        100deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.38) 50%,
+        transparent 100%
+    );
+    transform: skewX(-20deg);
+    transition: left 0.62s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 5;
+    border-radius: inherit;
+}
+
+.sig-btn:hover::after {
+    left: 150%;
 }
 
 .sig-btn:hover {
-    letter-spacing: 0.12em;
-    filter: drop-shadow(0 0 8px rgba(13,148,136,0.55)) drop-shadow(0 0 24px rgba(13,148,136,0.28));
+    letter-spacing: 0.1em;
+    filter: brightness(1.14) drop-shadow(0 0 14px rgba(13, 148, 136, 0.55));
+    box-shadow: 0 8px 28px rgba(13, 148, 136, 0.42) !important;
     color: #fff !important;
 }
 
-/* Vertical bar spans — injected by JS */
-.sig-btn span.sig-bar {
-    position: absolute;
-    top: 0;
-    width: 2px;
-    height: 100%;
-    background: rgba(94,234,212,0.7);
-    pointer-events: none;
-    z-index: -1;
-    transform: scaleY(0);
-    transform-origin: bottom;
-    transition: transform 0.2s ease-in-out;
-}
-
-.sig-btn:hover span.sig-bar {
-    transform: scaleY(1);
-    transform-origin: top;
-}
-
-.sig-btn span.sig-bar:nth-child(even) {
-    transform-origin: top;
-}
-
-.sig-btn:hover span.sig-bar:nth-child(even) {
-    transform-origin: bottom;
-}
-
-/* Apply to CliniFlex hero button + signature category tile link */
-.btn-signature-anim {
-    composes: sig-btn;
-}
-
-.btn-cliniflex-hero,
+/* CliniFlex signature elements — continuous ambient glow pulse */
 .category-tile--cliniflex .cat-tile-link,
-.nav-cliniflex > span,
-.btn-cliniflex {
-    /* Only the hover transform — don't override base styles */
+.hero-slide:first-child .btn.sig-btn {
+    animation: sig-ambient 3s ease-in-out infinite;
+}
+
+@keyframes sig-ambient {
+    0%, 100% { box-shadow: 0 4px 16px rgba(13,148,136,0.18); }
+    50%       { box-shadow: 0 4px 26px rgba(13,148,136,0.48); }
 }
 
 
@@ -783,25 +785,27 @@
     50%       { box-shadow: 0 0 14px rgba(13,148,136,0.45); }
 }
 
-/* Staggered entrance when admin page loads */
+/* Staggered entrance when admin page loads — forwards fill keeps items visible */
 .sidebar .nav-item {
     opacity: 0;
-    transform: translateX(-16px);
-    animation: nav-item-enter 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
+    transform: translateX(-28px);
+    animation: nav-item-enter 0.55s cubic-bezier(0.16,1,0.3,1) both;
+    animation-fill-mode: forwards;
 }
 
-.sidebar .nav-item:nth-child(1) { animation-delay: 0.05s; }
-.sidebar .nav-item:nth-child(2) { animation-delay: 0.10s; }
-.sidebar .nav-item:nth-child(3) { animation-delay: 0.15s; }
-.sidebar .nav-item:nth-child(4) { animation-delay: 0.20s; }
-.sidebar .nav-item:nth-child(5) { animation-delay: 0.25s; }
-.sidebar .nav-item:nth-child(6) { animation-delay: 0.30s; }
-.sidebar .nav-item:nth-child(7) { animation-delay: 0.35s; }
-.sidebar .nav-item:nth-child(8) { animation-delay: 0.40s; }
-.sidebar .nav-item:nth-child(n+9) { animation-delay: 0.44s; }
+.sidebar .nav-item:nth-child(1)  { animation-delay: 0.05s; }
+.sidebar .nav-item:nth-child(2)  { animation-delay: 0.12s; }
+.sidebar .nav-item:nth-child(3)  { animation-delay: 0.19s; }
+.sidebar .nav-item:nth-child(4)  { animation-delay: 0.26s; }
+.sidebar .nav-item:nth-child(5)  { animation-delay: 0.32s; }
+.sidebar .nav-item:nth-child(6)  { animation-delay: 0.38s; }
+.sidebar .nav-item:nth-child(7)  { animation-delay: 0.43s; }
+.sidebar .nav-item:nth-child(8)  { animation-delay: 0.47s; }
+.sidebar .nav-item:nth-child(n+9){ animation-delay: 0.50s; }
 
 @keyframes nav-item-enter {
-    to { opacity: 1; transform: translateX(0); }
+    from { opacity: 0; transform: translateX(-28px); }
+    to   { opacity: 1; transform: translateX(0); }
 }
 
 /* Active nav badge pulse */

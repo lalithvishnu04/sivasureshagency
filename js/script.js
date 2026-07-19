@@ -3183,12 +3183,28 @@ function initCategoryTileScroll() {
     // Use only admin-uploaded product images, transitioning through all of them
     const catImages = _buildCatImagePool();
 
+    // Supabase products may be saved under a slightly different category slug than
+    // the tile's data-cat. This map resolves aliases so images still appear.
+    // Confirmed via live productsData: bedsheets products are stored as
+    // "bedsheets-pillow-covers" in Supabase, but the tile uses data-cat="bedsheets".
+    const CAT_SLUG_ALIASES = {
+        'bedsheets':      ['bedsheets', 'bedsheets-pillow-covers'],
+        'hospital-linen': ['hospital-linen', 'medical-linen'],
+        'hotel-linen':    ['hotel-linen', 'hotel-bedsheets'],
+    };
+
     document.querySelectorAll('.cat-tile-img[data-cat]').forEach(tile => {
         const cat = tile.dataset.cat;
-        const imgs = catImages[cat];
+        // Resolve images: try primary slug first, then any configured aliases
+        const aliases = CAT_SLUG_ALIASES[cat] || [cat];
+        let imgs = [];
+        for (const alias of aliases) {
+            const found = catImages[alias];
+            if (found && found.length) { imgs = found; break; }
+        }
         if (_tileScrollTimers[cat]) { clearInterval(_tileScrollTimers[cat]); delete _tileScrollTimers[cat]; }
         // No admin images for this category → show the CSS gradient placeholder
-        if (!imgs || !imgs.length) { tile.style.backgroundImage = ''; tile.classList.remove('has-img'); return; }
+        if (!imgs.length) { tile.style.backgroundImage = ''; tile.classList.remove('has-img'); return; }
         tile.style.backgroundImage = `url('${imgs[0]}')`;
         tile.classList.add('has-img');
         if (imgs.length < 2) return;

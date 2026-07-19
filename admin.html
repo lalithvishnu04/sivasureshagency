@@ -1,4 +1,4 @@
-Ôªø<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="css/admin.css?v=75">
-    <link rel="stylesheet" href="css/animations.css?v=1">
+    <link rel="stylesheet" href="css/animations.css?v=2">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -269,15 +269,15 @@
                         <div id="helpContent" style="display:none;padding:16px;border-top:1px solid #86efac;font-size:0.95rem;color:var(--text-mid);line-height:1.6">
                             <p><strong>One tree runs the whole site.</strong> Build your category structure in three levels:</p>
                             <ul style="margin:12px 0;padding-left:24px">
-                                <li><strong>Main Heading</strong> ‚Äî Top-level menu column (e.g. "Doctor Uniform")</li>
-                                <li><strong>Main Category</strong> ‚Äî Underneath headings (e.g. "Male Doctor Uniform")</li>
-                                <li><strong>Sub Category</strong> ‚Äî Under main categories (e.g. "Full Sleeve")</li>
+                                <li><strong>Main Heading</strong> ó Top-level menu column (e.g. "Doctor Uniform")</li>
+                                <li><strong>Main Category</strong> ó Underneath headings (e.g. "Male Doctor Uniform")</li>
+                                <li><strong>Sub Category</strong> ó Under main categories (e.g. "Full Sleeve")</li>
                             </ul>
-                            <p><strong>‚úì What this controls:</strong> Header dropdown menu, shop filters, and where products are organized. Products are filed against a Main Category (and optionally a Sub Category).</p>
-                            <p><strong>‚úì Inline editing:</strong> Rename anything inline. Menu thumbnails are pulled automatically from your product images.</p>
-                            <p><strong>‚úì Signature Collections:</strong> Mark a heading as "Signature" to show it as a premium highlighted collection (like CliniFlex‚Ñ¢ Scrubs)</p>
-                            <p><strong>‚úì Reordering:</strong> Drag by the <i class="fas fa-grip-vertical"></i> icon to reorder. Changes sync everywhere on the frontend in ~2 min</p>
-                            <p><strong>‚úì Publish:</strong> Click "Save & Publish" to push changes live</p>
+                            <p><strong>? What this controls:</strong> Header dropdown menu, shop filters, and where products are organized. Products are filed against a Main Category (and optionally a Sub Category).</p>
+                            <p><strong>? Inline editing:</strong> Rename anything inline. Menu thumbnails are pulled automatically from your product images.</p>
+                            <p><strong>? Signature Collections:</strong> Mark a heading as "Signature" to show it as a premium highlighted collection (like CliniFlexô Scrubs)</p>
+                            <p><strong>? Reordering:</strong> Drag by the <i class="fas fa-grip-vertical"></i> icon to reorder. Changes sync everywhere on the frontend in ~2 min</p>
+                            <p><strong>? Publish:</strong> Click "Save & Publish" to push changes live</p>
                         </div>
                     </div>
                 </div>
@@ -340,8 +340,8 @@
                 <div class="settings-panel">
                     <div class="settings-section">
                         <h4 class="settings-section-title"><i class="fas fa-tag"></i> Signature Collection Name</h4>
-                        <p class="settings-section-desc">To rename the Signature collection (e.g. "CliniFlex‚Ñ¢"), go to <strong>Categories</strong> ‚Üí expand the Signature heading ‚Üí edit the name inline, then click <strong>Save &amp; Publish</strong>.</p>
-                        <div class="info-banner"><i class="fas fa-info-circle"></i><div>The name you type in the Category Tree is what appears in the navigation, product tiles, hero section, and everywhere on the site. The symbol (‚Ñ¢/¬Æ) can be inserted at any cursor position using the <strong>‚Ñ¢</strong> and <strong>¬Æ</strong> buttons next to the heading name.</div></div>
+                        <p class="settings-section-desc">To rename the Signature collection (e.g. "CliniFlexô"), go to <strong>Categories</strong> ? expand the Signature heading ? edit the name inline, then click <strong>Save &amp; Publish</strong>.</p>
+                        <div class="info-banner"><i class="fas fa-info-circle"></i><div>The name you type in the Category Tree is what appears in the navigation, product tiles, hero section, and everywhere on the site. The symbol (ô/Æ) can be inserted at any cursor position using the <strong>ô</strong> and <strong>Æ</strong> buttons next to the heading name.</div></div>
                     </div>
                 </div>
             </div>
@@ -395,20 +395,20 @@
                 <form id="productForm" onsubmit="saveProduct(event)">
                     <input type="hidden" id="productEditId">
                     <div class="form-row">
-                        <div class="form-group"><label>Product Name *</label><div style="display:flex;gap:6px;align-items:center"><input type="text" id="pName" required style="flex:1"><button type="button" class="btn-secondary btn-sm" onclick="insertNameSymbol('‚Ñ¢')">‚Ñ¢</button><button type="button" class="btn-secondary btn-sm" onclick="insertNameSymbol('¬Æ')">¬Æ</button></div></div>
+                        <div class="form-group"><label>Product Name *</label><div style="display:flex;gap:6px;align-items:center"><input type="text" id="pName" required style="flex:1"><button type="button" class="btn-secondary btn-sm" onclick="insertNameSymbol('ô')">ô</button><button type="button" class="btn-secondary btn-sm" onclick="insertNameSymbol('Æ')">Æ</button></div></div>
                         <div class="form-group"><label>Main Category *</label>
                             <select id="pCategory" required onchange="refreshProductSubSelect()">
-                                <option value="">Loading‚Ä¶</option>
+                                <option value="">LoadingÖ</option>
                             </select>
                         </div>
                     </div>
                     <div class="form-group" id="pSubCategoryGroup" style="display:none">
-                        <label><i class="fas fa-sitemap"></i> Sub-Category <small style="color:var(--text-muted);font-weight:400">(optional ‚Äî files this product under a sub-category)</small></label>
+                        <label><i class="fas fa-sitemap"></i> Sub-Category <small style="color:var(--text-muted);font-weight:400">(optional ó files this product under a sub-category)</small></label>
                         <select id="pSubCategory"><option value="">&mdash; None &mdash;</option></select>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label>Price (‚Çπ) *</label><input type="number" id="pPrice" required></div>
-                        <div class="form-group"><label>Old Price (‚Çπ)</label><input type="number" id="pOldPrice"></div>
+                        <div class="form-group"><label>Price (?) *</label><input type="number" id="pPrice" required></div>
+                        <div class="form-group"><label>Old Price (?)</label><input type="number" id="pOldPrice"></div>
                     </div>
                     <div class="form-row">
                         <div class="form-group"><label>Gender</label>
@@ -420,17 +420,17 @@
                     </div>
                     <div class="form-group"><label>Sizes (comma separated) *</label><input type="text" id="pSizes" placeholder="S,M,L,XL,XXL,XXXL" required oninput="rebuildSizePricingRows()"></div>
                     <div class="form-group" id="sizePricingGroup">
-                        <label><i class="fas fa-tags"></i> Per-Size Pricing <small style="color:var(--text-muted);font-weight:400">(optional ‚Äî leave a size blank to use the base Price above)</small></label>
+                        <label><i class="fas fa-tags"></i> Per-Size Pricing <small style="color:var(--text-muted);font-weight:400">(optional ó leave a size blank to use the base Price above)</small></label>
                         <div id="sizePricingContainer" class="size-pricing-container"></div>
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-pen-nib"></i> Embroidery Add-on</label>
                         <label class="emb-admin-toggle"><input type="checkbox" id="pEmbEnabled" onchange="toggleEmbFields()"> <span>Offer embroidery on this product</span></label>
                         <div id="pEmbPriceWrap" class="emb-admin-prices" style="display:none;">
-                            <p class="emb-admin-hint">Set a price for each embroidery type. <b>0 = Free</b> ‚Üí front-end shows a ‚ÄúLimited Time Offer ‚Äì Free Embroidery‚Äù highlight.</p>
-                            <div class="emb-price-row"><span class="emb-price-label">TEXT</span><span class="emb-price-cur">‚Çπ</span><input type="number" id="pEmbPriceText" min="0" placeholder="0"></div>
-                            <div class="emb-price-row"><span class="emb-price-label">LOGO</span><span class="emb-price-cur">‚Çπ</span><input type="number" id="pEmbPriceLogo" min="0" placeholder="0"></div>
-                            <div class="emb-price-row"><span class="emb-price-label">TEXT &amp; LOGO</span><span class="emb-price-cur">‚Çπ</span><input type="number" id="pEmbPriceTextLogo" min="0" placeholder="0"></div>
+                            <p class="emb-admin-hint">Set a price for each embroidery type. <b>0 = Free</b> ? front-end shows a ìLimited Time Offer ñ Free Embroideryî highlight.</p>
+                            <div class="emb-price-row"><span class="emb-price-label">TEXT</span><span class="emb-price-cur">?</span><input type="number" id="pEmbPriceText" min="0" placeholder="0"></div>
+                            <div class="emb-price-row"><span class="emb-price-label">LOGO</span><span class="emb-price-cur">?</span><input type="number" id="pEmbPriceLogo" min="0" placeholder="0"></div>
+                            <div class="emb-price-row"><span class="emb-price-label">TEXT &amp; LOGO</span><span class="emb-price-cur">?</span><input type="number" id="pEmbPriceTextLogo" min="0" placeholder="0"></div>
                         </div>
                     </div>
                     <div class="form-group">
@@ -478,7 +478,7 @@
                         <div id="cvContainer" style="display:flex;flex-direction:column;gap:12px;margin-top:8px;"></div>
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-image"></i> Main Image <small style="color:var(--text-muted);font-weight:400">(tile &amp; hero ‚Äî leave blank to auto-use first color image)</small></label>
+                        <label><i class="fas fa-image"></i> Main Image <small style="color:var(--text-muted);font-weight:400">(tile &amp; hero ó leave blank to auto-use first color image)</small></label>
                         <input type="hidden" id="pMainImage">
                         <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
                             <button type="button" class="btn-secondary btn-sm" onclick="document.getElementById('pMainImageFile').click()"><i class="fas fa-upload"></i> Upload Main Image</button>
@@ -513,9 +513,9 @@
                     <div class="form-group">
                         <label>Stock Status</label>
                         <select id="stockStatus" style="background:var(--surface-2);">
-                            <option value="in_stock">‚úì In Stock</option>
-                            <option value="low_stock">‚ö† Low Stock</option>
-                            <option value="out_of_stock">‚úó Out of Stock</option>
+                            <option value="in_stock">? In Stock</option>
+                            <option value="low_stock">? Low Stock</option>
+                            <option value="out_of_stock">? Out of Stock</option>
                         </select>
                     </div>
                     <button type="submit" class="btn-primary btn-full"><i class="fas fa-save"></i> Save Status</button>
@@ -642,8 +642,8 @@
     <script src="js/api.js?v=75" defer></script>
     <script src="js/backend-config.js?v=75" defer></script>
     <script src="js/db-init.js?v=75" defer></script>
-    <script defer src="js/admin.js?v=75"></script>
-    <script defer src="js/animations.js?v=1"></script>
+    <script defer src="js/admin.js?v=76"></script>
+    <script defer src="js/animations.js?v=2"></script>
 </body>
 </html>
 
