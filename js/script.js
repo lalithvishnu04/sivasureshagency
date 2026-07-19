@@ -857,7 +857,7 @@ window.initCardHoverCycle = initCardHoverCycle;
                     embroideryPrices: fp.embroideryPrices || null,
                     embroideryPrice: (fp.embroideryPrice !== undefined && fp.embroideryPrice !== null) ? fp.embroideryPrice : null,
                     rating: 4.5, reviews: 0,
-                    _fromFirestore: true
+                    _fromSupabase: true
                 };
                 if (!newP.image) newP.image = generateProductSVG(newP);
                 productsData.push(newP);
@@ -1117,7 +1117,7 @@ let wishlist = JSON.parse(localStorage.getItem('ssa_wishlist') || '[]');
 let displayedProducts = 12;
 let currentFilter = new URLSearchParams(window.location.search).get('cat') || new URLSearchParams(window.location.search).get('heading') || 'all'; // init from URL immediately — no race condition
 let currentSearch = '';
-// Mirror state to window so the Firestore IIFE can always read the latest values
+// Mirror state to window so db-integration.js can always read the latest values
 function _syncWindowState() {
     window._currentFilter  = currentFilter;
     window._currentCount   = displayedProducts;
@@ -1391,7 +1391,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 console.warn('[app] syncPendingOrders not available');
             }
-        }, 500); // reduced from 2000ms to let firebase-db.js module load
+        }, 500); // wait for db-integration.js to load
     }
 });
 
@@ -1419,7 +1419,7 @@ function initCommon() {
             if (a.getAttribute('href') === 'categories.html') a.classList.toggle('active', page === 'categories.html' && !isScrub);
         });
     })();
-    // Preloader — hide on DOMContentLoaded+300ms (don't wait for Firebase SDKs)
+    // Preloader — hide on DOMContentLoaded+300ms
     const hidePreloader = () => { setTimeout(() => { const p = document.getElementById('preloader'); if (p) p.classList.add('hidden'); }, 300); };
     hidePreloader(); // DOMContentLoaded has already fired since we're inside this listener
     // Absolute hard cap at 1.2s just in case
@@ -2630,11 +2630,11 @@ async function openAccountPanel() {
     const modal = document.getElementById('authModal');
     modal.innerHTML = `<div class="modal account-modal-v2"><button class="acct-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button><div style="text-align:center;padding:50px 30px;"><div class="loader"><div class="loader-ring"></div><span class="loader-text">SSA</span></div><p style="margin-top:14px;color:var(--text-muted);font-size:0.88rem;">Loading your account...</p></div></div>`;
     modal.classList.add('active');
-    let firestoreOrders = [];
+    let supabaseOrders = [];
     if (window.db) {
         try {
             const snap = await db.collection('orders').where('customerEmail', '==', currentUser.email).get();
-            firestoreOrders = snap.docs.map(d => ({
+            supabaseOrders = snap.docs.map(d => ({
                 id: d.data().orderId,
                 date: d.data().createdAt?.seconds ? new Date(d.data().createdAt.seconds*1000).toISOString() : new Date().toISOString(),
                 items: d.data().items || [],
@@ -2659,7 +2659,7 @@ async function openAccountPanel() {
     const localOrders = JSON.parse(localStorage.getItem('ssa_orders_' + currentUser.email) || '[]');
     // For authenticated Supabase users trust the database; do not fall back to stale localStorage
     const isAuthenticatedUser = !!(window.getCurrentUser && window.getCurrentUser());
-    const orders = (firestoreOrders.length > 0 || isAuthenticatedUser) ? firestoreOrders : localOrders;
+    const orders = (supabaseOrders.length > 0 || isAuthenticatedUser) ? supabaseOrders : localOrders;
     const avatar = localStorage.getItem('ssa_avatar_' + currentUser.email) || '';
     const avatarHtml = avatar ? `<img src="${avatar}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.15);">` : `<i class="fas fa-user-circle" style="font-size:72px;color:#0066cc;"></i>`;
     modal.innerHTML = `<div class="modal account-modal-v2">
@@ -2893,7 +2893,7 @@ function resolveOrderForInvoice(orderId) {
 function _bestShippingForInvoice(order) {
         const shipping = { ...(order.shipping || {}) };
 
-        // If order came from Firestore and lacks address fields, pull from local order copy
+        // If order came from Supabase and lacks address fields, pull from local order copy
         if (currentUser?.email) {
                 const local = getOrderHistory().find(o => o.id === order.id);
                 if (local?.shipping) {

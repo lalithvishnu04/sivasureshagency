@@ -107,7 +107,7 @@ async function loadOutOfStockData() {
     const CACHE_KEY = '_ssa_inv_status_v1';
     const CACHE_TTL = 120000;
 
-    // 1. sessionStorage hit — zero network/Firestore reads
+    // 1. sessionStorage hit — zero network reads
     try {
         const raw = sessionStorage.getItem(CACHE_KEY);
         if (raw) {
@@ -132,7 +132,7 @@ async function loadOutOfStockData() {
         // 2. Backend API
         if (window.ssaApi && window.ssaApi.enabled) {
             try { invList = await window.ssaApi.getInventoryStatus(); console.log('[stock] API:', invList.length, 'items'); }
-            catch (e) { console.warn('[stock] API failed, using Firestore:', e.message); }
+            catch (e) { console.warn('[stock] API failed, using Supabase:', e.message); }
         }
 
         // 3. Direct Supabase read (preferred for variant-level color status and fresher updates)
@@ -146,10 +146,10 @@ async function loadOutOfStockData() {
                 });
                 if (detailed.length) {
                     invList = detailed;
-                    console.log('[stock] Firestore:', invList.length, 'items');
+                    console.log('[stock] Supabase:', invList.length, 'items');
                 }
             } catch (e) {
-                console.warn('[stock] Firestore read failed:', e.message);
+                console.warn('[stock] Supabase read failed:', e.message);
             }
         }
 

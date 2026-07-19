@@ -57,12 +57,12 @@ let authInitAttempts = 0;
 function initializeAuthListener() {
     authInitAttempts++;
     console.log(`[admin.js] Init attempt ${authInitAttempts}:`, {
-        _ready: typeof window._firebaseReady,
+        _ready: typeof window._dbReady,
         auth: typeof window.auth,
         db: typeof window.db
     });
     
-    if (typeof auth === 'undefined' || !auth || !window._firebaseReady) {
+    if (typeof auth === 'undefined' || !auth || !(window._dbReady || window._firebaseReady)) {
         if (authInitAttempts > 100) {
             const loginErr = document.getElementById('loginError');
             if (loginErr) loginErr.textContent = 'Backend initialization failed. Please refresh the page.';
@@ -127,7 +127,7 @@ initializeAuthListener();
 
 function handleAdminLogin(e) {
     e.preventDefault();
-    if (typeof auth === 'undefined' || !auth || !window._firebaseReady) {
+    if (typeof auth === 'undefined' || !auth || !(window._dbReady || window._firebaseReady)) {
         showLoginError('Backend is still loading — please wait a moment and try again.');
         return;
     }

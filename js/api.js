@@ -1,19 +1,19 @@
 // ============================================================
 //  SSA API Client (v65) — js/api.js
 //
-//  ⚙️  TO ACTIVATE: after running  firebase deploy --only functions
-//      paste your Firebase Function URL below:
+//  ⚙️  TO ACTIVATE: deploy a backend (Node/Express/Supabase Edge) and
+//      paste your server URL below:
 //
-//      const SSA_API_BASE = 'https://us-central1-siva-suresh-agency.cloudfunctions.net/ssa';
+//      const SSA_API_BASE = 'https://your-backend.onrender.com/api';
 //
-//  Leave as '' to keep using direct Firestore (current fallback behavior).
+//  Leave as '' to use direct Supabase reads (current default).
 //  The frontend falls back gracefully when SSA_API_BASE is empty.
 // ============================================================
 
 const SSA_API_BASE = ''; // ← paste your Render/Railway URL here after deploying
 
 // ── SessionStorage cache ──────────────────────────────────────
-// Caches Firestore responses for the lifetime of a browser tab.
+// Caches Supabase responses for the lifetime of a browser tab.
 // Even without the backend, this cuts inventory reads by ~90%
 // (page-to-page navigation reuses the same fetched data).
 
@@ -182,4 +182,4 @@ window.ssaApi = {
     clearAll: () => _ssaCache.del('')
 };
 
-console.log('[api.js] SSA API client ready. Backend:', SSA_API_BASE || '(not configured — using Firestore directly)');
+console.log('[api.js] SSA API client ready. Backend:', SSA_API_BASE || '(not configured — using Supabase directly)');

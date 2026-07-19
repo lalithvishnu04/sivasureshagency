@@ -302,7 +302,7 @@ console.log('[backend-init] Starting Supabase initialization...');
     }
 
     window.db = { collection: (name) => new ColRef(name) };
-    // Keep fireDb as a deprecated alias so old code still works during transition
+    // fireDb kept only as a deprecated alias — all new code should use window.db
     window.fireDb = window.db;
 
     window.fsServerTimestamp = () => ({ _fsOp: 'serverTime' });
