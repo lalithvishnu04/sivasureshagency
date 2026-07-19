@@ -323,17 +323,21 @@
      * Build the rating UI HTML string for injection into order detail sections.
      * @param {string} orderId
      * @param {number|null} existingRating — if already rated
+     * @param {string|null} existingComment — saved comment
+     * @param {string|null} existingImage — saved image data URL
      */
-    window.buildRatingUI = function(orderId, existingRating = null) {
+    window.buildRatingUI = function(orderId, existingRating = null, existingComment = null, existingImage = null) {
         if (existingRating) {
             const stars = Array.from({length: 5}, (_, i) =>
-                `<i class="fas fa-star" style="color:${i < existingRating ? '#f59e0b' : '#d1d5db'};font-size:1.2rem"></i>`
+                `<i class="fas fa-star" style="color:${i < existingRating ? '#f59e0b' : '#d1d5db'};font-size:1.1rem"></i>`
             ).join('');
             return `
-            <div class="order-rating-wrap" data-order-id="${orderId}">
+            <div class="order-rating-wrap rated" data-order-id="${orderId}">
                 <div class="order-rating-title"><i class="fas fa-star"></i> Your Rating</div>
-                <div class="rating-stars-row" style="justify-content:flex-start;gap:4px;">${stars}</div>
-                <span class="order-rated-badge"><i class="fas fa-check-circle"></i> Thank you for your feedback!</span>
+                <div class="rating-stars-row" style="justify-content:flex-start;gap:3px;margin-bottom:6px;">${stars}</div>
+                ${existingComment ? `<div class="rating-saved-comment">&ldquo;${existingComment}&rdquo;</div>` : ''}
+                ${existingImage ? `<div style="margin-top:6px"><img src="${existingImage}" alt="Review" style="max-width:80px;max-height:60px;border-radius:6px;object-fit:cover;border:1px solid #e2e8f0;"></div>` : ''}
+                <span class="order-rated-badge"><i class="fas fa-check-circle"></i> Thank you for rating!</span>
             </div>`;
         }
 
@@ -346,6 +350,13 @@
             <div class="order-rating-title"><i class="fas fa-star"></i> Rate Your Order</div>
             <div class="rating-stars-row" data-order-id="${orderId}">${stars}</div>
             <div class="rating-label" data-order-id="${orderId}">Tap a star to rate</div>
+            <div class="rating-extras" data-order-id="${orderId}" style="display:none">
+                <textarea class="rating-comment-input" placeholder="Share your experience (optional)..." rows="2" maxlength="300"></textarea>
+                <div class="rating-img-row">
+                    <label class="rating-img-btn"><i class="fas fa-camera"></i> Add Photo <input type="file" accept="image/*" class="rating-img-file" style="display:none"></label>
+                    <div class="rating-img-preview" style="display:none"><img class="rating-img-thumb" src="" alt=""><button type="button" class="rating-img-remove" aria-label="Remove"><i class="fas fa-times"></i></button></div>
+                </div>
+            </div>
             <button class="rating-submit-btn" data-order-id="${orderId}">Submit Rating</button>
         </div>`;
     };
@@ -360,6 +371,7 @@
             const orderId = row.dataset.orderId;
             const label   = $(`.rating-label[data-order-id="${orderId}"]`);
             const submitBtn = $(`.rating-submit-btn[data-order-id="${orderId}"]`);
+            const extras  = $(`.rating-extras[data-order-id="${orderId}"]`);
             let selected  = 0;
 
             function highlightTo(n) {
@@ -375,10 +387,9 @@
                     s.classList.remove('pop', 'hovered');
                     s.classList.toggle('selected', i < n);
                     if (i < n) {
-                        // Stagger the pop animation
                         setTimeout(() => {
                             s.classList.remove('pop');
-                            void s.offsetWidth; // reflow
+                            void s.offsetWidth;
                             s.classList.add('pop');
                         }, i * 45);
                     }
@@ -387,6 +398,7 @@
                     label.textContent = RATING_LABELS[n] || '';
                     label.className = `rating-label star-${n}`;
                 }
+                if (extras) extras.style.display = '';
                 if (submitBtn) submitBtn.classList.add('visible');
             }
 
@@ -394,33 +406,56 @@
                 star.addEventListener('mouseenter', () => highlightTo(i + 1));
                 star.addEventListener('mouseleave', () => highlightTo(selected));
                 star.addEventListener('click',      () => selectRating(i + 1));
-                // Touch
-                star.addEventListener('touchend', e => {
-                    e.preventDefault();
-                    selectRating(i + 1);
-                });
+                star.addEventListener('touchend', e => { e.preventDefault(); selectRating(i + 1); });
             });
+
+            // Image attach handler
+            const fileInput = extras?.querySelector('.rating-img-file');
+            const imgPreview = extras?.querySelector('.rating-img-preview');
+            const imgThumb = extras?.querySelector('.rating-img-thumb');
+            const imgRemove = extras?.querySelector('.rating-img-remove');
+            if (fileInput) {
+                fileInput.addEventListener('change', () => {
+                    const file = fileInput.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        if (imgThumb) imgThumb.src = e.target.result;
+                        if (imgPreview) imgPreview.style.display = 'flex';
+                        fileInput._dataUrl = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+            if (imgRemove) {
+                imgRemove.addEventListener('click', () => {
+                    if (fileInput) { fileInput.value = ''; delete fileInput._dataUrl; }
+                    if (imgPreview) imgPreview.style.display = 'none';
+                    if (imgThumb) imgThumb.src = '';
+                });
+            }
 
             if (submitBtn) {
                 submitBtn.addEventListener('click', () => {
                     if (!selected) return;
-                    submitRating(orderId, selected, submitBtn);
+                    const comment = extras?.querySelector('.rating-comment-input')?.value?.trim() || '';
+                    const imageDataUrl = fileInput?._dataUrl || '';
+                    submitRating(orderId, selected, comment, imageDataUrl, submitBtn);
                 });
             }
         });
     }
 
-    async function submitRating(orderId, rating, btn) {
+    async function submitRating(orderId, rating, comment, imageDataUrl, btn) {
         btn.disabled = true;
         btn.textContent = 'Submitting…';
 
         try {
-            // Persist to Supabase if available
+            const updateData = { rating, rating_at: new Date().toISOString() };
+            if (comment) updateData.ratingComment = comment;
+            // Don't store base64 image in DB - too large; store in localStorage only
             if (window._supabase) {
-                await window._supabase
-                    .from('orders')
-                    .update({ rating, rating_at: new Date().toISOString() })
-                    .eq('id', orderId);
+                await window._supabase.from('orders').update(updateData).eq('id', orderId);
             } else if (window.db && window.db.updateRating) {
                 await window.db.updateRating(orderId, rating);
             }
@@ -428,15 +463,32 @@
             console.warn('[Rating] Save failed:', err);
         }
 
-        // Replace the whole rating block with a "thank you"
+        // Persist to localStorage so the rating persists across page reloads
+        try {
+            const u = JSON.parse(localStorage.getItem('ssa_user') || 'null');
+            if (u?.email) {
+                const key = 'ssa_orders_' + u.email;
+                const orders = JSON.parse(localStorage.getItem(key) || '[]');
+                const idx = orders.findIndex(o => o.id === orderId);
+                if (idx !== -1) {
+                    orders[idx].rating = rating;
+                    if (comment) orders[idx].ratingComment = comment;
+                    if (imageDataUrl) orders[idx].ratingImage = imageDataUrl;
+                    localStorage.setItem(key, JSON.stringify(orders));
+                }
+            }
+        } catch (e) { console.warn('[Rating] localStorage save failed:', e); }
+
+        // Replace the whole rating block with a "thank you" showing stars + comment
         const wrap = btn.closest('.order-rating-wrap');
         if (wrap) {
+            const stars = Array.from({length:5},(_,i)=>`<i class="fas fa-star" style="color:${i<rating?'#f59e0b':'#d1d5db'};font-size:1.1rem"></i>`).join('');
             wrap.innerHTML = `
                 <div class="order-rating-title"><i class="fas fa-star"></i> Your Rating</div>
-                <div class="rating-stars-row" style="justify-content:flex-start;gap:4px;">
-                    ${Array.from({length:5},(_,i)=>`<i class="fas fa-star" style="color:${i<rating?'#f59e0b':'#d1d5db'};font-size:1.2rem"></i>`).join('')}
-                </div>
-                <span class="order-rated-badge"><i class="fas fa-check-circle"></i> Thank you for your feedback!</span>
+                <div class="rating-stars-row" style="justify-content:flex-start;gap:3px;margin-bottom:6px;">${stars}</div>
+                ${comment ? `<div class="rating-saved-comment">&ldquo;${comment}&rdquo;</div>` : ''}
+                ${imageDataUrl ? `<div style="margin-top:6px"><img src="${imageDataUrl}" alt="Review" style="max-width:80px;max-height:60px;border-radius:6px;object-fit:cover;border:1px solid #e2e8f0;"></div>` : ''}
+                <span class="order-rated-badge"><i class="fas fa-check-circle"></i> Thank you for rating!</span>
             `;
         }
     }

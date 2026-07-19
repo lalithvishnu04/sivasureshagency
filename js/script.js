@@ -2316,7 +2316,7 @@ function openProductDetail(id) {
     const embToggleBadge = _embMin === 0
         ? '<span class="emb-badge emb-free"><i class="fas fa-gift"></i> ' + (embAllFree ? 'FREE' : 'FREE option') + '</span>'
         : `<span class="emb-badge">from +\u20b9${_embMin}</span>`;
-    const embHtml = embEnabled ? `<div class="emb-section${_embMin === 0 ? ' emb-section-free' : ''}" id="embSec-${p.id}"><div class="emb-toggle" onclick="toggleEmbroidery(${p.id})"><span><i class="fas fa-pen-nib"></i> Add Embroidery ${embToggleBadge}</span><i class="fas fa-chevron-down emb-chevron" id="embChev-${p.id}"></i></div><div class="emb-body" id="embBody-${p.id}" style="display:none"><div class="emb-field"><label>Embroidery Type *</label><div class="emb-type-row"><button type="button" class="emb-type-btn active" data-type="TEXT" data-emb-price="${embPrices['TEXT']}" onclick="selectEmbType(this,${p.id})">TEXT ${_embTag('TEXT')}</button><button type="button" class="emb-type-btn" data-type="LOGO" data-emb-price="${embPrices['LOGO']}" onclick="selectEmbType(this,${p.id})">LOGO ${_embTag('LOGO')}</button><button type="button" class="emb-type-btn" data-type="TEXT &amp; LOGO" data-emb-price="${embPrices['TEXT & LOGO']}" onclick="selectEmbType(this,${p.id})">TEXT &amp; LOGO ${_embTag('TEXT & LOGO')}</button></div></div><div class="emb-text-fields" id="embTF-${p.id}"><div class="emb-row2"><div class="emb-field"><label>Line 1 *</label><div class="emb-inp-wrap"><input type="text" id="embL1-${p.id}" maxlength="100" placeholder="Enter Line 1" oninput="updateEmbCount(this,'embC1-${p.id}')"><span id="embC1-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-field"><label>Line 2</label><div class="emb-inp-wrap"><input type="text" id="embL2-${p.id}" maxlength="100" placeholder="Enter Line 2" oninput="updateEmbCount(this,'embC2-${p.id}')"><span id="embC2-${p.id}" class="emb-char-count">0/100</span></div></div></div><div class="emb-field"><label>Line 3</label><div class="emb-inp-wrap"><input type="text" id="embL3-${p.id}" maxlength="100" placeholder="Enter Line 3" oninput="updateEmbCount(this,'embC3-${p.id}')"><span id="embC3-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-row2"><div class="emb-field"><label>Text Position *</label><select id="embPos-${p.id}"><option value="">Select Position</option><option>Left Chest</option><option>Right Chest</option><option>Back Center</option><option>Left Sleeve</option><option>Right Sleeve</option></select></div><div class="emb-field"><label>Text Color</label><div class="emb-colors"><button type="button" class="emb-col active" style="background:#fff;border:2px solid #ccc" data-c="White" onclick="selectEmbColor(this)" title="White"></button><button type="button" class="emb-col" style="background:#000" data-c="Black" onclick="selectEmbColor(this)" title="Black"></button><button type="button" class="emb-col" style="background:#1A237E" data-c="Navy" onclick="selectEmbColor(this)" title="Navy"></button><button type="button" class="emb-col" style="background:#F9A825" data-c="Yellow" onclick="selectEmbColor(this)" title="Yellow"></button><button type="button" class="emb-col" style="background:#C62828" data-c="Red" onclick="selectEmbColor(this)" title="Red"></button><button type="button" class="emb-col" style="background:#E65100" data-c="Orange" onclick="selectEmbColor(this)" title="Orange"></button><button type="button" class="emb-col" style="background:#1B5E20" data-c="Green" onclick="selectEmbColor(this)" title="Green"></button></div></div></div><div class="emb-field"><label>Font Style</label><div class="emb-fonts"><button type="button" class="emb-font active" style="font-family:cursive;font-size:1rem" data-f="Cursive" onclick="selectEmbFont(this)">Sample</button><button type="button" class="emb-font" style="font-family:Georgia,serif;font-size:0.9rem" data-f="Serif" onclick="selectEmbFont(this)">Sample</button><button type="button" class="emb-font" style="font-family:sans-serif;font-weight:900;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase" data-f="Block" onclick="selectEmbFont(this)">SAMPLE</button></div></div></div><div class="emb-logo-fields" id="embLogoF-${p.id}" style="display:none"><div class="emb-field"><label>Upload Logo *</label><input type="file" id="embLogoFile-${p.id}" accept="image/*" onchange="previewEmbLogo(this,'${p.id}')"><div id="embLogoPreview-${p.id}" class="emb-logo-preview" style="display:none"><img id="embLogoImg-${p.id}" src="" alt="Logo preview" style="max-width:100px;max-height:80px;object-fit:contain;border-radius:6px;margin-top:6px;"><span class="emb-logo-filename" id="embLogoName-${p.id}"></span></div><p class="emb-logo-note"><i class="fas fa-info-circle"></i> Accepted: PNG, JPG, SVG (max 2MB)</p></div><div class="emb-field"><label>Logo Position *</label><select id="embLogoPos-${p.id}"><option value="">Select Position</option><option>Left Chest</option><option>Right Chest</option><option>Back Center</option><option>Left Sleeve</option><option>Right Sleeve</option></select></div></div></div></div>` : '';
+    const embHtml = embEnabled ? `<div class="emb-section${_embMin === 0 ? ' emb-section-free' : ''}" id="embSec-${p.id}"><div class="emb-toggle" onclick="toggleEmbroidery(${p.id})"><span><i class="fas fa-pen-nib"></i> Add Embroidery ${embToggleBadge}</span><i class="fas fa-chevron-down emb-chevron" id="embChev-${p.id}"></i></div><div class="emb-body" id="embBody-${p.id}" style="display:none"><div class="emb-field"><label>Embroidery Type *</label><div class="emb-type-row"><button type="button" class="emb-type-btn active" data-type="TEXT" data-emb-price="${embPrices['TEXT']}" onclick="selectEmbType(this,${p.id})">TEXT ${_embTag('TEXT')}</button><button type="button" class="emb-type-btn" data-type="LOGO" data-emb-price="${embPrices['LOGO']}" onclick="selectEmbType(this,${p.id})">LOGO ${_embTag('LOGO')}</button><button type="button" class="emb-type-btn" data-type="TEXT &amp; LOGO" data-emb-price="${embPrices['TEXT & LOGO']}" onclick="selectEmbType(this,${p.id})">TEXT &amp; LOGO ${_embTag('TEXT & LOGO')}</button></div></div><div class="emb-text-fields" id="embTF-${p.id}"><div class="emb-row2"><div class="emb-field"><label>Line 1 *</label><div class="emb-inp-wrap"><input type="text" id="embL1-${p.id}" maxlength="100" placeholder="Enter Line 1" oninput="updateEmbCount(this,'embC1-${p.id}')"><span id="embC1-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-field"><label>Line 2</label><div class="emb-inp-wrap"><input type="text" id="embL2-${p.id}" maxlength="100" placeholder="Enter Line 2" oninput="updateEmbCount(this,'embC2-${p.id}')"><span id="embC2-${p.id}" class="emb-char-count">0/100</span></div></div></div><div class="emb-field"><label>Line 3</label><div class="emb-inp-wrap"><input type="text" id="embL3-${p.id}" maxlength="100" placeholder="Enter Line 3" oninput="updateEmbCount(this,'embC3-${p.id}')"><span id="embC3-${p.id}" class="emb-char-count">0/100</span></div></div><div class="emb-row2"><div class="emb-field"><label>Text Position *</label><select id="embPos-${p.id}"><option value="">Select Position</option><option>Left Chest</option><option>Right Chest</option><option>Back Center</option><option>Left Sleeve</option><option>Right Sleeve</option></select></div><div class="emb-field"><label>Text Color</label><div class="emb-colors"><button type="button" class="emb-col active" style="background:#fff;border:2px solid #ccc" data-c="White" onclick="selectEmbColor(this)" title="White"></button><button type="button" class="emb-col" style="background:#000" data-c="Black" onclick="selectEmbColor(this)" title="Black"></button><button type="button" class="emb-col" style="background:#1A237E" data-c="Navy" onclick="selectEmbColor(this)" title="Navy"></button><button type="button" class="emb-col" style="background:#F9A825" data-c="Yellow" onclick="selectEmbColor(this)" title="Yellow"></button><button type="button" class="emb-col" style="background:#C62828" data-c="Red" onclick="selectEmbColor(this)" title="Red"></button><button type="button" class="emb-col" style="background:#E65100" data-c="Orange" onclick="selectEmbColor(this)" title="Orange"></button><button type="button" class="emb-col" style="background:#1B5E20" data-c="Green" onclick="selectEmbColor(this)" title="Green"></button></div></div></div><div class="emb-field"><label>Font Style</label><div class="emb-fonts"><button type="button" class="emb-font active" style="font-family:cursive;font-size:1rem" data-f="Cursive" onclick="selectEmbFont(this)">Cursive</button><button type="button" class="emb-font" style="font-family:Georgia,serif;font-size:0.9rem" data-f="Serif" onclick="selectEmbFont(this)">Serif</button><button type="button" class="emb-font" style="font-family:sans-serif;font-weight:900;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase" data-f="Block" onclick="selectEmbFont(this)">Block</button></div></div></div><div class="emb-logo-fields" id="embLogoF-${p.id}" style="display:none"><div class="emb-field"><label>Upload Logo *</label><input type="file" id="embLogoFile-${p.id}" accept="image/*" onchange="previewEmbLogo(this,'${p.id}')"><div id="embLogoPreview-${p.id}" class="emb-logo-preview" style="display:none"><img id="embLogoImg-${p.id}" src="" alt="Logo preview" style="max-width:100px;max-height:80px;object-fit:contain;border-radius:6px;margin-top:6px;"><span class="emb-logo-filename" id="embLogoName-${p.id}"></span></div><p class="emb-logo-note"><i class="fas fa-info-circle"></i> Accepted: PNG, JPG, SVG (max 2MB)</p></div><div class="emb-field"><label>Logo Position *</label><select id="embLogoPos-${p.id}"><option value="">Select Position</option><option>Left Chest</option><option>Right Chest</option><option>Back Center</option><option>Left Sleeve</option><option>Right Sleeve</option></select></div></div></div></div>` : '';
 
     const modal = document.getElementById('productDetailModal');
     const accordionHtml = (p.fitSizing || p.fabricCare || p.returns) ? `<div class="pd-accordion">${p.fitSizing ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Details &amp; Fit</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.fitSizing)}</div></div>` : ''}${p.fabricCare ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Fabric &amp; Care</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.fabricCare)}</div></div>` : ''}${p.returns ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Return &amp; Exchange</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.returns)}</div></div>` : ''}</div>` : '';
@@ -2643,6 +2643,10 @@ async function openAccountPanel() {
                 total: d.data().total || 0,
                 payment: d.data().payment || 'COD',
                 status: d.data().status || 'Processing',
+                rating: d.data().rating || null,
+                ratingComment: d.data().ratingComment || null,
+                ratingImage: d.data().ratingImage || null,
+                estimatedDelivery: d.data().estimatedDelivery || null,
                 shipping: {
                     name: d.data().customerName || currentUser.name,
                     email: d.data().customerEmail || currentUser.email,
@@ -2695,11 +2699,12 @@ async function openAccountPanel() {
                             <span class="acct-order-total">Total: &#8377;${o.total.toLocaleString('en-IN')}</span>
                             <span class="acct-order-pay"><i class="fas fa-credit-card"></i> ${o.payment}</span>
                         </div>
+                        ${o.estimatedDelivery ? `<div style="padding:6px 14px 4px;font-size:0.78rem;color:#0d9488;font-weight:600"><i class="fas fa-calendar-check"></i> Est. Delivery: ${new Date(o.estimatedDelivery + 'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>` : ''}
                         <div style="display:flex;gap:8px;padding:0 14px 12px;">
                             <button class="btn btn-outline-dark btn-sm" style="flex:1;justify-content:center;" onclick="downloadInvoice('${o.id}')"><i class="fas fa-file-invoice"></i> Invoice</button>
                             <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center;" onclick="reorderFromHistory('${o.id}')"><i class="fas fa-redo"></i> Reorder</button>
                         </div>
-                        ${window.buildRatingUI ? window.buildRatingUI(o.id, o.rating || null) : ''}
+                        ${window.buildRatingUI ? window.buildRatingUI(o.id, o.rating || null, o.ratingComment || null, o.ratingImage || null) : ''}
                     </div>`).join('')}
             </div>
             <div class="acct-section" id="accountProfile" style="display:none;">
@@ -2924,13 +2929,26 @@ function buildInvoiceHtml(order) {
         const shipping = _bestShippingForInvoice(order);
         const logoUrl = new URL('images/Images/SSA Logo.png', window.location.href).href;
         const invoiceDate = new Date(order.date || Date.now());
-        const dueDate = new Date(invoiceDate.getTime() + (2 * 24 * 60 * 60 * 1000));
         const rows = (order.items || []).map(i => {
                 const qty = i.qty || 0;
                 const unit = i.price || 0;
                 const line = qty * unit;
                 const variant = [i.selectedSize || null, i.selectedColor || null].filter(Boolean).join(' / ');
-                return `<tr><td>${i.name || 'Item'}${variant ? `<br><small class="variant">${variant}</small>` : ''}</td><td class="center">${qty}</td><td class="right">&#8377;${unit.toLocaleString('en-IN')}</td><td class="right">&#8377;${line.toLocaleString('en-IN')}</td></tr>`;
+                const emb = i.embroidery;
+                let embDetails = '';
+                if (emb) {
+                    const parts = [`<strong>Embroidery (${emb.type || 'TEXT'})</strong>`];
+                    if (emb.line1) parts.push(`Line 1: ${emb.line1}`);
+                    if (emb.line2) parts.push(`Line 2: ${emb.line2}`);
+                    if (emb.line3) parts.push(`Line 3: ${emb.line3}`);
+                    if (emb.position) parts.push(`Text Position: ${emb.position}`);
+                    if (emb.logoPosition) parts.push(`Logo Position: ${emb.logoPosition}`);
+                    if (emb.font) parts.push(`Font: ${emb.font}`);
+                    if (emb.color) parts.push(`Thread: ${emb.color}`);
+                    if (emb.logoFileName) parts.push(`Logo: ${emb.logoFileName}`);
+                    embDetails = `<br><small class="emb-detail">${parts.join(' &bull; ')}</small>`;
+                }
+                return `<tr><td>${i.name || 'Item'}${variant ? `<br><small class="variant">${variant}</small>` : ''}${embDetails}</td><td class="center">${qty}</td><td class="right">&#8377;${unit.toLocaleString('en-IN')}</td><td class="right">&#8377;${line.toLocaleString('en-IN')}</td></tr>`;
         }).join('');
 
         const subtotal = (order.items || []).reduce((s, i) => s + ((i.qty || 0) * (i.price || 0)), 0);
@@ -2943,18 +2961,21 @@ function buildInvoiceHtml(order) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice ${order.id}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root{--teal:#0d9488;--navy:#0f172a;--muted:#64748b;--line:#e2e8f0;--bg:#f8fafc;}
-        *{box-sizing:border-box;}
-        *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+        *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
         body{font-family:'Segoe UI',Arial,sans-serif;color:var(--navy);margin:0;background:#eef2f7;padding:24px;}
+        .print-bar{max-width:860px;margin:0 auto 16px;display:flex;justify-content:flex-end;gap:10px;}
+        .print-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff;border:none;border-radius:10px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(13,148,136,0.35);transition:transform 0.2s,box-shadow 0.2s;}
+        .print-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(13,148,136,0.45);}
         .sheet{max-width:860px;margin:0 auto;background:#fff;border:1px solid #dbe4ee;border-radius:18px;overflow:hidden;box-shadow:0 20px 48px rgba(15,23,42,0.12);}
         .hero{display:flex;justify-content:space-between;gap:20px;padding:22px 26px;background:linear-gradient(135deg,#0f172a 0%,#0d9488 100%);color:#fff;}
         .brand{display:flex;align-items:flex-start;gap:14px;}
         .logo{width:58px;height:58px;border-radius:12px;background:#fff;padding:6px;object-fit:contain;}
         .brand h1{margin:0;font-size:26px;line-height:1.1;}
         .brand p{margin:6px 0 0;font-size:12px;opacity:.9;line-height:1.6;}
-        .meta{min-width:245px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.22);padding:12px 14px;border-radius:12px;}
+        .meta{min-width:220px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.22);padding:12px 14px;border-radius:12px;}
         .meta p{margin:3px 0;font-size:13px;}
         .body{padding:22px 26px 26px;}
         .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
@@ -2967,24 +2988,18 @@ function buildInvoiceHtml(order) {
         .center{text-align:center;}
         .right{text-align:right;}
         .variant{color:var(--muted);font-size:12px;}
+        .emb-detail{color:#0d9488;font-size:11.5px;line-height:1.6;}
         .totals{width:360px;margin-left:auto;margin-top:16px;border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--bg);}
         .totals div{display:flex;justify-content:space-between;padding:7px 0;font-size:14px;}
         .totals .grand{font-weight:800;font-size:17px;border-top:1px dashed #c7d2df;margin-top:3px;padding-top:10px;color:var(--navy);}
         .foot{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;font-size:12px;color:var(--muted);}
-        .chip{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#d1fae5;color:#065f46;}
-        @media (max-width:760px){
-            body{padding:10px;background:#fff;}
-            .sheet{border:none;box-shadow:none;}
-            .hero{flex-direction:column;padding:16px;}
-            .body{padding:16px;}
-            .grid{grid-template-columns:1fr;}
-            .totals{width:100%;}
-        }
-        @page { size: A4; margin: 10mm; }
-        @media print {
-            body{background:#fff !important;padding:0 !important;}
+        @media (max-width:760px){body{padding:10px;background:#fff;}.sheet{border:none;box-shadow:none;}.hero{flex-direction:column;padding:16px;}.body{padding:16px;}.grid{grid-template-columns:1fr;}.totals{width:100%;}}
+        @page{size:A4;margin:10mm;}
+        @media print{
+            .print-bar{display:none!important;}
+            body{background:#fff!important;padding:0!important;}
             .sheet{width:190mm;max-width:190mm;margin:0 auto;box-shadow:none;border:1px solid #dbe4ee;border-radius:0;}
-            .hero{padding:14px 18px;}
+            .hero{padding:14px 18px;background:linear-gradient(135deg,#0f172a 0%,#0d9488 100%)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
             .body{padding:14px 18px 18px;}
             th,td{padding:8px 10px;font-size:12.5px;}
             .totals{width:86mm;}
@@ -2993,6 +3008,9 @@ function buildInvoiceHtml(order) {
     </style>
 </head>
 <body>
+    <div class="print-bar">
+        <button class="print-btn" onclick="window.print()"><i class="fas fa-print"></i> Print Invoice</button>
+    </div>
     <div class="sheet">
         <div class="hero">
             <div class="brand">
@@ -3005,9 +3023,7 @@ function buildInvoiceHtml(order) {
             <div class="meta">
                 <p><strong>Invoice No:</strong> ${order.id}</p>
                 <p><strong>Date:</strong> ${invoiceDate.toLocaleDateString('en-IN')}</p>
-                <p><strong>Due Date:</strong> ${dueDate.toLocaleDateString('en-IN')}</p>
                 <p><strong>Payment:</strong> ${order.payment || 'COD'}</p>
-                <p><strong>Status:</strong> <span class="chip">${order.status || 'Processing'}</span></p>
             </div>
         </div>
 
@@ -3037,7 +3053,7 @@ function buildInvoiceHtml(order) {
 
             <div class="totals">
                 <div><span>Subtotal</span><span>&#8377;${subtotal.toLocaleString('en-IN')}</span></div>
-                <div><span>Shipping</span><span>&#8377;${shippingCharge.toLocaleString('en-IN')}</span></div>
+                <div><span>Shipping</span><span>${shippingCharge > 0 ? '&#8377;' + shippingCharge.toLocaleString('en-IN') : 'FREE'}</span></div>
                 <div class="grand"><span>Total</span><span>&#8377;${(order.total || 0).toLocaleString('en-IN')}</span></div>
             </div>
 
@@ -3062,7 +3078,6 @@ function downloadInvoice(orderId) {
         w.document.open();
         w.document.write(html);
         w.document.close();
-        setTimeout(() => w.print(), 300);
 }
 
 function reorderFromHistory(orderId) {

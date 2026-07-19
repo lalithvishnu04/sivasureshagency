@@ -171,7 +171,7 @@ console.log('[backend-init] Starting Supabase initialization...');
             const row = _plainForWrite(obj);
             if (!row.createdAt) row.createdAt = _serverNow();
             if (!row.updatedAt) row.updatedAt = _serverNow();
-            if (!row.id) row.id = 'id_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+            delete row.id; // Let Supabase auto-generate the primary key
 
             const { data, error } = await client.from(this._name).insert([row]).select('id').single();
             if (error) throw new Error(error.message || 'Insert failed');

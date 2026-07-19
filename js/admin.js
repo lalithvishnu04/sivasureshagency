@@ -460,8 +460,16 @@ async function viewOrder(docId) {
                     ${(o.items || []).map(i => {
                         const embroidery = i.embroidery || null;
                         const details = embroidery ? `
-                            <div style="margin-top:6px;font-size:.78rem;color:var(--primary)">
-                                <strong>Embroidery:</strong> ${embroidery.type || 'TEXT'}${embroidery.line1 ? ` • ${embroidery.line1}` : ''}${embroidery.logoFileName ? ` • ${embroidery.logoFileName}` : ''}
+                            <div style="margin-top:6px;font-size:.78rem;color:var(--primary);line-height:1.8;background:rgba(13,148,136,0.05);border-radius:6px;padding:6px 8px;">
+                                <strong>Embroidery (${embroidery.type || 'TEXT'})</strong><br>
+                                ${embroidery.line1 ? `Line 1: <strong>${embroidery.line1}</strong><br>` : ''}
+                                ${embroidery.line2 ? `Line 2: ${embroidery.line2}<br>` : ''}
+                                ${embroidery.line3 ? `Line 3: ${embroidery.line3}<br>` : ''}
+                                ${embroidery.position ? `Text Position: <strong>${embroidery.position}</strong><br>` : ''}
+                                ${embroidery.logoPosition ? `Logo Position: <strong>${embroidery.logoPosition}</strong><br>` : ''}
+                                ${embroidery.font ? `Font Style: <strong>${embroidery.font}</strong><br>` : ''}
+                                ${embroidery.color ? `Thread Color: <strong>${embroidery.color}</strong>` : ''}
+                                ${embroidery.logoFileName ? `${embroidery.color ? '<br>' : ''}Logo File: ${embroidery.logoFileName}` : ''}
                             </div>
                         ` : '';
                         const preview = embroidery?.logoImage ? `
@@ -482,6 +490,7 @@ async function viewOrder(docId) {
                 <p>Method: <strong>${o.payment || 'COD'}</strong></p>
             </div>
             ${o.trackingId ? `<div class="od-section"><h5><i class="fas fa-truck"></i> Tracking</h5><p>${o.trackingId}</p></div>` : ''}
+            ${o.estimatedDelivery ? `<div class="od-section"><h5><i class="fas fa-calendar-check"></i> Estimated Delivery</h5><p>${new Date(o.estimatedDelivery + 'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})}</p></div>` : ''}
             <div class="od-actions">
                 <select id="orderStatusSelect" class="status-select">
                     <option value="Processing" ${o.status === 'Processing' ? 'selected' : ''}>Processing</option>
@@ -492,6 +501,10 @@ async function viewOrder(docId) {
                     <option value="Cancelled" ${o.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
                 </select>
                 <input type="text" id="orderTracking" placeholder="Tracking ID (optional)" value="${o.trackingId || ''}" class="tracking-input">
+                <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                    <label style="font-size:0.82rem;font-weight:600;color:var(--text-muted);white-space:nowrap"><i class="fas fa-calendar-check"></i> Est. Delivery</label>
+                    <input type="date" id="orderEstDelivery" value="${o.estimatedDelivery || ''}" style="flex:1;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.85rem;font-family:inherit;outline:none;" min="${new Date().toISOString().split('T')[0]}">
+                </div>
                 <button class="btn-primary" onclick="saveOrderUpdate('${docId}')"><i class="fas fa-save"></i> Update</button>
                 <button class="btn-secondary" onclick="printOrderInvoice('${docId}')"><i class="fas fa-file-invoice"></i> Invoice</button>
             </div>
@@ -503,11 +516,17 @@ async function viewOrder(docId) {
 async function saveOrderUpdate(docId) {
     const status    = document.getElementById('orderStatusSelect').value;
     const trackingId = document.getElementById('orderTracking').value.trim();
+    const estimatedDelivery = document.getElementById('orderEstDelivery')?.value?.trim() || null;
     try {
+        const updateData = { status, trackingId, updatedAt: fsServerTimestamp() };
+        if (estimatedDelivery) updateData.estimatedDelivery = estimatedDelivery;
         // Always write directly to Firestore (write operations are low-volume)
-        await db.collection('orders').doc(docId).update({ status, trackingId, updatedAt: fsServerTimestamp() });
+        await db.collection('orders').doc(docId).update(updateData);
         _invalidateCache('orders');
         if (window.ssaApi && window.ssaApi.enabled) window.ssaApi.invalidate('/api/admin/orders');
+        // Update the in-memory order object so the view reflects the change immediately
+        const idx = allOrders.findIndex(x => x.docId === docId);
+        if (idx !== -1) { allOrders[idx].status = status; allOrders[idx].trackingId = trackingId; if (estimatedDelivery) allOrders[idx].estimatedDelivery = estimatedDelivery; }
         showAdminToast('Order updated successfully');
         closeModal('orderModal');
         loadOrders();
@@ -1236,13 +1255,26 @@ function printOrderInvoice(docId) {
 
     const logoUrl = new URL('images/Images/SSA Logo.png', window.location.href).href;
     const invoiceDate = o.createdAt ? new Date(o.createdAt.seconds * 1000) : new Date();
-    const dueDate = new Date(invoiceDate.getTime() + (2 * 24 * 60 * 60 * 1000));
     const rows = (o.items || []).map(i => {
         const qty = i.qty || 0;
         const unit = i.price || 0;
         const amount = qty * unit;
         const variant = [i.selectedSize || null, i.selectedColor || null].filter(Boolean).join(' / ');
-        return `<tr><td>${i.name || 'Item'}${variant ? `<br><small class="variant">${variant}</small>` : ''}</td><td class="center">${qty}</td><td class="right">&#8377;${unit.toLocaleString('en-IN')}</td><td class="right">&#8377;${amount.toLocaleString('en-IN')}</td></tr>`;
+        const emb = i.embroidery;
+        let embDetails = '';
+        if (emb) {
+            const parts = [`<strong>Embroidery (${emb.type || 'TEXT'})</strong>`];
+            if (emb.line1) parts.push(`Line 1: ${emb.line1}`);
+            if (emb.line2) parts.push(`Line 2: ${emb.line2}`);
+            if (emb.line3) parts.push(`Line 3: ${emb.line3}`);
+            if (emb.position) parts.push(`Text Position: ${emb.position}`);
+            if (emb.logoPosition) parts.push(`Logo Position: ${emb.logoPosition}`);
+            if (emb.font) parts.push(`Font: ${emb.font}`);
+            if (emb.color) parts.push(`Thread: ${emb.color}`);
+            if (emb.logoFileName) parts.push(`Logo: ${emb.logoFileName}`);
+            embDetails = `<br><small class="emb-detail">${parts.join(' &bull; ')}</small>`;
+        }
+        return `<tr><td>${i.name || 'Item'}${variant ? `<br><small class="variant">${variant}</small>` : ''}${embDetails}</td><td class="center">${qty}</td><td class="right">&#8377;${unit.toLocaleString('en-IN')}</td><td class="right">&#8377;${amount.toLocaleString('en-IN')}</td></tr>`;
     }).join('');
 
     const subtotal = (o.items || []).reduce((s, i) => s + ((i.qty || 0) * (i.price || 0)), 0);
@@ -1254,17 +1286,21 @@ function printOrderInvoice(docId) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice ${o.orderId || docId}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root{--teal:#0d9488;--navy:#0f172a;--muted:#64748b;--line:#e2e8f0;--bg:#f8fafc;}
-        *{box-sizing:border-box;}
+        *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
         body{font-family:'Segoe UI',Arial,sans-serif;color:var(--navy);margin:0;background:#eef2f7;padding:24px;}
+        .print-bar{max-width:980px;margin:0 auto 16px;display:flex;justify-content:flex-end;gap:10px;}
+        .print-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff;border:none;border-radius:10px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(13,148,136,0.35);transition:transform 0.2s,box-shadow 0.2s;}
+        .print-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(13,148,136,0.45);}
         .sheet{max-width:980px;margin:0 auto;background:#fff;border:1px solid #dbe4ee;border-radius:18px;overflow:hidden;box-shadow:0 20px 48px rgba(15,23,42,0.12);}
         .hero{display:flex;justify-content:space-between;gap:20px;padding:22px 26px;background:linear-gradient(135deg,#0f172a 0%,#0d9488 100%);color:#fff;}
         .brand{display:flex;align-items:flex-start;gap:14px;}
         .logo{width:58px;height:58px;border-radius:12px;background:#fff;padding:6px;object-fit:contain;}
         .brand h1{margin:0;font-size:26px;line-height:1.1;}
         .brand p{margin:6px 0 0;font-size:12px;opacity:.9;line-height:1.6;}
-        .meta{min-width:245px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.22);padding:12px 14px;border-radius:12px;}
+        .meta{min-width:220px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.22);padding:12px 14px;border-radius:12px;}
         .meta p{margin:3px 0;font-size:13px;}
         .body{padding:22px 26px 26px;}
         .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
@@ -1277,23 +1313,29 @@ function printOrderInvoice(docId) {
         .center{text-align:center;}
         .right{text-align:right;}
         .variant{color:var(--muted);font-size:12px;}
+        .emb-detail{color:#0d9488;font-size:11.5px;line-height:1.6;}
         .totals{width:360px;margin-left:auto;margin-top:16px;border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--bg);}
         .totals div{display:flex;justify-content:space-between;padding:7px 0;font-size:14px;}
         .totals .grand{font-weight:800;font-size:17px;border-top:1px dashed #c7d2df;margin-top:3px;padding-top:10px;color:var(--navy);}
         .foot{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;font-size:12px;color:var(--muted);}
-        .chip{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#d1fae5;color:#065f46;}
-        @media (max-width:760px){
-            body{padding:10px;background:#fff;}
-            .sheet{border:none;box-shadow:none;}
-            .hero{flex-direction:column;padding:16px;}
-            .body{padding:16px;}
-            .grid{grid-template-columns:1fr;}
-            .totals{width:100%;}
+        @media(max-width:760px){body{padding:10px;background:#fff;}.sheet{border:none;box-shadow:none;}.hero{flex-direction:column;padding:16px;}.body{padding:16px;}.grid{grid-template-columns:1fr;}.totals{width:100%;}}
+        @page{size:A4;margin:10mm;}
+        @media print{
+            .print-bar{display:none!important;}
+            body{background:#fff!important;padding:0!important;}
+            .sheet{width:190mm;max-width:190mm;margin:0 auto;box-shadow:none;border:1px solid #dbe4ee;border-radius:0;}
+            .hero{padding:14px 18px;background:linear-gradient(135deg,#0f172a 0%,#0d9488 100%)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+            .body{padding:14px 18px 18px;}
+            th,td{padding:8px 10px;font-size:12.5px;}
+            .totals{width:86mm;}
+            .foot{font-size:11px;}
         }
-        @media print { body{background:#fff;padding:0;} .sheet{box-shadow:none;border:none;border-radius:0;} }
     </style>
 </head>
 <body>
+    <div class="print-bar">
+        <button class="print-btn" onclick="window.print()"><i class="fas fa-print"></i> Print Invoice</button>
+    </div>
     <div class="sheet">
         <div class="hero">
             <div class="brand">
@@ -1306,9 +1348,7 @@ function printOrderInvoice(docId) {
             <div class="meta">
                 <p><strong>Invoice No:</strong> ${o.orderId || docId.slice(0, 8)}</p>
                 <p><strong>Date:</strong> ${invoiceDate.toLocaleDateString('en-IN')}</p>
-                <p><strong>Due Date:</strong> ${dueDate.toLocaleDateString('en-IN')}</p>
                 <p><strong>Payment:</strong> ${o.payment || 'COD'}</p>
-                <p><strong>Status:</strong> <span class="chip">${o.status || 'Processing'}</span></p>
             </div>
         </div>
         <div class="body">
@@ -1335,7 +1375,7 @@ function printOrderInvoice(docId) {
             </table>
             <div class="totals">
                 <div><span>Subtotal</span><span>&#8377;${subtotal.toLocaleString('en-IN')}</span></div>
-                <div><span>Shipping</span><span>&#8377;${shippingCharge.toLocaleString('en-IN')}</span></div>
+                <div><span>Shipping</span><span>${shippingCharge > 0 ? '&#8377;' + shippingCharge.toLocaleString('en-IN') : 'FREE'}</span></div>
                 <div class="grand"><span>Total</span><span>&#8377;${(o.total || 0).toLocaleString('en-IN')}</span></div>
             </div>
             <div class="foot">
@@ -1352,7 +1392,6 @@ function printOrderInvoice(docId) {
     w.document.open();
     w.document.write(html);
     w.document.close();
-    setTimeout(() => w.print(), 250);
 }
 
 // ===== Deduplicate inventory (merge/delete extra copies per product+size+color) =====
