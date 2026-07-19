@@ -582,9 +582,9 @@ async function deduplicateProducts() {
     if (toDelete.length === 0) return;
     showAdminToast(`Removing ${toDelete.length} duplicate product(s)...`, 'info');
     for (const docId of toDelete) {
-        try { await db.collection('products').doc(docId).delete(); } catch (e) { /* ignore */ }
+        try { await db.collection('products').doc(docId).update({ deleted: true, isActive: false, updatedAt: fsServerTimestamp() }); } catch (e) { /* ignore */ }
     }
-    // Rebuild allProducts without deleted docs
+    // Rebuild allProducts without soft-deleted docs
     const deletedSet = new Set(toDelete);
     allProducts = allProducts.filter(p => !deletedSet.has(p.docId));
     showAdminToast(`Cleaned up ${toDelete.length} duplicate(s)`);
@@ -987,8 +987,8 @@ async function deleteProduct(docId) {
     // Capture product name before deletion so we can zero-out inventory
     const toDelete = allProducts.find(p => p.docId === docId);
     try {
-        // Hard-delete the product record
-        await db.collection('products').doc(docId).delete();
+        // Soft-delete: mark deleted=true so sync never re-adds this product
+        await db.collection('products').doc(docId).update({ deleted: true, isActive: false, updatedAt: fsServerTimestamp() });
         _invalidateCache('products');
         _invalidateCache('inventory');
         _markProductsDirty();
