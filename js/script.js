@@ -2699,6 +2699,7 @@ async function openAccountPanel() {
                             <button class="btn btn-outline-dark btn-sm" style="flex:1;justify-content:center;" onclick="downloadInvoice('${o.id}')"><i class="fas fa-file-invoice"></i> Invoice</button>
                             <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center;" onclick="reorderFromHistory('${o.id}')"><i class="fas fa-redo"></i> Reorder</button>
                         </div>
+                        ${window.buildRatingUI ? window.buildRatingUI(o.id, o.rating || null) : ''}
                     </div>`).join('')}
             </div>
             <div class="acct-section" id="accountProfile" style="display:none;">
@@ -2735,6 +2736,10 @@ async function openAccountPanel() {
         </div>
     </div>`;
     renderAddressList();
+    // Init rating stars and tab slider for the freshly rendered modal
+    if (window.SSAAnims && window.SSAAnims.initRatingStars) {
+        setTimeout(() => window.SSAAnims.initRatingStars(document.getElementById('accountOrders')), 100);
+    }
 }
 function showAccountTab(tab) {
     document.querySelectorAll('.acct-tab-btn, .account-tab').forEach(t => t.classList.remove('active'));
@@ -3120,6 +3125,15 @@ function placeOrder() {
     document.getElementById('orderId').textContent = order.id;
     document.getElementById('successModal').classList.add('active');
     cart = []; saveCart(); updateCartUI();
+
+    // Inject share card into success modal
+    const shareSlot = document.getElementById('successShareSlot');
+    if (shareSlot && window.buildShareCard) {
+        shareSlot.innerHTML = window.buildShareCard(order.id);
+        if (window.SSAAnims && window.SSAAnims.initShareMenus) {
+            window.SSAAnims.initShareMenus(shareSlot);
+        }
+    }
 }
 
 // ===== Hero Slider =====

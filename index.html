@@ -10,7 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=75">
+    <link rel="stylesheet" href="css/style.css?v=76">
+    <link rel="stylesheet" href="css/animations.css?v=1">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">    <link rel="apple-touch-icon" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
     <meta name="mobile-web-app-capable" content="yes">
@@ -570,6 +571,8 @@
                 <p>Thank you for your order. We'll contact you shortly to confirm.</p>
                 <p class="order-id">Order ID: <strong id="orderId"></strong></p>
                 <button class="btn btn-gradient" onclick="closeSuccessModal()">Continue Shopping</button>
+                <!-- Share Card — injected by animations.js after order placement -->
+                <div id="successShareSlot"></div>
             </div>
         </div>
     </div>
@@ -619,6 +622,7 @@
     <!-- Accessibility: ARIA live region for toasts -->
     <div id="ariaToast" aria-live="polite" aria-atomic="true" class="sr-only"></div>
     <script src="js/script.js?v=66" defer></script>
+    <script src="js/animations.js?v=1" defer></script>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     
