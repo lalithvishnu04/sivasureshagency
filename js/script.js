@@ -533,20 +533,30 @@ function getTaxonomy() {
         if (raw) {
             const t = JSON.parse(raw);
             if (Array.isArray(t) && t.length) {
-                const merged = DEFAULT_TAXONOMY.map(defHeading => {
-                    const storedHeading = (t.find(h => h && h.slug === defHeading.slug) || {});
-                    const mergedCats = (defHeading.cats || []).map(defCat => {
-                        const storedCat = ((storedHeading.cats || []).find(c => c && c.slug === defCat.slug) || {});
-                        const mergedSubs = (defCat.subs || []).map(defSub => {
-                            const storedSub = ((storedCat.subs || []).find(s => s && s.slug === defSub.slug) || {});
-                            return { ...defSub, ...storedSub };
-                        });
-                        return { ...defCat, ...storedCat, subs: mergedSubs };
-                    });
-                    return { ...defHeading, ...storedHeading, cats: mergedCats };
-                });
-                const extras = (t || []).filter(h => h && h.slug && !DEFAULT_TAXONOMY.some(def => def.slug === h.slug));
-                return [...merged, ...extras];
+                // Use STORED taxonomy as the primary source — preserves admin's order,
+                // labels, and structure. Only enrich with DEFAULT data for known slugs
+                // (fills in missing map/icon/subs that may not be stored yet).
+                return t.map(storedH => {
+                    if (!storedH || !storedH.slug) return null;
+                    const defH = DEFAULT_TAXONOMY.find(d => d.slug === storedH.slug);
+                    const storedCats = Array.isArray(storedH.cats) ? storedH.cats : [];
+                    const cats = storedCats.length
+                        ? storedCats.map(storedC => {
+                            if (!storedC || !storedC.slug) return null;
+                            const defC = defH && (defH.cats || []).find(c => c.slug === storedC.slug);
+                            const storedSubs = Array.isArray(storedC.subs) ? storedC.subs : [];
+                            const subs = storedSubs.length
+                                ? storedSubs.map(storedS => {
+                                    if (!storedS || !storedS.slug) return null;
+                                    const defS = defC && (defC.subs || []).find(s => s.slug === storedS.slug);
+                                    return defS ? { ...defS, ...storedS } : storedS;
+                                }).filter(Boolean)
+                                : (defC ? (defC.subs || []) : []);
+                            return defC ? { ...defC, ...storedC, subs } : { ...storedC, subs };
+                        }).filter(Boolean)
+                        : (defH ? (defH.cats || []) : []);
+                    return defH ? { ...defH, ...storedH, cats } : { ...storedH, cats };
+                }).filter(Boolean);
             }
         }
     } catch (e) { /* ignore */ }
@@ -3519,9 +3529,12 @@ function openImageLightbox(imgIdOrSrc) {
         const img = lb.querySelector('img');
         if (img) {
             img.addEventListener('dblclick', (e) => { e.stopPropagation(); zoom = zoom > 1 ? 1 : 2; panX = 0; panY = 0; applyTransform(); });
+            img.draggable = false; // prevent browser's native image drag interfering with pan
             img.addEventListener('mousedown', (e) => {
                 if (zoom === 1) return;
+                e.preventDefault(); // stop native drag
                 dragActive = true; dragStartX = e.clientX; dragStartY = e.clientY;
+                img.style.cursor = 'grabbing';
             });
             img.addEventListener('mousemove', (e) => {
                 if (!dragActive || zoom === 1) return;
@@ -3530,20 +3543,24 @@ function openImageLightbox(imgIdOrSrc) {
                 dragStartX = e.clientX; dragStartY = e.clientY;
                 applyTransform();
             });
-            img.addEventListener('mouseup', () => { dragActive = false; });
+            img.addEventListener('mouseup', () => { dragActive = false; img.style.cursor = zoom > 1 ? 'grab' : 'default'; });
             img.addEventListener('mouseleave', () => { dragActive = false; });
             // Pinch-to-zoom state (Issue 7)
             let pinchStartDist = 0, pinchStartZoom = 1;
+            let wasPinch = false; // track if the last touch was a pinch (not a swipe)
             img.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 2) {
-                    // Pinch gesture starting
+                    // Pinch gesture starting — reset swipe tracking so touchend won't navigate
                     e.preventDefault();
+                    wasPinch = true;
+                    touchStartX = 0; // disable swipe detection for this gesture
                     pinchStartDist = Math.hypot(
                         e.touches[0].clientX - e.touches[1].clientX,
                         e.touches[0].clientY - e.touches[1].clientY
                     );
                     pinchStartZoom = zoom;
                 } else if (e.touches.length === 1) {
+                    wasPinch = false;
                     touchStartX = e.touches[0].clientX;
                     const touchStartY = e.touches[0].clientY;
                     if (zoom > 1) { dragActive = true; dragStartX = touchStartX; dragStartY = touchStartY; }
@@ -3566,12 +3583,16 @@ function openImageLightbox(imgIdOrSrc) {
                     e.preventDefault();
                 }
             }, { passive: false });
-            img.addEventListener('touchend', () => {
+            img.addEventListener('touchend', (e) => {
                 dragActive = false;
-                if (zoom === 1) return;
-                if (touchStartX && Math.abs(touchStartX - dragStartX) > 70) {
-                    window._lbNav(touchStartX > dragStartX ? -1 : 1);
+                // If this was a pinch gesture, never trigger swipe navigation
+                if (wasPinch) { wasPinch = false; return; }
+                // Only navigate when truly zoomed out (zoom=1) and a horizontal swipe detected
+                if (zoom > 1) return;
+                if (touchStartX && Math.abs(touchStartX - e.changedTouches[0].clientX) > 70) {
+                    window._lbNav(touchStartX > e.changedTouches[0].clientX ? 1 : -1);
                 }
+                touchStartX = 0;
             });
             img.addEventListener('wheel', (e) => { e.preventDefault(); window._lbZoom(e.deltaY > 0 ? -0.15 : 0.15); }, { passive: false });
         }

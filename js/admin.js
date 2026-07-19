@@ -1526,39 +1526,41 @@ window.showAdminToast = showAdminToast;
 window.showAdminLoading = showAdminLoading;
 window.syncInventoryFromProducts = syncInventoryFromProducts;
 
-// Clear ALL inventory and rebuild fresh from every product in the database.
+// Smart inventory sync: adds entries for NEW products/sizes, preserves existing stock statuses.
 async function clearAndResyncInventory() {
     const btn = document.querySelector('button[onclick="clearAndResyncInventory()"]');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...'; }
     try {
-        showAdminToast('Clearing inventory...', 'info');
-        // Bulk-delete all inventory rows in one Supabase call
-        if (window._supaClient) {
-            const { error: delErr } = await window._supaClient.from('inventory').delete().not('id', 'is', null);
-            if (delErr) throw new Error('Clear failed: ' + delErr.message);
-        } else {
-            const allInv = await db.collection('inventory').get();
-            for (const doc of allInv.docs) await db.collection('inventory').doc(doc.id).delete();
-        }
-
-        showAdminToast('Building inventory from products...', 'info');
-        // Fetch all products from the database (not the hardcoded seed list)
-        const prodSnap = await db.collection('products').get();
+        showAdminToast('Syncing inventory from products...', 'info');
+        // Fetch all products AND existing inventory in parallel
+        const [prodSnap, invSnap] = await Promise.all([
+            db.collection('products').get(),
+            db.collection('inventory').get()
+        ]);
         const products = prodSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
 
+        // Build a set of already-existing productName+size keys so we only create NEW entries
+        const existingKeys = new Set(
+            (invSnap.docs || []).map(d => {
+                const inv = d.data ? d.data() : d;
+                return (inv.productName || '') + '||' + (inv.size || '');
+            })
+        );
+
         const now = new Date().toISOString();
-        const records = [];
+        const newRecords = [];
         for (const p of products) {
             const sizes = Array.isArray(p.sizes) ? p.sizes.filter(Boolean) : [];
             if (!sizes.length) continue;
-            // Use stored colorVariants first, fallback to category colour map
             const cvColors = (Array.isArray(p.colorVariants) ? p.colorVariants : [])
                 .map(cv => (cv && cv.name) ? cv.name : null).filter(Boolean);
             const colors = cvColors.length ? cvColors : getColorsForCategory(p.category || '');
             const colorList = colors.length ? colors : ['Standard'];
             for (const size of sizes) {
+                const key = (p.name || '') + '||' + size;
+                if (existingKeys.has(key)) continue; // Already exists — keep its current status
                 for (const color of colorList) {
-                    records.push({
+                    newRecords.push({
                         productName: p.name,
                         productCategory: p.category || '',
                         size,
@@ -1571,17 +1573,20 @@ async function clearAndResyncInventory() {
             }
         }
 
-        // Bulk-insert all rows in one call
-        if (window._supaClient && records.length) {
+        // Bulk-insert only the NEW rows
+        if (window._supaClient && newRecords.length) {
             const CHUNK = 500;
-            for (let i = 0; i < records.length; i += CHUNK) {
-                const { error: insErr } = await window._supaClient.from('inventory').insert(records.slice(i, i + CHUNK));
+            for (let i = 0; i < newRecords.length; i += CHUNK) {
+                const { error: insErr } = await window._supaClient.from('inventory').insert(newRecords.slice(i, i + CHUNK));
                 if (insErr) throw new Error('Insert failed: ' + insErr.message);
             }
         }
 
         _invalidateCache('inventory');
-        showAdminToast(`Done! ${records.length} inventory entries created from ${products.length} products.`);
+        const msg = newRecords.length
+            ? `Synced! Added ${newRecords.length} new entries. Existing stock statuses preserved.`
+            : 'All products already have inventory entries — nothing changed.';
+        showAdminToast(msg);
         loadInventory();
     } catch (err) {
         console.error('[resync]', err);
