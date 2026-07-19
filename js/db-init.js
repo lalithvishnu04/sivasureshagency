@@ -169,9 +169,9 @@ console.log('[backend-init] Starting Supabase initialization...');
 
         async add(obj) {
             const row = _plainForWrite(obj);
-            if (!row.createdAt) row.createdAt = _serverNow();
-            if (!row.updatedAt) row.updatedAt = _serverNow();
             delete row.id; // Let Supabase auto-generate the primary key
+            // Do NOT auto-inject createdAt/updatedAt — not all tables have these columns.
+            // Callers must pass them explicitly via fsServerTimestamp() if needed.
 
             const { data, error } = await client.from(this._name).insert([row]).select('id').single();
             if (error) throw new Error(error.message || 'Insert failed');
