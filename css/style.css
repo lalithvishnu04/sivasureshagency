@@ -855,7 +855,7 @@ body.modal-open { overflow: hidden; touch-action: none; }
     .nav-cliniflex-dropdown.open .cliniflex-dropdown { position: static; left: auto; right: auto; transform: none; }
     .nav-dropdown.open > a .nav-arrow, .nav-cliniflex-dropdown.open > a .nav-arrow { transform: rotate(180deg); }
     /* Single column so every option fits within the phone/tablet screen width */
-    .mega-menu-inner { grid-template-columns: 1fr; gap: 6px; }
+    .mega-menu-inner { grid-template-columns: 1fr !important; gap: 6px; }
     .mega-col { padding: 8px 10px; background: #fff; border-radius: 10px; }
     .mega-col h4 { margin-bottom: 6px; padding-bottom: 6px; }
     .mega-col ul li a { font-size: 0.92rem; padding: 9px 10px; }
@@ -1247,7 +1247,7 @@ body.modal-open { overflow: hidden; touch-action: none; }
     }
 
     .mega-menu-inner {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
         gap: 6px;
     }
 
