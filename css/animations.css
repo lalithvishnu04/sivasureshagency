@@ -971,7 +971,8 @@
         width: 100% !important;
         border-bottom: 1px solid rgba(255,255,255,0.06);
         opacity: 0;
-        transform: translateX(28px);
+        /* No translateX: nested GPU transforms (drawer + item) cause blurry
+           text rendering on mobile Chrome/Safari. Fade-in only is crisp. */
         animation: mobile-item-in 0.45s cubic-bezier(0.16,1,0.3,1) forwards;
     }
 
@@ -984,7 +985,14 @@
     .nav-links > li:nth-child(n+7) { animation-delay: 0.46s; }
 
     @keyframes mobile-item-in {
-        to { opacity: 1; transform: translateX(0); }
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+
+    /* Crisp text on dark background */
+    .nav-links {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 
     /* ── Nav link rows ── */

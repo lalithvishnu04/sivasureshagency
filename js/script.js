@@ -1441,12 +1441,77 @@ function initCommon() {
     if (hamburger) {
         const isMobileNav = () => window.matchMedia('(max-width: 1024px)').matches;
         const clearOpen = () => navLinks.querySelectorAll('.nav-dropdown.open, .nav-cliniflex-dropdown.open').forEach(o => o.classList.remove('open'));
-        const closeMobileNav = () => { hamburger.classList.remove('active'); navLinks.classList.remove('active'); clearOpen(); };
+        let _navScrollY = 0;
+
+        // ── Backdrop overlay (tap-outside to close, all browsers) ──
+        const backdrop = document.createElement('div');
+        backdrop.id = 'navBackdrop';
+        backdrop.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(backdrop);
+
+        const closeMobileNav = () => {
+            if (!navLinks.classList.contains('active')) return;
+            hamburger.classList.remove('active');
+            hamburger.setAttribute('aria-expanded', 'false');
+            navLinks.classList.remove('active');
+            backdrop.classList.remove('active');
+            clearOpen();
+            // Restore body scroll — position:fixed trick required for iOS Safari
+            document.body.classList.remove('nav-open');
+            document.body.style.top = '';
+            window.scrollTo(0, _navScrollY);
+            // Remove history entry pushed on open (Android back-button support)
+            if (history.state && history.state._navOpen) history.back();
+        };
+        // Expose so the global Escape handler can reach it
+        window._closeMobileNav = closeMobileNav;
+
+        backdrop.addEventListener('click', closeMobileNav);
+        backdrop.addEventListener('touchend', (e) => { e.preventDefault(); closeMobileNav(); }, { passive: false });
+
         hamburger.addEventListener('click', () => {
             const willOpen = !navLinks.classList.contains('active');
             hamburger.classList.toggle('active', willOpen);
+            hamburger.setAttribute('aria-expanded', String(willOpen));
             navLinks.classList.toggle('active', willOpen);
-            if (!willOpen) clearOpen();
+            backdrop.classList.toggle('active', willOpen);
+            if (willOpen) {
+                // Lock background scroll; save Y for iOS Safari restore
+                _navScrollY = window.scrollY || window.pageYOffset;
+                document.body.style.top = `-${_navScrollY}px`;
+                document.body.classList.add('nav-open');
+                // Push a history entry so Android back-button fires popstate → closes nav
+                history.pushState({ _navOpen: true }, '');
+            } else {
+                clearOpen();
+                document.body.classList.remove('nav-open');
+                document.body.style.top = '';
+                window.scrollTo(0, _navScrollY);
+            }
+        });
+
+        // Android back-button: popstate fires when the pushed state is popped
+        window.addEventListener('popstate', (e) => {
+            if (navLinks.classList.contains('active')) {
+                hamburger.classList.remove('active');
+                hamburger.setAttribute('aria-expanded', 'false');
+                navLinks.classList.remove('active');
+                backdrop.classList.remove('active');
+                clearOpen();
+                document.body.classList.remove('nav-open');
+                document.body.style.top = '';
+                window.scrollTo(0, _navScrollY);
+            }
+        });
+
+        // Close + unlock when rotating to landscape / resizing to desktop
+        window.addEventListener('resize', () => {
+            if (!isMobileNav() && navLinks.classList.contains('active')) closeMobileNav();
+        });
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                if (!isMobileNav() && navLinks.classList.contains('active')) closeMobileNav();
+            }, 200); // small delay so matchMedia reflects new orientation
         });
         // On mobile the top-level dropdown links act as expand/collapse accordions instead of navigating
         navLinks.querySelectorAll('.nav-dropdown > a, .nav-cliniflex-dropdown > a').forEach(a => {
@@ -3674,6 +3739,8 @@ window.openImageLightbox = openImageLightbox;
                 break;
             }
             case 'Escape': {
+                // Close mobile nav first (all devices)
+                if (typeof window._closeMobileNav === 'function') window._closeMobileNav();
                 // Close search overlay, cart panel, or any open modal
                 const searchOverlay = document.getElementById('searchOverlay');
                 if (searchOverlay?.classList.contains('active')) { searchOverlay.classList.remove('active'); break; }
