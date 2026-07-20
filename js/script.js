@@ -176,50 +176,9 @@ function renderRichText(str) {
     return out.join('');
 }
 
-const productsData = [
-    // ── Doctor Uniform > Male Doctor Uniform ──
-    { id: 1, name: "Male Doctor Uniform - Full Sleeve", category: "doctor-uniform", gender: "male", sleeve: "full", price: 850, oldPrice: 1100, rating: 4.8, reviews: 124, badge: "Bestseller", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Premium full-sleeve doctor uniform for men. High-quality wrinkle-resistant cotton blend for all-day comfort.", image: "" },
-    { id: 2, name: "Male Doctor Uniform - Half Sleeve", category: "doctor-uniform", gender: "male", sleeve: "half", price: 750, oldPrice: 950, rating: 4.7, reviews: 89, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Comfortable half-sleeve doctor uniform for men, ideal for warm climates and long shifts.", image: "" },
-    // ── Doctor Uniform > Female Doctor Uniform ──
-    { id: 3, name: "Female Doctor Uniform - Full Sleeve", category: "doctor-uniform", gender: "female", sleeve: "full", price: 900, oldPrice: 1200, rating: 4.9, reviews: 67, badge: "New", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Elegant full-sleeve doctor uniform for women with feminine tailoring and professional finish.", image: "" },
-    { id: 4, name: "Female Doctor Uniform - Half Sleeve", category: "doctor-uniform", gender: "female", sleeve: "half", price: 800, oldPrice: 1050, rating: 4.8, reviews: 56, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Ladies half-sleeve doctor uniform with modern fit and breathable fabric.", image: "" },
-    // ── Staff Uniform > Male Staff Uniform ──
-    { id: 5, name: "Male Staff Uniform - Beige Style", category: "staff-uniform", gender: "male", sleeve: "half", price: 550, oldPrice: 720, rating: 4.6, reviews: 145, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Professional beige style staff uniform for men. Durable and comfortable for daily use.", image: "" },
-    { id: 6, name: "Male Staff Uniform - Blue Style", category: "staff-uniform", gender: "male", sleeve: "half", price: 550, oldPrice: 720, rating: 4.5, reviews: 132, badge: "Popular", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Smart blue style staff uniform for men. Ideal for hospital and institutional use.", image: "" },
-    { id: 7, name: "Male Staff Uniform - Brown Style", category: "staff-uniform", gender: "male", sleeve: "half", price: 560, oldPrice: 730, rating: 4.5, reviews: 98, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Durable brown style staff uniform for men with reinforced stitching.", image: "" },
-    { id: 8, name: "Male Staff Uniform - Gray Style", category: "staff-uniform", gender: "male", sleeve: "half", price: 540, oldPrice: 710, rating: 4.6, reviews: 87, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Comfortable gray style staff uniform for men. Wrinkle-resistant fabric.", image: "" },
-    { id: 9, name: "Male Ward Boy Uniform - Blue", category: "staff-uniform", gender: "male", sleeve: "half", price: 500, oldPrice: 650, rating: 4.4, reviews: 87, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Blue ward boy uniform designed for daily hospital duties.", image: "" },
-    { id: 10, name: "Male Ward Boy Uniform - Gray", category: "staff-uniform", gender: "male", sleeve: "half", price: 500, oldPrice: 650, rating: 4.3, reviews: 76, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Gray ward boy uniform for comfort during demanding shifts.", image: "" },
-    { id: 11, name: "Male Ward Boy Uniform - Green", category: "staff-uniform", gender: "male", sleeve: "half", price: 500, oldPrice: 650, rating: 4.4, reviews: 82, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Green ward boy uniform. Durable and easy to maintain.", image: "" },
-    // ── Staff Uniform > Female Staff Uniform ──
-    { id: 12, name: "Female Staff Uniform - Blue Style", category: "staff-uniform", gender: "female", sleeve: "half", price: 580, oldPrice: 750, rating: 4.7, reviews: 178, badge: "Bestseller", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Professional blue style staff uniform for women. Elegant and comfortable.", image: "" },
-    { id: 13, name: "Female Staff Uniform - Blue Style 02", category: "staff-uniform", gender: "female", sleeve: "half", price: 580, oldPrice: 750, rating: 4.6, reviews: 112, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Elegant blue style staff uniform variant for women with modern cut.", image: "" },
-    { id: 14, name: "Female Staff Uniform - Dark Pink", category: "staff-uniform", gender: "female", sleeve: "half", price: 590, oldPrice: 760, rating: 4.8, reviews: 156, badge: "New", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Stylish dark pink staff uniform for women. Vibrant and professional.", image: "" },
-    { id: 15, name: "Female Staff Uniform - Green Color", category: "staff-uniform", gender: "female", sleeve: "half", price: 570, oldPrice: 740, rating: 4.5, reviews: 98, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Fresh green color staff uniform for women. Comfortable for all-day wear.", image: "" },
-    { id: 16, name: "Female Staff Uniform - Pink Style", category: "staff-uniform", gender: "female", sleeve: "half", price: 580, oldPrice: 750, rating: 4.7, reviews: 134, badge: "Popular", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Classic pink style staff uniform for women with flattering fit.", image: "" },
-    { id: 17, name: "Female Staff Uniform - Pink Style 02", category: "staff-uniform", gender: "female", sleeve: "half", price: 580, oldPrice: 750, rating: 4.6, reviews: 89, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Pink style staff uniform variant for women. Soft and durable fabric.", image: "" },
-    { id: 18, name: "Female Staff Uniform - Red Style", category: "staff-uniform", gender: "female", sleeve: "half", price: 590, oldPrice: 760, rating: 4.8, reviews: 143, badge: "Premium", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Elegant red style staff uniform for women. Premium quality fabric.", image: "" },
-    // ── Bedsheets ──
-    { id: 19, name: "Bedsheet - Striped Blue & White", category: "bedsheets", price: 350, oldPrice: 450, rating: 4.3, reviews: 234, badge: "", sizes: ["60x90","60x100","90x100"], description: "Hospital-grade striped bedsheet in blue and white.", image: "" },
-    { id: 20, name: "Bedsheet - Checked Blue", category: "bedsheets", price: 320, oldPrice: 420, rating: 4.5, reviews: 189, badge: "", sizes: ["60x90","60x100","90x100"], description: "Blue checked pattern hospital bedsheet." },
-    { id: 21, name: "Pillow Cover - Light Blue Set", category: "bedsheets", price: 150, oldPrice: 200, rating: 4.2, reviews: 76, badge: "", sizes: ["Standard","Large"], description: "Set of 2 light blue pillow covers with zipper closure." },
-    // ── Hospital Linen ──
-    { id: 22, name: "Hospital Towel - OT Grade", category: "hospital-linen", price: 220, oldPrice: 300, rating: 4.4, reviews: 112, badge: "", sizes: ["36x1m","36x1.25m","60x2m"], description: "High-absorbency OT towel ideal for surgical procedures.", image: "" },
-    { id: 23, name: "Surgical Cap & Mask Set", category: "hospital-linen", price: 120, oldPrice: 160, rating: 4.6, reviews: 267, badge: "Popular", sizes: ["Standard","Large"], description: "Reusable surgical cap and mask set.", image: "" },
-    { id: 24, name: "Surgeon Apron - Ladies", category: "hospital-linen", gender: "female", sleeve: "half", price: 450, oldPrice: 580, rating: 4.8, reviews: 43, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Ladies surgeon apron with side-tie wrap-around design.", image: "" },
-    { id: 25, name: "Patient Gown - Cotton", category: "hospital-linen", price: 380, oldPrice: 480, rating: 4.3, reviews: 98, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Comfortable cotton patient gown." },
-    { id: 26, name: "Surgeon Apron - Gents", category: "hospital-linen", gender: "male", sleeve: "full", price: 520, oldPrice: 680, rating: 4.9, reviews: 34, badge: "Premium", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Heavy-duty surgeon apron for men with full-sleeve design.", image: "" },
-    // ── Hotel Linen ──
-    { id: 27, name: "Hotel Bedsheet - Premium White", category: "hotel-linen", price: 480, oldPrice: 620, rating: 4.9, reviews: 78, badge: "Premium", sizes: ["Single","Double","King"], description: "Premium white hotel bedsheet with 300 thread count." },
-    { id: 28, name: "Hotel Towel - Big 60x2m", category: "hotel-linen", price: 350, oldPrice: 450, rating: 4.5, reviews: 134, badge: "", sizes: ["Standard","Large","Bath Sheet"], description: "Large hotel bath towel with excellent absorbency." },
-    // ── New Hospital Linen ──
-    { id: 29, name: "Abdominal Sheet 9x9", category: "hospital-linen", price: 280, oldPrice: 380, rating: 4.5, reviews: 89, badge: "New", sizes: ["9x9","Standard"], description: "Surgical abdominal sheet with center hole for OT procedures. High-grade sterile fabric.", image: "" },
-    { id: 30, name: "Surgical Eye Pad", category: "hospital-linen", price: 95, oldPrice: 130, rating: 4.4, reviews: 156, badge: "", sizes: ["Standard"], description: "Reusable surgical eye pad with secure tie straps for post-operative care.", image: "" },
-    { id: 31, name: "Female Surgeon Apron - Green", category: "hospital-linen", gender: "female", sleeve: "full", price: 480, oldPrice: 620, rating: 4.7, reviews: 52, badge: "New", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Full green surgeon apron for women, includes matching cap and mask.", image: "" },
-    { id: 32, name: "OT Nighty - Patient Wear", category: "hospital-linen", gender: "female", price: 340, oldPrice: 450, rating: 4.6, reviews: 78, badge: "", sizes: ["S","M","L","XL","XXL","XXXL"], description: "Comfortable OT nighty for patients with front button closure.", image: "" },
-    // ── New Bedsheets ──
-    { id: 33, name: "Bedspread & Pillow Cover Set - Striped", category: "bedsheets", price: 420, oldPrice: 550, rating: 4.5, reviews: 67, badge: "New", sizes: ["Single","Double","King"], description: "Premium striped bedspread with matching pillow cover set. Durable hospital-grade fabric.", image: "" },
-];
+// Products are loaded exclusively from Supabase via _initProductSync below.
+// No hardcoded fallback — Supabase is the single source of truth.
+const productsData = [];
 productsData.forEach(p => { if (!p.image) p.image = generateProductSVG(p); });
 
 // Auto-assign a single colorVariant to existing local products (derived from image filename)
@@ -810,7 +769,7 @@ window.initCardHoverCycle = initCardHoverCycle;
 // Loads products from Supabase once per session and merges admin-set images/prices.
 // sessionStorage cache (10 min TTL) prevents repeated reads.
 (function _initProductSync() {
-    const CACHE_KEY = '_ssa_fs_products_v2';
+    const CACHE_KEY = '_ssa_fs_products_v3'; // bumped to force cache bust after removing hardcoded fallback
     const TTL = 10 * 60 * 1000; // 10 minutes
     // Persist across sessions so returning visitors see the correct (admin-set)
     // images on first paint instead of the local defaults for a few seconds.
