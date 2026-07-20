@@ -648,7 +648,7 @@ function renderMegaMenu() {
     const colCount = visibleCols.length;
     const colsHtml = visibleCols.map(col => {
         const items = (col.items || []).map(it => {
-            const kids = (it.children || []).map(ch => `<li><a href="${_megaHref(ch)}">${esc(ch.label)}</a></li>`).join('');
+            const kids = (it.children || []).map(ch => `<li class="mega-sub-item"><a href="${_megaHref(ch)}">${esc(ch.label)}</a></li>`).join('');
             const cls = it.bold ? ' class="mega-main-item"' : '';
             return `<li><a href="${_megaHref(it)}"${cls}>${esc(it.label)}</a></li>` + kids;
         }).join('');
@@ -1528,6 +1528,23 @@ function initCommon() {
                 li.classList.toggle('open', !wasOpen);
             });
         });
+        // Mobile mega-col accordion (Doctor Uniform, Staff Uniform, Linen Accessories)
+        // Event delegation so it works after renderMegaMenu() re-renders the content.
+        navLinks.addEventListener('click', (e) => {
+            if (!isMobileNav()) return;
+            const h4 = e.target.closest('.mega-col h4');
+            if (!h4) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const col = h4.closest('.mega-col');
+            const inner = col.closest('.mega-menu-inner');
+            const isOpen = col.classList.contains('mega-open');
+            // Collapse all other cols in this menu
+            if (inner) inner.querySelectorAll('.mega-col.mega-open').forEach(c => c.classList.remove('mega-open'));
+            // Toggle clicked col
+            if (!isOpen) col.classList.add('mega-open');
+        });
+
         // Real navigation links close the whole menu; accordion toggles keep it open
         navLinks.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', () => {

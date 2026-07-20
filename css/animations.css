@@ -1059,7 +1059,7 @@
         color: #5eead4;
     }
 
-    /* ── Mega menu inside drawer ── */
+    /* ── Mega-menu inside drawer ── */
     .mega-menu {
         background: rgba(0,0,0,0.25) !important;
         border-radius: 0 !important;
@@ -1068,23 +1068,81 @@
         border-bottom: 1px solid rgba(255,255,255,0.07) !important;
     }
 
+    /* ── Mega-col category accordion ── */
+    /* Hide the decorative thumb icon — not needed in accordion */
+    .mega-col-thumb { display: none !important; }
+
+    /* Each category heading acts as an accordion toggle */
     .mega-col {
-        background: rgba(255,255,255,0.04) !important;
-        border-radius: 8px;
-        margin: 4px 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
     }
+    .mega-col:last-child { border-bottom: none !important; }
 
-    .mega-col h4,
+    .mega-col h4 {
+        cursor: pointer;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 14px 16px !important;
+        margin: 0 !important;
+        color: rgba(255,255,255,0.88) !important;
+        font-size: 0.93rem !important;
+        font-weight: 700 !important;
+        background: transparent !important;
+        border-radius: 0 !important;
+        transition: color 0.2s ease, background 0.2s ease !important;
+        user-select: none;
+    }
     .mega-col h4 a {
-        color: rgba(255,255,255,0.85) !important;
+        color: inherit !important;
+        pointer-events: none; /* tap handled by h4, not link */
+        flex: 1;
+    }
+    /* Chevron icon */
+    .mega-col h4::after {
+        content: '\f078';
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 900;
+        font-size: 0.65rem;
+        color: rgba(255,255,255,0.4);
+        transition: transform 0.25s ease;
+        flex-shrink: 0;
+        margin-left: 10px;
+    }
+    .mega-col.mega-open > h4 {
+        color: #5eead4 !important;
+        background: rgba(13,148,136,0.15) !important;
+    }
+    .mega-col.mega-open > h4::after {
+        transform: rotate(180deg);
+        color: #5eead4;
     }
 
-    .mega-col ul li a {
-        color: rgba(255,255,255,0.65) !important;
-        font-size: 0.88rem !important;
+    /* Items hidden by default; shown when col is open */
+    .mega-col ul {
+        display: none !important;
+        padding: 4px 16px 10px !important;
+        margin: 0 !important;
     }
+    .mega-col.mega-open ul { display: block !important; }
 
-    .mega-col ul li a:hover {
+    /* Sub-items (Full Sleeve, Half Sleeve) hidden on mobile */
+    .mega-sub-item { display: none !important; }
+
+    /* Style the visible main-category links */
+    .mega-col.mega-open ul li a {
+        padding: 10px 10px !important;
+        color: rgba(255,255,255,0.75) !important;
+        font-size: 0.9rem !important;
+        display: block;
+        border-radius: 8px;
+    }
+    .mega-col.mega-open ul li a:hover,
+    .mega-col.mega-open ul li a:active {
         color: #5eead4 !important;
         background: rgba(13,148,136,0.15) !important;
     }
