@@ -111,6 +111,9 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outli
 
 /* ── 6. Navbar ────────────────────────────────────────────────── */
 #header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; transition: var(--transition); }
+/* While mobile nav is open, raise header above all floating elements (backdrops,
+   chatbot, WhatsApp z-8000/9000) so nav-links text isn't painted over */
+#header.nav-active { z-index: 99999; }
 #header.scrolled .top-bar { display: none; }
 #header.scrolled .navbar { background: rgba(255,255,255,0.96); backdrop-filter: blur(20px); box-shadow: 0 1px 0 var(--border), var(--shadow-md); }
 .navbar { background: #fff; padding: 13px 0; border-bottom: 1px solid var(--border); transition: var(--transition); }

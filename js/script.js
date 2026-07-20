@@ -1456,6 +1456,7 @@ function initCommon() {
             navLinks.classList.remove('active');
             backdrop.classList.remove('active');
             clearOpen();
+            document.getElementById('header').classList.remove('nav-active');
             // Restore body scroll — position:fixed trick required for iOS Safari
             document.body.classList.remove('nav-open');
             document.body.style.top = '';
@@ -1480,6 +1481,8 @@ function initCommon() {
                 _navScrollY = window.scrollY || window.pageYOffset;
                 document.body.style.top = `-${_navScrollY}px`;
                 document.body.classList.add('nav-open');
+                // Raise #header above all floating elements while nav is open
+                document.getElementById('header').classList.add('nav-active');
                 // Push a history entry so Android back-button fires popstate → closes nav
                 history.pushState({ _navOpen: true }, '');
             } else {
@@ -1498,6 +1501,7 @@ function initCommon() {
                 navLinks.classList.remove('active');
                 backdrop.classList.remove('active');
                 clearOpen();
+                document.getElementById('header').classList.remove('nav-active');
                 document.body.classList.remove('nav-open');
                 document.body.style.top = '';
                 window.scrollTo(0, _navScrollY);
