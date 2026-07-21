@@ -338,8 +338,10 @@ async function loadDashboard() {
         const productQty = new Map();
         for (const o of nonCancelled) {
             for (const item of (o.items || [])) {
-                const name = item.name || 'Unknown';
-                productQty.set(name, (productQty.get(name) || 0) + (item.qty || 0));
+                const rawName = (item.name || 'Unknown').trim();
+                // Normalize to current product name (handles renames like "Doctor Uniform - Full Sleeve" → "Doctor Uniform")
+                const currentName = activeProductNames.find(n => n === rawName || rawName.startsWith(n + ' ') || rawName.startsWith(n + '-') || rawName.startsWith(n + '\u2013')) || rawName;
+                productQty.set(currentName, (productQty.get(currentName) || 0) + (item.qty || 0));
             }
         }
         let topProduct = '-';

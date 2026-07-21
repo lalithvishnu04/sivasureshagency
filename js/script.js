@@ -2733,57 +2733,7 @@ async function openAccountPanel() {
         </div>
         <div class="acct-body">
             <div class="acct-section active" id="accountOrders">
-                ${orders.length === 0 ? '<div class="empty-orders"><i class="fas fa-box-open"></i><p>No orders yet. Start shopping!</p><a href="categories.html" class="btn btn-gradient btn-sm" onclick="closeAuthModal()">Browse Products</a></div>' :
-                    orders.map(o => {
-                        const itemSummary = o.items.slice(0,2).map(i => i.name).join(', ') + (o.items.length > 2 ? ` +${o.items.length-2} more` : '');
-                        const detailRows = o.items.map(i => {
-                            const variants = [];
-                            if (i.selectedSize) variants.push(`<span class="od-tag">Size: ${i.selectedSize}</span>`);
-                            if (i.selectedColor) variants.push(`<span class="od-tag od-tag-color">Color: ${i.selectedColor}</span>`);
-                            const emb = i.embroidery;
-                            let embHtml = '';
-                            if (emb) {
-                                const ep = [];
-                                if (emb.type) ep.push(`${emb.type}`);
-                                if (emb.line1) ep.push(`"${emb.line1}"`);
-                                if (emb.line2) ep.push(`"${emb.line2}"`);
-                                if (emb.line3) ep.push(`"${emb.line3}"`);
-                                if (emb.color) ep.push(`Thread: ${emb.color}`);
-                                embHtml = `<div class="od-emb"><i class="fas fa-pen-nib"></i> Embroidery: ${ep.join(' · ')}</div>`;
-                            }
-                            return `<div class="od-item-detail">
-                                <div class="od-item-name"><i class="fas fa-box"></i> ${i.name} <strong>&times;${i.qty}</strong></div>
-                                <div class="od-item-variants">${variants.join('')}</div>
-                                ${embHtml}
-                                <div class="od-item-price">&#8377;${(i.price*i.qty).toLocaleString('en-IN')}<small> (&#8377;${i.price} each)</small></div>
-                            </div>`;
-                        }).join('');
-                        const shipInfo = o.shipping ? `<div class="od-shipping"><i class="fas fa-map-marker-alt"></i> ${[o.shipping.name, o.shipping.address, o.shipping.city, o.shipping.pincode].filter(Boolean).join(', ')}</div>` : '';
-                        return `<div class="acct-order-card">
-                        <div class="acct-order-head">
-                            <div><span class="acct-order-id">#${o.id}</span><span class="acct-order-date">${new Date(o.date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span></div>
-                            <span class="acct-order-status ${(o.status || 'processing').toLowerCase()}">${o.status}</span>
-                        </div>
-                        <div class="acct-order-summary" onclick="toggleOrderDetails('${o.id}')">
-                            <span class="acct-order-summary-text"><i class="fas fa-shopping-bag"></i> ${itemSummary}</span>
-                            <button class="acct-view-details-btn" id="viewBtn-${o.id}"><i class="fas fa-chevron-down"></i> View Details</button>
-                        </div>
-                        <div class="acct-order-details" id="orderDetails-${o.id}" style="display:none">
-                            <div class="od-items-list">${detailRows}</div>
-                            ${shipInfo}
-                        </div>
-                        <div class="acct-order-foot">
-                            <span class="acct-order-total">Total: &#8377;${o.total.toLocaleString('en-IN')}</span>
-                            <span class="acct-order-pay"><i class="fas fa-credit-card"></i> ${o.payment}</span>
-                        </div>
-                        ${o.estimatedDelivery ? `<div style="padding:6px 14px 4px;font-size:0.78rem;color:#0d9488;font-weight:600"><i class="fas fa-calendar-check"></i> Est. Delivery: ${new Date(o.estimatedDelivery + 'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>` : ''}
-                        <div style="display:flex;gap:8px;padding:0 14px 12px;flex-wrap:wrap;">
-                            <button class="btn btn-outline-dark btn-sm" style="flex:1;min-width:100px;justify-content:center;" onclick="downloadInvoice('${o.id}')"><i class="fas fa-file-invoice"></i> Invoice</button>
-                            <button class="btn btn-primary btn-sm" style="flex:1;min-width:100px;justify-content:center;" onclick="reorderFromHistory('${o.id}')"><i class="fas fa-redo"></i> Reorder</button>
-                            <button class="btn btn-share-sm btn-sm" style="flex:0;justify-content:center;background:#f0fdf4;color:#16a34a;border:1px solid #86efac;" onclick="shareOrderResult('${o.id}')"><i class="fas fa-share-alt"></i></button>
-                        </div>
-                        ${window.buildRatingUI ? window.buildRatingUI(o.id, o.rating || null, o.ratingComment || null, o.ratingImage || null) : ''}
-                    </div>`;}).join('')}
+                ${orders.length === 0 ? '<div class="empty-orders"><i class="fas fa-box-open"></i><p>No orders yet. Start shopping!</p><a href="categories.html" class="btn btn-gradient btn-sm" onclick="closeAuthModal()">Browse Products</a></div>' : _buildOrderCardsHTML(orders)}
             </div>
             <div class="acct-section" id="accountProfile" style="display:none;">
                 <div class="profile-edit-form">
@@ -2800,7 +2750,7 @@ async function openAccountPanel() {
                     <div class="form-group"><label>Street / Door No.</label><input type="text" id="addrStreet" placeholder="Street address"></div>
                     <div class="form-row"><div class="form-group"><label>City</label><input type="text" id="addrCity" placeholder="City"></div><div class="form-group"><label>PIN Code</label><input type="text" id="addrPin" placeholder="PIN"></div></div>
                     <div class="form-group"><label>State</label><input type="text" id="addrState" placeholder="State" value="Tamil Nadu"></div>
-                    <div class="form-row"><button class="btn btn-gradient" onclick="saveNewAddress()"><i class="fas fa-save"></i> Save</button><button class="btn btn-outline-dark" onclick="document.getElementById('addAddressForm').style.display='none'">Cancel</button></div>
+                    <div class="form-row"><button class="btn btn-gradient" onclick="saveNewAddress()"><i class="fas fa-save"></i> Save</button><button class="btn btn-outline-dark" onclick="document.getElementById('addAddressForm').style.display=\'none\'">Cancel</button></div>
                 </div>
             </div>
             <div class="acct-section" id="accountSecurity" style="display:none;">
@@ -2823,6 +2773,69 @@ async function openAccountPanel() {
     if (window.SSAAnims && window.SSAAnims.initRatingStars) {
         setTimeout(() => window.SSAAnims.initRatingStars(document.getElementById('accountOrders')), 100);
     }
+}
+function _buildOrderItemDetailHTML(i) {
+    var variants = '';
+    if (i.selectedSize) variants += '<span class="od-tag">Size: ' + i.selectedSize + '</span>';
+    if (i.selectedColor) variants += '<span class="od-tag od-tag-color">Color: ' + i.selectedColor + '</span>';
+    var embHtml = '';
+    var emb = i.embroidery;
+    if (emb) {
+        var ep = [];
+        if (emb.type) ep.push(emb.type);
+        if (emb.line1) ep.push('"' + emb.line1 + '"');
+        if (emb.line2) ep.push('"' + emb.line2 + '"');
+        if (emb.line3) ep.push('"' + emb.line3 + '"');
+        if (emb.color) ep.push('Thread: ' + emb.color);
+        embHtml = '<div class="od-emb"><i class="fas fa-pen-nib"></i> Embroidery: ' + ep.join(' \xb7 ') + '</div>';
+    }
+    var lineTotal = (i.price * i.qty).toLocaleString('en-IN');
+    return '<div class="od-item-detail">'
+        + '<div class="od-item-name"><i class="fas fa-box"></i> ' + i.name + ' <strong>&times;' + i.qty + '</strong></div>'
+        + '<div class="od-item-variants">' + variants + '</div>'
+        + embHtml
+        + '<div class="od-item-price">&#8377;' + lineTotal + '<small> (&#8377;' + i.price + ' each)</small></div>'
+        + '</div>';
+}
+function _buildOrderCardsHTML(orders) {
+    return orders.map(function(o) {
+        var itemSummary = o.items.slice(0, 2).map(function(i) { return i.name; }).join(', ')
+            + (o.items.length > 2 ? ' +' + (o.items.length - 2) + ' more' : '');
+        var detailRows = o.items.map(_buildOrderItemDetailHTML).join('');
+        var shipParts = o.shipping ? [o.shipping.name, o.shipping.address, o.shipping.city, o.shipping.pincode].filter(Boolean) : [];
+        var shipInfo = shipParts.length ? '<div class="od-shipping"><i class="fas fa-map-marker-alt"></i> ' + shipParts.join(', ') + '</div>' : '';
+        var statusCls = (o.status || 'processing').toLowerCase();
+        var dateStr = new Date(o.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'});
+        var deliveryHtml = '';
+        if (o.estimatedDelivery) {
+            var dStr = new Date(o.estimatedDelivery + 'T00:00:00').toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'});
+            deliveryHtml = '<div style="padding:6px 14px 4px;font-size:0.78rem;color:#0d9488;font-weight:600"><i class="fas fa-calendar-check"></i> Est. Delivery: ' + dStr + '</div>';
+        }
+        var ratingHtml = (window.buildRatingUI ? window.buildRatingUI(o.id, o.rating || null, o.ratingComment || null, o.ratingImage || null) : '');
+        return '<div class="acct-order-card">'
+            + '<div class="acct-order-head"><div>'
+            + '<span class="acct-order-id">#' + o.id + '</span>'
+            + '<span class="acct-order-date">' + dateStr + '</span></div>'
+            + '<span class="acct-order-status ' + statusCls + '">' + o.status + '</span></div>'
+            + '<div class="acct-order-summary" onclick="toggleOrderDetails(\'' + o.id + '\')">'
+            + '<span class="acct-order-summary-text"><i class="fas fa-shopping-bag"></i> ' + itemSummary + '</span>'
+            + '<button class="acct-view-details-btn" id="viewBtn-' + o.id + '"><i class="fas fa-chevron-down"></i> View Details</button>'
+            + '</div>'
+            + '<div class="acct-order-details" id="orderDetails-' + o.id + '" style="display:none">'
+            + '<div class="od-items-list">' + detailRows + '</div>'
+            + shipInfo + '</div>'
+            + '<div class="acct-order-foot">'
+            + '<span class="acct-order-total">Total: &#8377;' + o.total.toLocaleString('en-IN') + '</span>'
+            + '<span class="acct-order-pay"><i class="fas fa-credit-card"></i> ' + o.payment + '</span></div>'
+            + deliveryHtml
+            + '<div style="display:flex;gap:8px;padding:0 14px 12px;flex-wrap:wrap;">'
+            + '<button class="btn btn-outline-dark btn-sm" style="flex:1;min-width:100px;justify-content:center;" onclick="downloadInvoice(\'' + o.id + '\')"><i class="fas fa-file-invoice"></i> Invoice</button>'
+            + '<button class="btn btn-primary btn-sm" style="flex:1;min-width:100px;justify-content:center;" onclick="reorderFromHistory(\'' + o.id + '\')"><i class="fas fa-redo"></i> Reorder</button>'
+            + '<button class="btn btn-sm" style="flex:0;justify-content:center;background:#f0fdf4;color:#16a34a;border:1px solid #86efac;padding:6px 10px;border-radius:8px;cursor:pointer;" onclick="shareOrderResult(\'' + o.id + '\')"><i class="fas fa-share-alt"></i></button>'
+            + '</div>'
+            + ratingHtml
+            + '</div>';
+    }).join('');
 }
 function showAccountTab(tab) {
     document.querySelectorAll('.acct-tab-btn, .account-tab').forEach(t => t.classList.remove('active'));
