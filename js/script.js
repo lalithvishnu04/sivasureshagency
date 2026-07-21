@@ -4088,13 +4088,13 @@ function renderWishlist() {
             <span class="shop-card-category">${typeof getCategoryLabel === 'function' ? getCategoryLabel(p.category) : p.category.replace(/-/g, ' ')}</span>
             <h4>${p.name}</h4>
             <div class="shop-card-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}${p.rating % 1 ? '<i class="fas fa-star-half-alt"></i>' : ''}<span>(${p.reviews})</span></div>
-            <div class="shop-card-price"><span class="price">\u20b9${p.price}</span><span class="old-price">\u20b9${p.oldPrice}</span></div>
+            <div class="shop-card-price"><span class="price">\u20b9${p.price}</span>${p.oldPrice ? `<span class="old-price">\u20b9${p.oldPrice}</span>` : ''}</div>
             <div class="wishlist-card-actions">
                 <button class="btn btn-primary btn-sm" onclick="addToCart(${p.id})"><i class="fas fa-cart-plus"></i> Add to Cart</button>
                 <button class="btn btn-outline-dark btn-sm" onclick="removeFromWishlist(${p.id})"><i class="fas fa-trash"></i> Remove</button>
             </div>
         </div>
-    </div>`).join('');${p.oldPrice ? `<span class="old-price">\u20b9${p.oldPrice}</span>` : ''}
+    </div>`).join('');
 }
 function removeFromWishlist(id) {
     toggleWishlist(id);
