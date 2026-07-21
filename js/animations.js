@@ -317,7 +317,8 @@
        on star icons: scale bounce on click, hover preview,
        satisfaction label.
     ────────────────────────────────────────────────────────── */
-    const RATING_LABELS = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent!'];
+    const RATING_LABELS = ['', '😞 Poor', '😕 Fair', '😊 Good', '😄 Great', '🤩 Excellent!'];
+    const RATING_EMOJIS = ['', '😞', '😕', '😊', '😄', '🤩'];
 
     /**
      * Build the rating UI HTML string for injection into order detail sections.
@@ -329,15 +330,16 @@
     window.buildRatingUI = function(orderId, existingRating = null, existingComment = null, existingImage = null) {
         if (existingRating) {
             const stars = Array.from({length: 5}, (_, i) =>
-                `<i class="fas fa-star" style="color:${i < existingRating ? '#f59e0b' : '#d1d5db'};font-size:1.1rem"></i>`
+                `<i class="fas fa-star rating-star-done" style="color:${i < existingRating ? '#f59e0b' : '#d1d5db'};animation-delay:${i*0.08}s"></i>`
             ).join('');
             return `
             <div class="order-rating-wrap rated" data-order-id="${orderId}">
-                <div class="order-rating-title"><i class="fas fa-star"></i> Your Rating</div>
-                <div class="rating-stars-row" style="justify-content:flex-start;gap:3px;margin-bottom:6px;">${stars}</div>
-                ${existingComment ? `<div class="rating-saved-comment">&ldquo;${existingComment}&rdquo;</div>` : ''}
-                ${existingImage ? `<div style="margin-top:6px"><img src="${existingImage}" alt="Review" style="max-width:80px;max-height:60px;border-radius:6px;object-fit:cover;border:1px solid #e2e8f0;"></div>` : ''}
-                <span class="order-rated-badge"><i class="fas fa-check-circle"></i> Thank you for rating!</span>
+                <div class="order-rating-title"><i class="fas fa-star" style="color:#f59e0b"></i> Your Rating &nbsp;<span class="rating-emoji-badge">${RATING_EMOJIS[existingRating] || ''}</span></div>
+                <div class="rating-stars-display">${stars}</div>
+                <div class="rating-label-done">${RATING_LABELS[existingRating] || ''}</div>
+                ${existingComment ? `<div class="rating-saved-comment"><i class="fas fa-quote-left"></i> ${existingComment}</div>` : ''}
+                ${existingImage ? `<div style="margin-top:8px"><img src="${existingImage}" alt="Review" style="max-width:90px;max-height:70px;border-radius:10px;object-fit:cover;border:2px solid #fde68a;box-shadow:0 2px 8px rgba(245,158,11,0.2)"></div>` : ''}
+                <span class="order-rated-badge"><i class="fas fa-check-circle"></i> Thank you for rating! 🎉</span>
             </div>`;
         }
 
@@ -347,7 +349,10 @@
 
         return `
         <div class="order-rating-wrap" data-order-id="${orderId}">
-            <div class="order-rating-title"><i class="fas fa-star"></i> Rate Your Order</div>
+            <div class="order-rating-title"><i class="fas fa-star" style="color:#f59e0b"></i> How was your order?</div>
+            <div class="rating-emoji-row">
+                <span class="rating-mood-big" data-order-id="${orderId}">🛍️</span>
+            </div>
             <div class="rating-stars-row" data-order-id="${orderId}">${stars}</div>
             <div class="rating-label" data-order-id="${orderId}">Tap a star to rate</div>
             <div class="rating-extras" data-order-id="${orderId}" style="display:none">
@@ -357,7 +362,7 @@
                     <div class="rating-img-preview" style="display:none"><img class="rating-img-thumb" src="" alt=""><button type="button" class="rating-img-remove" aria-label="Remove"><i class="fas fa-times"></i></button></div>
                 </div>
             </div>
-            <button class="rating-submit-btn" data-order-id="${orderId}">Submit Rating</button>
+            <button class="rating-submit-btn" data-order-id="${orderId}"><i class="fas fa-paper-plane"></i> Submit Rating</button>
         </div>`;
     };
 
@@ -372,6 +377,7 @@
             const label   = $(`.rating-label[data-order-id="${orderId}"]`);
             const submitBtn = $(`.rating-submit-btn[data-order-id="${orderId}"]`);
             const extras  = $(`.rating-extras[data-order-id="${orderId}"]`);
+            const moodEl  = $(`.rating-mood-big[data-order-id="${orderId}"]`);
             let selected  = 0;
 
             function highlightTo(n) {
@@ -397,6 +403,14 @@
                 if (label) {
                     label.textContent = RATING_LABELS[n] || '';
                     label.className = `rating-label star-${n}`;
+                }
+                if (moodEl) {
+                    moodEl.textContent = RATING_EMOJIS[n] || '⭐';
+                    moodEl.classList.remove('pop-mood');
+                    void moodEl.offsetWidth;
+                    moodEl.classList.add('pop-mood');
+                    moodEl.style.transform = 'scale(1.4)';
+                    setTimeout(() => { moodEl.style.transform = ''; }, 300);
                 }
                 if (extras) extras.style.display = '';
                 if (submitBtn) submitBtn.classList.add('visible');
@@ -448,7 +462,7 @@
 
     async function submitRating(orderId, rating, comment, imageDataUrl, btn) {
         btn.disabled = true;
-        btn.textContent = 'Submitting…';
+        btn.textContent = '⏳ Submitting…';
 
         try {
             const updateData = { rating, rating_at: new Date().toISOString() };
@@ -462,6 +476,39 @@
                 const snap = await window.db.collection('orders').where('orderId', '==', orderId).get();
                 if (!snap.empty) await window.db.collection('orders').doc(snap.docs[0].id).update(updateData);
             }
+
+            // ── Update product rating average (aggregate from all users) ─────
+            try {
+                if (window.db) {
+                    const oSnap = await window.db.collection('orders').where('orderId', '==', orderId).get();
+                    if (!oSnap.empty) {
+                        const orderItems = oSnap.docs[0].data().items || [];
+                        for (const item of orderItems) {
+                            if (!item.name) continue;
+                            // Fetch current product to get existing rating + count
+                            const prodSnap = await window.db.collection('products').where('name', '==', item.name).get();
+                            if (!prodSnap.empty) {
+                                const pData = prodSnap.docs[0].data();
+                                const oldCount = Number(pData.reviews) || 0;
+                                const oldAvg   = Number(pData.rating)  || 0;
+                                // Running average: combine old aggregate with new rating
+                                const newCount = oldCount + 1;
+                                const newAvg   = Math.round(((oldAvg * oldCount + rating) / newCount) * 2) / 2; // round to 0.5
+                                await window.db.collection('products').doc(prodSnap.docs[0].id).update({
+                                    rating:  newAvg,
+                                    reviews: newCount
+                                });
+                                // Update local productsData cache too
+                                if (window.productsData) {
+                                    const lp = window.productsData.find(p => p.name === item.name);
+                                    if (lp) { lp.rating = newAvg; lp.reviews = newCount; }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (pErr) { console.warn('[Rating] Product update failed:', pErr); }
+
         } catch (err) {
             console.warn('[Rating] Save failed:', err);
         }
@@ -485,13 +532,15 @@
         // Replace the whole rating block with a "thank you" showing stars + comment
         const wrap = btn.closest('.order-rating-wrap');
         if (wrap) {
-            const stars = Array.from({length:5},(_,i)=>`<i class="fas fa-star" style="color:${i<rating?'#f59e0b':'#d1d5db'};font-size:1.1rem"></i>`).join('');
+            const stars = Array.from({length:5},(_,i)=>`<i class="fas fa-star rating-star-done" style="color:${i<rating?'#f59e0b':'#d1d5db'};animation-delay:${i*0.08}s"></i>`).join('');
+            wrap.classList.add('rated');
             wrap.innerHTML = `
-                <div class="order-rating-title"><i class="fas fa-star"></i> Your Rating</div>
-                <div class="rating-stars-row" style="justify-content:flex-start;gap:3px;margin-bottom:6px;">${stars}</div>
-                ${comment ? `<div class="rating-saved-comment">&ldquo;${comment}&rdquo;</div>` : ''}
-                ${imageDataUrl ? `<div style="margin-top:6px"><img src="${imageDataUrl}" alt="Review" style="max-width:80px;max-height:60px;border-radius:6px;object-fit:cover;border:1px solid #e2e8f0;"></div>` : ''}
-                <span class="order-rated-badge"><i class="fas fa-check-circle"></i> Thank you for rating!</span>
+                <div class="order-rating-title"><i class="fas fa-star" style="color:#f59e0b"></i> Your Rating &nbsp;<span class="rating-emoji-badge">${RATING_EMOJIS[rating] || ''}</span></div>
+                <div class="rating-stars-display">${stars}</div>
+                <div class="rating-label-done">${RATING_LABELS[rating] || ''}</div>
+                ${comment ? `<div class="rating-saved-comment"><i class="fas fa-quote-left"></i> ${comment}</div>` : ''}
+                ${imageDataUrl ? `<div style="margin-top:8px"><img src="${imageDataUrl}" alt="Review" style="max-width:90px;max-height:70px;border-radius:10px;object-fit:cover;border:2px solid #fde68a;box-shadow:0 2px 8px rgba(245,158,11,0.2)"></div>` : ''}
+                <span class="order-rated-badge rating-celebrate"><i class="fas fa-check-circle"></i> Thank you! Rating saved 🎉</span>
             `;
         }
     }

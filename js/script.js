@@ -1921,7 +1921,7 @@ function buildProductCard(p) {
             <h4 class="shop-card-name" data-base-name="${p.name}">${p.name}${colors && colors[0] ? ' \u2013 ' + colors[0].name : ''}</h4>
             ${colorSwatchesHtml}
             <div class="shop-card-rating">${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating))}${p.rating % 1 ? '<i class="fas fa-star-half-alt"></i>' : ''}<span>(${p.reviews})</span></div>
-            <div class="shop-card-price"><span class="price">₹${p.price}</span><span class="old-price">₹${p.oldPrice}</span></div>
+            <div class="shop-card-price"><span class="price">₹${p.price}</span>${p.oldPrice ? `<span class="old-price">₹${p.oldPrice}</span>` : ''}</div>
             <div class="shop-card-footer" onclick="event.stopPropagation()">
                 ${addBtn}
                 ${buyBtn}
@@ -2704,7 +2704,9 @@ async function openAccountPanel() {
     const localOrders = JSON.parse(localStorage.getItem('ssa_orders_' + currentUser.email) || '[]');
     // For authenticated Supabase users trust the database; do not fall back to stale localStorage
     const isAuthenticatedUser = !!(window.getCurrentUser && window.getCurrentUser());
-    const orders = (supabaseOrders.length > 0 || isAuthenticatedUser) ? supabaseOrders : localOrders;
+    const rawOrders = (supabaseOrders.length > 0 || isAuthenticatedUser) ? supabaseOrders : localOrders;
+    // Sort latest first
+    const orders = rawOrders.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
     const avatar = localStorage.getItem('ssa_avatar_' + currentUser.email) || '';
     const avatarHtml = avatar ? `<img src="${avatar}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.15);">` : `<i class="fas fa-user-circle" style="font-size:72px;color:#0066cc;"></i>`;
     modal.innerHTML = `<div class="modal account-modal-v2">
@@ -2732,23 +2734,56 @@ async function openAccountPanel() {
         <div class="acct-body">
             <div class="acct-section active" id="accountOrders">
                 ${orders.length === 0 ? '<div class="empty-orders"><i class="fas fa-box-open"></i><p>No orders yet. Start shopping!</p><a href="categories.html" class="btn btn-gradient btn-sm" onclick="closeAuthModal()">Browse Products</a></div>' :
-                    orders.map(o => `<div class="acct-order-card">
+                    orders.map(o => {
+                        const itemSummary = o.items.slice(0,2).map(i => i.name).join(', ') + (o.items.length > 2 ? ` +${o.items.length-2} more` : '');
+                        const detailRows = o.items.map(i => {
+                            const variants = [];
+                            if (i.selectedSize) variants.push(`<span class="od-tag">Size: ${i.selectedSize}</span>`);
+                            if (i.selectedColor) variants.push(`<span class="od-tag od-tag-color">Color: ${i.selectedColor}</span>`);
+                            const emb = i.embroidery;
+                            let embHtml = '';
+                            if (emb) {
+                                const ep = [];
+                                if (emb.type) ep.push(`${emb.type}`);
+                                if (emb.line1) ep.push(`"${emb.line1}"`);
+                                if (emb.line2) ep.push(`"${emb.line2}"`);
+                                if (emb.line3) ep.push(`"${emb.line3}"`);
+                                if (emb.color) ep.push(`Thread: ${emb.color}`);
+                                embHtml = `<div class="od-emb"><i class="fas fa-pen-nib"></i> Embroidery: ${ep.join(' · ')}</div>`;
+                            }
+                            return `<div class="od-item-detail">
+                                <div class="od-item-name"><i class="fas fa-box"></i> ${i.name} <strong>&times;${i.qty}</strong></div>
+                                <div class="od-item-variants">${variants.join('')}</div>
+                                ${embHtml}
+                                <div class="od-item-price">&#8377;${(i.price*i.qty).toLocaleString('en-IN')}<small> (&#8377;${i.price} each)</small></div>
+                            </div>`;
+                        }).join('');
+                        const shipInfo = o.shipping ? `<div class="od-shipping"><i class="fas fa-map-marker-alt"></i> ${[o.shipping.name, o.shipping.address, o.shipping.city, o.shipping.pincode].filter(Boolean).join(', ')}</div>` : '';
+                        return `<div class="acct-order-card">
                         <div class="acct-order-head">
                             <div><span class="acct-order-id">#${o.id}</span><span class="acct-order-date">${new Date(o.date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</span></div>
                             <span class="acct-order-status ${(o.status || 'processing').toLowerCase()}">${o.status}</span>
                         </div>
-                        <div class="acct-order-items">${o.items.map(i => `<div class="acct-order-row"><span>${i.name} &times;${i.qty}</span><span>&#8377;${i.price*i.qty}</span></div>`).join('')}</div>
+                        <div class="acct-order-summary" onclick="toggleOrderDetails('${o.id}')">
+                            <span class="acct-order-summary-text"><i class="fas fa-shopping-bag"></i> ${itemSummary}</span>
+                            <button class="acct-view-details-btn" id="viewBtn-${o.id}"><i class="fas fa-chevron-down"></i> View Details</button>
+                        </div>
+                        <div class="acct-order-details" id="orderDetails-${o.id}" style="display:none">
+                            <div class="od-items-list">${detailRows}</div>
+                            ${shipInfo}
+                        </div>
                         <div class="acct-order-foot">
                             <span class="acct-order-total">Total: &#8377;${o.total.toLocaleString('en-IN')}</span>
                             <span class="acct-order-pay"><i class="fas fa-credit-card"></i> ${o.payment}</span>
                         </div>
                         ${o.estimatedDelivery ? `<div style="padding:6px 14px 4px;font-size:0.78rem;color:#0d9488;font-weight:600"><i class="fas fa-calendar-check"></i> Est. Delivery: ${new Date(o.estimatedDelivery + 'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>` : ''}
-                        <div style="display:flex;gap:8px;padding:0 14px 12px;">
-                            <button class="btn btn-outline-dark btn-sm" style="flex:1;justify-content:center;" onclick="downloadInvoice('${o.id}')"><i class="fas fa-file-invoice"></i> Invoice</button>
-                            <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center;" onclick="reorderFromHistory('${o.id}')"><i class="fas fa-redo"></i> Reorder</button>
+                        <div style="display:flex;gap:8px;padding:0 14px 12px;flex-wrap:wrap;">
+                            <button class="btn btn-outline-dark btn-sm" style="flex:1;min-width:100px;justify-content:center;" onclick="downloadInvoice('${o.id}')"><i class="fas fa-file-invoice"></i> Invoice</button>
+                            <button class="btn btn-primary btn-sm" style="flex:1;min-width:100px;justify-content:center;" onclick="reorderFromHistory('${o.id}')"><i class="fas fa-redo"></i> Reorder</button>
+                            <button class="btn btn-share-sm btn-sm" style="flex:0;justify-content:center;background:#f0fdf4;color:#16a34a;border:1px solid #86efac;" onclick="shareOrderResult('${o.id}')"><i class="fas fa-share-alt"></i></button>
                         </div>
                         ${window.buildRatingUI ? window.buildRatingUI(o.id, o.rating || null, o.ratingComment || null, o.ratingImage || null) : ''}
-                    </div>`).join('')}
+                    </div>`;}).join('')}
             </div>
             <div class="acct-section" id="accountProfile" style="display:none;">
                 <div class="profile-edit-form">
@@ -2798,6 +2833,26 @@ function showAccountTab(tab) {
     const tabIdx = { orders:0, profile:1, addresses:2, security:3 };
     if (tabBtns[tabIdx[tab]]) tabBtns[tabIdx[tab]].classList.add('active');
 }
+function toggleOrderDetails(orderId) {
+    const panel = document.getElementById('orderDetails-' + orderId);
+    const btn = document.getElementById('viewBtn-' + orderId);
+    if (!panel) return;
+    const open = panel.style.display === 'none' || panel.style.display === '';
+    panel.style.display = open ? 'block' : 'none';
+    if (btn) btn.innerHTML = open ? '<i class="fas fa-chevron-up"></i> Hide Details' : '<i class="fas fa-chevron-down"></i> View Details';
+    panel.classList.toggle('od-open', open);
+}
+window.toggleOrderDetails = toggleOrderDetails;
+function shareOrderResult(orderId) {
+    const shareText = `Just ordered premium hospital uniforms from Siva Suresh Agency! 🏥 Quality medical wear. Order #${orderId} — Check them out: ${window.location.origin}/sivasureshagency/`;
+    if (navigator.share) {
+        navigator.share({ title: 'Siva Suresh Agency Order', text: shareText, url: window.location.origin + '/sivasureshagency/' }).catch(() => {});
+    } else {
+        const wa = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+        window.open(wa, '_blank');
+    }
+}
+window.shareOrderResult = shareOrderResult;
 function handleAvatarUpload(input) {
     const file = input.files[0]; if (!file) return;
     const reader = new FileReader();
@@ -4026,7 +4081,7 @@ function renderWishlist() {
                 <button class="btn btn-outline-dark btn-sm" onclick="removeFromWishlist(${p.id})"><i class="fas fa-trash"></i> Remove</button>
             </div>
         </div>
-    </div>`).join('');
+    </div>`).join('');${p.oldPrice ? `<span class="old-price">\u20b9${p.oldPrice}</span>` : ''}
 }
 function removeFromWishlist(id) {
     toggleWishlist(id);

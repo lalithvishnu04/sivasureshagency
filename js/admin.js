@@ -272,30 +272,60 @@ async function loadDashboard() {
             } catch (e) { console.warn('[dashboard] API failed, using Supabase:', e.message); }
         }
 
-        // ── Sequential Supabase fallback (cached 90s) ────────
-        const ordersSnap    = await _cachedGet('orders',    () => db.collection('orders').get());
+        // ── Sequential Supabase fallback (fresh fetch — no cache for dashboard stats) ────────
+        const ordersSnap    = await db.collection('orders').get();
         const customersSnap = await _cachedGet('customers', () => db.collection('customers').get());
-        const invSnap       = await _cachedGet('inventory', () => db.collection('inventory').get());
+        const invSnap       = await db.collection('inventory').get();
         const messagesSnap  = await _cachedGet('messages',  () => db.collection('messages').get());
 
         const orders     = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const unreadMsgs = messagesSnap.docs.filter(d => !d.data().read).length;
         const invDocs    = invSnap.docs.map(d => d.data());
-        const alerts     = invDocs.filter(i => { const st = i.status || (i.quantity === 0 ? 'out_of_stock' : i.quantity <= 10 ? 'low_stock' : 'in_stock'); return st !== 'in_stock'; })
+
+        // Load active product names fresh if allProducts not yet populated
+        let activeProductNames = allProducts.map(p => (p.name || '').trim()).filter(Boolean);
+        if (!activeProductNames.length) {
+            try {
+                const prodSnap = await _cachedGet('products', () => db.collection('products').get());
+                activeProductNames = prodSnap.docs
+                    .map(d => d.data())
+                    .filter(p => !p.deleted && p.isActive !== false)
+                    .map(p => (p.name || '').trim())
+                    .filter(Boolean);
+            } catch (e) { console.warn('[dashboard] products fetch failed:', e.message); }
+        }
+        const activeNames = new Set(activeProductNames);
+        const filteredInv = activeNames.size > 0
+            ? invDocs.filter(i => activeNames.has((i.productName || '').trim()))
+            : invDocs;
+        const alerts     = filteredInv.filter(i => { const st = i.status || (i.quantity === 0 ? 'out_of_stock' : i.quantity <= 10 ? 'low_stock' : 'in_stock'); return st !== 'in_stock'; })
                                    .map(i => { const st = i.status || (i.quantity === 0 ? 'out_of_stock' : i.quantity <= 10 ? 'low_stock' : 'in_stock'); return { productName: i.productName, size: i.size, color: i.color, status: st }; });
-        const recent     = orders.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5);
+
+        // Deduplicate alerts (show per-product, not per-size)
+        const seenAlerts = new Set();
+        const uniqueAlerts = alerts.filter(a => {
+            const key = a.productName;
+            if (seenAlerts.has(key)) return false;
+            seenAlerts.add(key);
+            return true;
+        });
+
+        const recent     = orders.slice().sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5);
+        // Pending = orders not yet delivered or cancelled (case-insensitive check)
+        const pendingStatuses = ['processing', 'approved', 'packed', 'shipped'];
+        const pendingCount = orders.filter(o => pendingStatuses.includes((o.status || '').toLowerCase())).length;
 
         _renderDashboard(
             orders.length,
-            orders.filter(o => o.status === 'Processing').length,
-            orders.filter(o => o.status !== 'Cancelled').reduce((s, o) => s + (o.total || 0), 0),
+            pendingCount,
+            orders.filter(o => (o.status || '').toLowerCase() !== 'cancelled').reduce((s, o) => s + (o.total || 0), 0),
             customersSnap.size,
             unreadMsgs,
             recent,
-            alerts
+            uniqueAlerts
         );
 
-        const nonCancelled = orders.filter(o => o.status !== 'Cancelled');
+        const nonCancelled = orders.filter(o => (o.status || '').toLowerCase() !== 'cancelled');
         const aov = nonCancelled.length ? Math.round(nonCancelled.reduce((s, o) => s + (o.total || 0), 0) / nonCancelled.length) : 0;
         const byEmail = new Map();
         for (const o of nonCancelled) {
@@ -570,13 +600,16 @@ async function loadProducts() {
 }
 
 async function deduplicateProducts() {
-    const seen = new Map(); // name -> docId of first seen
+    // Use compound key: name + sleeve + subCategory so products with same name but
+    // different sleeve/subCategory variants are NOT treated as duplicates.
+    const seen = new Map(); // key -> docId of first seen
     const toDelete = [];
     for (const p of allProducts) {
-        if (seen.has(p.name)) {
+        const key = [(p.name || '').trim(), (p.sleeve || ''), (p.subCategory || '')].join('||');
+        if (seen.has(key)) {
             toDelete.push(p.docId);
         } else {
-            seen.set(p.name, p.docId);
+            seen.set(key, p.docId);
         }
     }
     if (toDelete.length === 0) return;
@@ -902,6 +935,18 @@ async function saveProduct(e) {
 
     try {
         if (docId) {
+            // Guard: prevent renaming to a name+sleeve combo that belongs to another product
+            const nameConflict = allProducts.find(p =>
+                p.docId !== docId &&
+                (p.name || '').trim() === data.name &&
+                (p.sleeve || '') === (data.sleeve || '') &&
+                (p.subCategory || '') === (data.subCategory || '')
+            );
+            if (nameConflict) {
+                showAdminToast(`❌ A product named "${data.name}" with the same sleeve/sub-category already exists. Change the sleeve field or use a different name.`, 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = _origBtn; }
+                return;
+            }
             // Capture old product data before update so we can sync inventory
             const oldProduct = allProducts.find(p => p.docId === docId);
             await db.collection('products').doc(docId).update(data);
@@ -911,6 +956,17 @@ async function saveProduct(e) {
             await _syncInventoryAfterProductUpdate(oldProduct, data);
             showAdminToast('Product updated');
         } else {
+            // Guard: prevent adding an exact duplicate (same name + sleeve + subCategory)
+            const nameConflict = allProducts.find(p =>
+                (p.name || '').trim() === data.name &&
+                (p.sleeve || '') === (data.sleeve || '') &&
+                (p.subCategory || '') === (data.subCategory || '')
+            );
+            if (nameConflict) {
+                showAdminToast(`❌ A product named "${data.name}" with the same sleeve/sub-category already exists. Edit that product instead.`, 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = _origBtn; }
+                return;
+            }
             data.createdAt = fsServerTimestamp();
             data.totalStock = 0;
             await db.collection('products').add(data);
@@ -1011,7 +1067,76 @@ async function deleteProduct(docId) {
     }
 }
 
-// Sync products from the local productsData (first-time initial setup only).
+// ===== Restore Deleted Products =====
+async function showDeletedProducts() {
+    try {
+        const snap = await db.collection('products').get();
+        const deleted = snap.docs
+            .map(d => ({ docId: d.id, ...d.data() }))
+            .filter(p => p.deleted === true);
+
+        if (!deleted.length) {
+            showAdminToast('No deleted products found.', 'info');
+            return;
+        }
+
+        const listHtml = deleted.map(p => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                <img src="${p.image||''}" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;background:#f1f5f9;">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;font-size:0.88rem;color:#0f172a;">${p.name}</div>
+                    <div style="font-size:0.75rem;color:#64748b;">${p.category || ''} · ₹${p.price || 0}</div>
+                </div>
+                <button class="btn-icon" onclick="restoreProduct('${p.docId}')" title="Restore" style="background:#dcfce7;color:#16a34a;border:1px solid #86efac;"><i class="fas fa-undo"></i></button>
+            </div>`).join('');
+
+        // Inject into a modal
+        let modal = document.getElementById('deletedProductsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'deletedProductsModal';
+            modal.className = 'modal-overlay active';
+            modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,0.5);display:flex;align-items:center;justify-content:center;padding:20px;';
+            document.body.appendChild(modal);
+        }
+        modal.innerHTML = `
+        <div style="background:#fff;border-radius:18px;width:100%;max-width:520px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(15,23,42,0.15);">
+            <div style="padding:18px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#0f172a,#0d9488);color:#fff;">
+                <h3 style="margin:0;font-size:1rem;font-weight:800;"><i class="fas fa-trash-restore"></i> Deleted Products (${deleted.length})</h3>
+                <button onclick="document.getElementById('deletedProductsModal').remove()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:0.85rem;"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="overflow-y:auto;padding:0 20px;flex:1;">${listHtml}</div>
+            <div style="padding:14px 20px;border-top:1px solid #e2e8f0;background:#f8fafc;">
+                <p style="font-size:0.75rem;color:#64748b;margin:0;"><i class="fas fa-info-circle" style="color:#0d9488;"></i> Restoring a product will make it visible again on the website.</p>
+            </div>
+        </div>`;
+        modal.style.display = 'flex';
+    } catch (err) {
+        showAdminToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function restoreProduct(docId) {
+    try {
+        await db.collection('products').doc(docId).update({
+            deleted: false,
+            isActive: true,
+            updatedAt: fsServerTimestamp()
+        });
+        // Restore inventory quantities
+        const prodSnap = await db.collection('products').doc(docId).get && (await db.collection('products').where('deleted', '==', false).get());
+        _invalidateCache('products');
+        _markProductsDirty();
+        showAdminToast('Product restored successfully! ✅');
+        // Close modal and refresh
+        document.getElementById('deletedProductsModal')?.remove();
+        loadProducts();
+    } catch (err) {
+        showAdminToast('Error restoring: ' + err.message, 'error');
+    }
+}
+window.showDeletedProducts = showDeletedProducts;
+window.restoreProduct = restoreProduct;
 // Safe to re-run: never recreates soft-deleted products, never creates duplicates.
 async function syncInventoryFromProducts() {
     const btn = document.querySelector('button[onclick="syncInventoryFromProducts()"]');
@@ -1087,41 +1212,10 @@ function getColorsForCategory(category) {
 }
 
 function getLocalProductsData() {
-    return [
-        { name: "Male Doctor Uniform - Full Sleeve", category: "doctor-uniform", gender: "male", sleeve: "full", price: 850, oldPrice: 1100, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Premium full-sleeve doctor uniform for men.", image: "images/Images/Male Full Sleeve.jpg", badge: "Bestseller" },
-        { name: "Male Doctor Uniform - Half Sleeve", category: "doctor-uniform", gender: "male", sleeve: "half", price: 750, oldPrice: 950, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Comfortable half-sleeve doctor uniform for men.", image: "images/Images/Male Half Sleeve.jpg", badge: "" },
-        { name: "Female Doctor Uniform - Full Sleeve", category: "doctor-uniform", gender: "female", sleeve: "full", price: 900, oldPrice: 1200, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Elegant full-sleeve doctor uniform for women.", image: "images/Images/Female Full Sleeve.jpg", badge: "New" },
-        { name: "Female Doctor Uniform - Half Sleeve", category: "doctor-uniform", gender: "female", sleeve: "half", price: 800, oldPrice: 1050, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Ladies half-sleeve doctor uniform.", image: "images/Images/Female Half Sleeve.jpg", badge: "" },
-        { name: "Male Staff Uniform - Beige Style", category: "staff-uniform", gender: "male", sleeve: "half", price: 550, oldPrice: 720, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Professional beige style staff uniform.", image: "images/Images/Male Uniform (Beige Style).jpg", badge: "" },
-        { name: "Male Staff Uniform - Blue Style", category: "staff-uniform", gender: "male", sleeve: "half", price: 550, oldPrice: 720, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Smart blue style staff uniform.", image: "images/Images/Male Uniform (Blue Style).jpg", badge: "Popular" },
-        { name: "Male Staff Uniform - Brown Style", category: "staff-uniform", gender: "male", sleeve: "half", price: 560, oldPrice: 730, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Durable brown style staff uniform.", image: "images/Images/Male Uniform (Brown Style).jpg", badge: "" },
-        { name: "Male Staff Uniform - Gray Style", category: "staff-uniform", gender: "male", sleeve: "half", price: 540, oldPrice: 710, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Comfortable gray style staff uniform.", image: "images/Images/Male Uniform (Gray Style).jpg", badge: "" },
-        { name: "Male Ward Boy Uniform - Blue", category: "staff-uniform", gender: "male", sleeve: "half", price: 500, oldPrice: 650, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Blue ward boy uniform.", image: "images/Images/Male Uniform (Blue Ward Boy).jpg", badge: "" },
-        { name: "Male Ward Boy Uniform - Gray", category: "staff-uniform", gender: "male", sleeve: "half", price: 500, oldPrice: 650, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Gray ward boy uniform.", image: "images/Images/Male Uniform (Gray Ward Boy).jpg", badge: "" },
-        { name: "Male Ward Boy Uniform - Green", category: "staff-uniform", gender: "male", sleeve: "half", price: 500, oldPrice: 650, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Green ward boy uniform.", image: "images/Images/Male Uniform (Green Ward Boy).jpg", badge: "" },
-        { name: "Female Staff Uniform - Blue Style", category: "staff-uniform", gender: "female", sleeve: "half", price: 580, oldPrice: 750, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Professional blue style staff uniform for women.", image: "images/Images/Female Uniform (Blue Style).jpg", badge: "Bestseller" },
-        { name: "Female Staff Uniform - Blue Style 02", category: "staff-uniform", gender: "female", sleeve: "half", price: 580, oldPrice: 750, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Elegant blue style variant.", image: "images/Images/Female Uniform (Blue Style 02).jpg", badge: "" },
-        { name: "Female Staff Uniform - Dark Pink", category: "staff-uniform", gender: "female", sleeve: "half", price: 590, oldPrice: 760, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Stylish dark pink staff uniform.", image: "images/Images/Female Uniform (Dark Pink).jpg", badge: "New" },
-        { name: "Female Staff Uniform - Green Color", category: "staff-uniform", gender: "female", sleeve: "half", price: 570, oldPrice: 740, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Fresh green color staff uniform.", image: "images/Images/Female Uniform (Green Color).jpg", badge: "" },
-        { name: "Female Staff Uniform - Pink Style", category: "staff-uniform", gender: "female", sleeve: "half", price: 580, oldPrice: 750, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Classic pink style staff uniform.", image: "images/Images/Female Uniform (Pink Style).jpg", badge: "Popular" },
-        { name: "Female Staff Uniform - Pink Style 02", category: "staff-uniform", gender: "female", sleeve: "half", price: 580, oldPrice: 750, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Pink style variant.", image: "images/Images/Female Uniform (Pink Style) (2).jpg", badge: "" },
-        { name: "Female Staff Uniform - Red Style", category: "staff-uniform", gender: "female", sleeve: "half", price: 590, oldPrice: 760, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Elegant red style staff uniform.", image: "images/Images/Female Uniform (Red Style).jpg", badge: "Premium" },
-        { name: "Bedsheet - Striped Blue & White", category: "bedsheets", price: 350, oldPrice: 450, sizes: ["60x90","60x100","90x100"], description: "Hospital-grade striped bedsheet.", image: "images/Images/Striped Sheet.jpg", badge: "" },
-        { name: "Bedsheet - Checked Blue", category: "bedsheets", price: 320, oldPrice: 420, sizes: ["60x90","60x100","90x100"], description: "Blue checked hospital bedsheet.", image: "", badge: "" },
-        { name: "Pillow Cover - Light Blue Set", category: "bedsheets", price: 150, oldPrice: 200, sizes: ["Standard","Large"], description: "Set of 2 light blue pillow covers.", image: "", badge: "" },
-        { name: "Hospital Towel - OT Grade", category: "hospital-linen", price: 220, oldPrice: 300, sizes: ["36x1m","36x1.25m","60x2m"], description: "High-absorbency OT towel.", image: "images/Images/Hospital Towel.jpg", badge: "" },
-        { name: "Surgical Cap & Mask Set", category: "hospital-linen", price: 120, oldPrice: 160, sizes: ["Standard","Large"], description: "Reusable surgical cap and mask set.", image: "images/Images/Head cap and Mask.jpg", badge: "Popular" },
-        { name: "Surgeon Apron - Ladies", category: "hospital-linen", gender: "female", sleeve: "half", price: 450, oldPrice: 580, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Ladies surgeon apron.", image: "images/Images/Surgeon Apron.jpg", badge: "" },
-        { name: "Patient Gown - Cotton", category: "hospital-linen", price: 380, oldPrice: 480, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Comfortable cotton patient gown.", image: "", badge: "" },
-        { name: "Surgeon Apron - Gents", category: "hospital-linen", gender: "male", sleeve: "full", price: 520, oldPrice: 680, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Heavy-duty surgeon apron for men.", image: "images/Images/Male Surgeon Apron.jpg", badge: "Premium" },
-        { name: "Hotel Bedsheet - Premium White", category: "hotel-linen", price: 480, oldPrice: 620, sizes: ["Single","Double","King"], description: "Premium white hotel bedsheet.", image: "", badge: "Premium" },
-        { name: "Hotel Towel - Big 60x2m", category: "hotel-linen", price: 350, oldPrice: 450, sizes: ["Standard","Large","Bath Sheet"], description: "Large hotel bath towel.", image: "", badge: "" },
-        { name: "Abdominal Sheet 9x9", category: "hospital-linen", price: 280, oldPrice: 380, sizes: ["9x9","Standard"], description: "Surgical abdominal sheet.", image: "images/Images/abdominal Sheet 9x9.jpg", badge: "New" },
-        { name: "Surgical Eye Pad", category: "hospital-linen", price: 95, oldPrice: 130, sizes: ["Standard"], description: "Reusable surgical eye pad.", image: "images/Images/Eye Pad.jpg", badge: "" },
-        { name: "Female Surgeon Apron - Green", category: "hospital-linen", gender: "female", sleeve: "full", price: 480, oldPrice: 620, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Full green surgeon apron for women.", image: "images/Images/Female Surgoen Apron.jpg", badge: "New" },
-        { name: "OT Nighty - Patient Wear", category: "hospital-linen", gender: "female", price: 340, oldPrice: 450, sizes: ["S","M","L","XL","XXL","XXXL"], description: "Comfortable OT nighty for patients.", image: "images/Images/OT Nighty.jpg", badge: "" },
-        { name: "Bedspread & Pillow Cover Set - Striped", category: "bedsheets", price: 420, oldPrice: 550, sizes: ["Single","Double","King"], description: "Premium striped bedspread with pillow cover.", image: "images/Images/Stripped Bedspread and Pillow Cover.jpg", badge: "New" },
-    ];
+    // Products are now managed exclusively via Supabase Admin panel.
+    // This list was the old hardcoded seed — kept empty to prevent re-seeding old products.
+    // To add products, use the "Add Product" button in the Admin → Products page.
+    return [];
 }
 
 // ===== Inventory =====
