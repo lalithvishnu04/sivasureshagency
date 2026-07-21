@@ -4,6 +4,9 @@
         if (product.deleted === true || product.isActive === false || product.active === false || product.archived === true) return false;
         const status = String(product.status || '').trim().toLowerCase();
         if (status === 'inactive' || status === 'archived' || status === 'deleted') return false;
+        // Hide products with no price or ₹0 price — they are incomplete/not ready for sale
+        const price = parseFloat(product.price);
+        if (!price || price <= 0) return false;
         return true;
     }
 
