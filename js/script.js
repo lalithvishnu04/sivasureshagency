@@ -2858,9 +2858,9 @@ async function openAccountPanel() {
         } catch(e) { console.warn('[account]', e.message); }
     }
     const localOrders = JSON.parse(localStorage.getItem('ssa_orders_' + currentUser.email) || '[]');
-    // For authenticated Supabase users trust the database; do not fall back to stale localStorage
-    const isAuthenticatedUser = !!(window.getCurrentUser && window.getCurrentUser());
-    const rawOrders = (supabaseOrders.length > 0 || isAuthenticatedUser) ? supabaseOrders : localOrders;
+    // Use Supabase orders when available; fall back to localStorage if DB returned nothing
+    // (covers: DB insert failures, RLS issues, network errors, local-only users)
+    const rawOrders = supabaseOrders.length > 0 ? supabaseOrders : localOrders;
     // Sort latest first
     const orders = rawOrders.map(_normalizeAccountOrder).sort((a, b) => (_normalizeOrderDateValue(b.date)?.getTime() || 0) - (_normalizeOrderDateValue(a.date)?.getTime() || 0));
     const avatar = localStorage.getItem('ssa_avatar_' + currentUser.email) || '';

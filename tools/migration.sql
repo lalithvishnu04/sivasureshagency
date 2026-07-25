@@ -19,6 +19,10 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "deliveredAt" text;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "statusHistory" jsonb DEFAULT '{}'::jsonb;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "returnRequest" jsonb DEFAULT NULL;
 
+-- Orders table: paymentStatus and addressLabel were missing from original schema
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "paymentStatus" text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "addressLabel" text;
+
 -- Products table: categoryNode not stored in DB (UI-only), but subCategory is needed
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS "subCategory" text;
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS "categoryNode" text;
