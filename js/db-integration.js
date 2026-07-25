@@ -7,51 +7,38 @@
 //  active — cuts repeated reads on every page navigation.
 // ============================================================
 
-function _markSynced(orderId, userEmail) {
-    const key = 'ssa_orders_' + userEmail;
-    try {
-        const orders = JSON.parse(localStorage.getItem(key) || '[]');
-        const idx = orders.findIndex(o => o.id === orderId);
-        if (idx !== -1) { orders[idx]._synced = true; localStorage.setItem(key, JSON.stringify(orders)); }
-    } catch (e) {}
-}
-
 // ===== Save Order to Supabase =====
 async function saveOrderToDb(order, shippingDetails) {
-    try {
-        if (window.ssaApi && window.ssaApi.enabled) {
-            await window.ssaApi.postOrder({
-                orderId:       order.id,
-                customerName:  (shippingDetails.firstname + ' ' + shippingDetails.lastname).trim(),
-                customerEmail: shippingDetails.email,
-                customerPhone: shippingDetails.phone || '',
-                address: shippingDetails.address, city: shippingDetails.city, pincode: shippingDetails.pincode,
-                items: order.items, total: order.total, payment: order.payment,
-                paymentStatus: order.paymentStatus || '', trackingId: order.trackingId || '',
-                deliveredAt: order.deliveredAt || null, addressLabel: order.addressLabel || ''
-            });
-            await window.ssaApi.postCustomer({ email: shippingDetails.email, firstName: shippingDetails.firstname, lastName: shippingDetails.lastname, phone: shippingDetails.phone || '' }).catch(() => {});
-            _markSynced(order.id, shippingDetails.email);
-            return;
-        }
-        if (!window.db) throw new Error('Supabase not initialised');
-        await db.collection('orders').add({
-            orderId: order.id,
+    if (window.ssaApi && window.ssaApi.enabled) {
+        await window.ssaApi.postOrder({
+            orderId:       order.id,
             customerName:  (shippingDetails.firstname + ' ' + shippingDetails.lastname).trim(),
             customerEmail: shippingDetails.email,
-            customerPhone: shippingDetails.phone,
+            customerPhone: shippingDetails.phone || '',
             address: shippingDetails.address, city: shippingDetails.city, pincode: shippingDetails.pincode,
             items: order.items, total: order.total, payment: order.payment,
-            paymentStatus: order.paymentStatus || '', status: 'Processing', trackingId: order.trackingId || '',
-            deliveredAt: order.deliveredAt || null, addressLabel: order.addressLabel || '', inventoryDeducted: false,
-            createdAt: fsServerTimestamp(), updatedAt: fsServerTimestamp()
+            paymentStatus: order.paymentStatus || '', trackingId: order.trackingId || '',
+            deliveredAt: order.deliveredAt || null, addressLabel: order.addressLabel || ''
         });
-        _markSynced(order.id, shippingDetails.email);
-        const cid  = shippingDetails.email.replace(/[^a-zA-Z0-9]/g, '_');
-        const cRef = db.collection('customers').doc(cid);
-        await cRef.set({ name: (shippingDetails.firstname + ' ' + shippingDetails.lastname).trim(), email: shippingDetails.email, phone: shippingDetails.phone || '', createdAt: fsServerTimestamp() }, { merge: true });
-        await cRef.update({ orderCount: fsIncrement(1), totalSpent: fsIncrement(order.total) });
-    } catch (err) { console.error('[order] Save error:', err); }
+        await window.ssaApi.postCustomer({ email: shippingDetails.email, firstName: shippingDetails.firstname, lastName: shippingDetails.lastname, phone: shippingDetails.phone || '' }).catch(() => {});
+        return;
+    }
+    if (!window.db) throw new Error('Supabase not initialised');
+    await db.collection('orders').add({
+        orderId: order.id,
+        customerName:  (shippingDetails.firstname + ' ' + shippingDetails.lastname).trim(),
+        customerEmail: shippingDetails.email,
+        customerPhone: shippingDetails.phone,
+        address: shippingDetails.address, city: shippingDetails.city, pincode: shippingDetails.pincode,
+        items: order.items, total: order.total, payment: order.payment,
+        paymentStatus: order.paymentStatus || '', status: 'Processing', trackingId: order.trackingId || '',
+        deliveredAt: order.deliveredAt || null, addressLabel: order.addressLabel || '', inventoryDeducted: false,
+        createdAt: fsServerTimestamp(), updatedAt: fsServerTimestamp()
+    });
+    const cid  = shippingDetails.email.replace(/[^a-zA-Z0-9]/g, '_');
+    const cRef = db.collection('customers').doc(cid);
+    await cRef.set({ name: (shippingDetails.firstname + ' ' + shippingDetails.lastname).trim(), email: shippingDetails.email, phone: shippingDetails.phone || '', createdAt: fsServerTimestamp() }, { merge: true });
+    await cRef.update({ orderCount: fsIncrement(1), totalSpent: fsIncrement(order.total) });
 }
 
 // ===== Sync pending localStorage orders to Supabase =====
@@ -67,12 +54,13 @@ async function syncPendingOrders(userEmail, userName, userPhone) {
     let changed = false;
     for (const order of pending) {
         try {
+            const addr = order.shipping || {};
             if (window.ssaApi && window.ssaApi.enabled) {
-                await window.ssaApi.postOrder({ orderId: order.id, customerName: userName, customerEmail: userEmail, customerPhone: userPhone, items: order.items, total: order.total, payment: order.payment || 'COD', address: '', city: '', pincode: '' });
+                await window.ssaApi.postOrder({ orderId: order.id, customerName: userName, customerEmail: userEmail, customerPhone: userPhone, items: order.items, total: order.total, payment: order.payment || 'COD', paymentStatus: order.paymentStatus || '', addressLabel: order.addressLabel || '', address: addr.address || '', city: addr.city || '', pincode: addr.pincode || '' });
             } else {
                 const exists = await db.collection('orders').where('orderId', '==', order.id).get();
                 if (!exists.empty) { order._synced = true; changed = true; continue; }
-                await db.collection('orders').add({ orderId: order.id, customerName: userName, customerEmail: userEmail, customerPhone: userPhone, address: '', city: '', pincode: '', items: order.items, total: order.total, payment: order.payment || 'COD', status: order.status || 'Processing', trackingId: '', inventoryDeducted: false, createdAt: fsServerTimestamp(), updatedAt: fsServerTimestamp() });
+                await db.collection('orders').add({ orderId: order.id, customerName: userName, customerEmail: userEmail, customerPhone: userPhone, address: addr.address || '', city: addr.city || '', pincode: addr.pincode || '', items: order.items, total: order.total, payment: order.payment || 'COD', paymentStatus: order.paymentStatus || '', addressLabel: order.addressLabel || '', status: order.status || 'Processing', trackingId: order.trackingId || '', inventoryDeducted: false, createdAt: fsServerTimestamp(), updatedAt: fsServerTimestamp() });
             }
             order._synced = true; changed = true;
         } catch (e) { console.warn('[sync] failed:', order.id, e.message); }

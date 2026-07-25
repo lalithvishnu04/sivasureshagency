@@ -3678,7 +3678,7 @@ function reorderFromHistory(orderId) {
 }
 
 // ===== Place Order =====
-function placeOrder() {
+async function placeOrder() {
     if (!currentUser) { 
         closeCheckoutModal();
         openLoginModal(); 
@@ -3740,11 +3740,16 @@ function placeOrder() {
             state: shipping.state
         }
     };
-    const key = 'ssa_orders_' + currentUser.email;
-    const orders = JSON.parse(localStorage.getItem(key) || '[]');
-    orders.unshift(order); localStorage.setItem(key, JSON.stringify(orders));
-    // Save to Supabase
-    if (typeof saveOrderToDb === 'function') saveOrderToDb(order, shipping);
+    // Save to Supabase — DB is the source of truth, no localStorage
+    if (typeof saveOrderToDb === 'function') {
+        try {
+            await saveOrderToDb(order, shipping);
+        } catch (err) {
+            console.error('[placeOrder] DB save failed:', err);
+            showToast('Could not save order. Please check your connection and try again.');
+            return;
+        }
+    }
     closeCheckoutModal();
     document.getElementById('orderId').textContent = order.id;
     document.getElementById('successModal').classList.add('active');
