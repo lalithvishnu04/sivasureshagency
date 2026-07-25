@@ -2418,7 +2418,8 @@ function _findProductNode(product) {
     }
     const pc = product.category || '', pg = product.gender || '', ps = product.sleeve || '', psub = product.subCategory || '';
     for (const h of tax) for (const c of (h.cats || [])) for (const s of (c.subs || [])) { const r = _adminResolveSub(c, s); if (r.cat === pc && (r.gender || '') === pg && (r.sleeve || '') === ps && (r.sub || '') === psub && (r.sub || r.gender || r.sleeve)) return { catSlug: c.slug, subSlug: s.slug }; }
-    for (const h of tax) for (const c of (h.cats || [])) { const r = _adminResolveCat(c); if (r.cat === pc && (r.gender || '') === pg && (r.sleeve || '') === ps) return { catSlug: c.slug, subSlug: '' }; }
+    // Match on category + gender, ignoring sleeve (sleeve is per-product, not per category node)
+    for (const h of tax) for (const c of (h.cats || [])) { const r = _adminResolveCat(c); if (r.cat === pc && (r.gender || '') === pg && (!r.sleeve || r.sleeve === ps)) return { catSlug: c.slug, subSlug: '' }; }
     for (const h of tax) for (const c of (h.cats || [])) {
         if (String(psub || '').trim() && [c.slug, c.label].some(v => String(v || '').trim().toLowerCase() === String(psub).trim().toLowerCase())) return { catSlug: c.slug, subSlug: '' };
     }
@@ -2429,7 +2430,8 @@ function _findProductNode(product) {
     }
     if (canonicalMatches.length === 1) return { catSlug: canonicalMatches[0].cat.slug, subSlug: '' };
     if (canonicalMatches.length > 1) {
-        const hints = [psub, product.name, product.description].map(v => String(v || '').toLowerCase()).join(' ');
+        // Include product.gender directly in hints so 'female' matches ladies-scrubs, 'male' matches gents-scrubs
+        const hints = [psub, product.name, product.description, pg].map(v => String(v || '').toLowerCase()).join(' ');
         const genderHinted = canonicalMatches.filter(entry => {
             if (!entry.map.gender) return false;
             const aliases = entry.map.gender === 'female' ? ['female', 'ladies', 'women'] : entry.map.gender === 'male' ? ['male', 'gents', 'men'] : [entry.map.gender];
