@@ -2846,6 +2846,9 @@ async function openAccountPanel() {
                 deliveredAt: d.data().deliveredAt || null,
                 updatedAt: d.data().updatedAt || null,
                 addressLabel: d.data().addressLabel || '',
+                statusHistory: d.data().statusHistory || {},
+                returnRequest: d.data().returnRequest || null,
+                cancellation: d.data().cancellation || null,
                 shipping: {
                     name: d.data().customerName || currentUser.name,
                     email: d.data().customerEmail || currentUser.email,
@@ -2994,7 +2997,14 @@ function _getPaymentStatus(order) {
     if (order.paymentStatus) return order.paymentStatus;
     const key = String(order.payment || '').trim().toUpperCase();
     if (key === 'COD') return order.status === 'Delivered' ? 'Collected on delivery' : 'Pay on delivery';
-    return order.status === 'Cancelled' ? 'Refund review pending' : 'Awaiting payment confirmation';
+    if (order.status === 'Cancelled') {
+        const rs = order.cancellation?.refundStatus;
+        if (rs === 'Processed') return 'Refund Processed';
+        if (rs === 'Initiated') return 'Refund Initiated';
+        if (rs === 'Failed') return 'Refund Failed';
+        return 'Refund review pending';
+    }
+    return 'Awaiting payment confirmation';
 }
 
 function _resolveOrderItemMeta(item) {
@@ -3006,6 +3016,28 @@ function _resolveOrderItemMeta(item) {
         gender: item.gender || product?.gender || '',
         sleeve: item.sleeve || product?.sleeve || ''
     };
+}
+
+function _buildCancellationSection(order) {
+    const c = order.cancellation || {};
+    const isCOD = (order.payment || '').toUpperCase() === 'COD';
+    const reason = c.reason ? escapeRichText(c.reason) : 'Not specified';
+    const refundStatusColors = { 'Processed': '#10b981', 'Initiated': '#3b82f6', 'Failed': '#ef4444', 'Not Initiated': '#94a3b8' };
+    const rs = c.refundStatus || '';
+    const rsColor = refundStatusColors[rs] || '#64748b';
+    const refundHtml = (!isCOD) ? `
+        <div class="acct-cancel-refund">
+            <div class="acct-cancel-refund-head"><i class="fas fa-rupee-sign"></i> Refund Status</div>
+            ${rs ? `<span class="acct-cancel-refund-badge" style="color:${rsColor};border-color:${rsColor}">${escapeRichText(rs)}</span>` : '<span style="color:#94a3b8;font-size:0.82rem;">Pending review</span>'}
+            ${c.refundAmount ? `<div class="acct-cancel-meta"><span>Amount:</span> <strong>₹${Number(c.refundAmount).toLocaleString('en-IN')}</strong></div>` : ''}
+            ${c.refundRef ? `<div class="acct-cancel-meta"><span>Ref ID:</span> <strong>${escapeRichText(c.refundRef)}</strong></div>` : ''}
+            ${c.refundDate ? `<div class="acct-cancel-meta"><span>Refund Date:</span> <strong>${escapeRichText(c.refundDate)}</strong></div>` : ''}
+        </div>` : '<p style="font-size:0.82rem;color:#6b7280;margin-top:6px;"><i class="fas fa-info-circle"></i> COD order — no refund applicable.</p>';
+    return `<div class="acct-cancellation-section">
+        <div class="acct-cancel-head"><i class="fas fa-ban"></i> This order was cancelled</div>
+        <div class="acct-cancel-reason"><span>Reason:</span> ${reason}</div>
+        ${refundHtml}
+    </div>`;
 }
 
 function _getOrderReturnMeta(order) {
@@ -3146,6 +3178,7 @@ function _buildOrderCardsHTML(orders) {
                         </div>
                     </div>
                     ${_buildOrderTimeline(order)}
+                    ${statusKey === 'cancelled' ? _buildCancellationSection(order) : ''}
                     <div class="acct-order-grid">
                         <div class="acct-order-main">
                             <div class="od-items-list">${detailRows}</div>

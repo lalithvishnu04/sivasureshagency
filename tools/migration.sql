@@ -23,6 +23,9 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "returnRequest" jsonb DEFAULT
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "paymentStatus" text;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "addressLabel" text;
 
+-- Cancellation details: reason, refund info for cancelled orders
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "cancellation" jsonb DEFAULT NULL;
+
 -- Products table: categoryNode not stored in DB (UI-only), but subCategory is needed
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS "subCategory" text;
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS "categoryNode" text;

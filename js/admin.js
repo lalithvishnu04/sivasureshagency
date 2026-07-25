@@ -560,6 +560,47 @@ async function viewOrder(docId) {
                     <button class="btn-primary" style="padding:7px 14px;font-size:0.84rem;" onclick="saveReturnUpdate('${docId}')"><i class="fas fa-save"></i> Save Return Update</button>
                 </div>
             </div>` : ''}
+            ${o.status === 'Cancelled' ? `
+            <div class="od-section" style="border:2px solid #ef4444;border-radius:12px;padding:14px 16px;background:#fef2f2;margin-top:12px;">
+                <h5 style="color:#dc2626;margin-bottom:12px;"><i class="fas fa-ban"></i> Cancellation Details</h5>
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:0.82rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;"><i class="fas fa-comment-alt"></i> Reason for Cancellation</label>
+                    <input type="text" id="cancelReason" placeholder="e.g. Customer requested, Out of stock, Wrong item..." value="${_escHtmlCat(o.cancellation?.reason || '')}" style="width:100%;padding:8px 10px;border:1.5px solid #fca5a5;border-radius:8px;font-size:0.85rem;font-family:inherit;outline:none;box-sizing:border-box;">
+                </div>
+                ${(o.payment || '').toUpperCase() !== 'COD' ? `
+                <div style="background:#fff;border:1px solid #fca5a5;border-radius:8px;padding:12px;margin-bottom:10px;">
+                    <p style="font-size:0.82rem;font-weight:700;color:#dc2626;margin-bottom:10px;"><i class="fas fa-rupee-sign"></i> Refund Details (Online Payment)</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                        <div style="flex:1;min-width:160px;">
+                            <label style="font-size:0.78rem;color:var(--text-muted);font-weight:600;display:block;margin-bottom:3px;">Refund Status</label>
+                            <select id="refundStatusSelect" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.84rem;font-family:inherit;">
+                                <option value="">— Select —</option>
+                                <option value="Not Initiated" ${(o.cancellation?.refundStatus||'')==='Not Initiated'?'selected':''}>Not Initiated</option>
+                                <option value="Initiated" ${(o.cancellation?.refundStatus||'')==='Initiated'?'selected':''}>Initiated</option>
+                                <option value="Processed" ${(o.cancellation?.refundStatus||'')==='Processed'?'selected':''}>Processed</option>
+                                <option value="Failed" ${(o.cancellation?.refundStatus||'')==='Failed'?'selected':''}>Failed</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;min-width:130px;">
+                            <label style="font-size:0.78rem;color:var(--text-muted);font-weight:600;display:block;margin-bottom:3px;">Refund Amount (₹)</label>
+                            <input type="number" id="refundAmount" placeholder="0" value="${_escHtmlCat(o.cancellation?.refundAmount ?? '')}" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.84rem;font-family:inherit;box-sizing:border-box;">
+                        </div>
+                        <div style="flex:1;min-width:160px;">
+                            <label style="font-size:0.78rem;color:var(--text-muted);font-weight:600;display:block;margin-bottom:3px;">Transaction Ref ID</label>
+                            <input type="text" id="refundRef" placeholder="e.g. PAY123456" value="${_escHtmlCat(o.cancellation?.refundRef || '')}" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.84rem;font-family:inherit;box-sizing:border-box;">
+                        </div>
+                        <div style="flex:1;min-width:140px;">
+                            <label style="font-size:0.78rem;color:var(--text-muted);font-weight:600;display:block;margin-bottom:3px;">Refund Date</label>
+                            <input type="date" id="refundDate" value="${_escHtmlCat(o.cancellation?.refundDate || '')}" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.84rem;font-family:inherit;box-sizing:border-box;">
+                        </div>
+                    </div>
+                </div>` : ''}
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:0.78rem;color:var(--text-muted);font-weight:600;display:block;margin-bottom:3px;">Internal Note (optional)</label>
+                    <input type="text" id="cancelNote" placeholder="Optional internal note" value="${_escHtmlCat(o.cancellation?.note || '')}" style="width:100%;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.85rem;font-family:inherit;outline:none;box-sizing:border-box;">
+                </div>
+                <button class="btn-primary" style="background:#ef4444;border-color:#ef4444;border:none;" onclick="saveCancellationDetails('${docId}')"><i class="fas fa-save"></i> Save Cancellation Details</button>
+            </div>` : ''}
         </div>
     `;
     openModal('orderModal');
@@ -636,6 +677,39 @@ async function saveReturnUpdate(docId) {
     }
 }
 window.saveReturnUpdate = saveReturnUpdate;
+
+async function saveCancellationDetails(docId) {
+    const reason    = document.getElementById('cancelReason')?.value?.trim() || '';
+    const note      = document.getElementById('cancelNote')?.value?.trim() || '';
+    const refundStatus = document.getElementById('refundStatusSelect')?.value || null;
+    const refundAmount = parseFloat(document.getElementById('refundAmount')?.value || '') || null;
+    const refundRef    = document.getElementById('refundRef')?.value?.trim() || null;
+    const refundDate   = document.getElementById('refundDate')?.value?.trim() || null;
+
+    const existingOrder = allOrders.find(x => x.docId === docId) || {};
+    const cancellation = {
+        ...(existingOrder.cancellation || {}),
+        reason,
+        note,
+        ...(refundStatus  !== null ? { refundStatus }  : {}),
+        ...(refundAmount  !== null ? { refundAmount }  : {}),
+        ...(refundRef     ? { refundRef }     : {}),
+        ...(refundDate    ? { refundDate }    : {}),
+        updatedAt: new Date().toISOString()
+    };
+
+    try {
+        await db.collection('orders').doc(docId).update({ cancellation });
+        const idx = allOrders.findIndex(x => x.docId === docId);
+        if (idx !== -1) allOrders[idx].cancellation = cancellation;
+        showAdminToast('Cancellation details saved');
+        closeModal('orderModal');
+        loadOrders();
+    } catch (err) {
+        showAdminToast('Error: ' + err.message, 'error');
+    }
+}
+window.saveCancellationDetails = saveCancellationDetails;
 
 async function updateOrderStatus(docId) {
     viewOrder(docId);
