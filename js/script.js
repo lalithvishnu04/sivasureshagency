@@ -3061,12 +3061,10 @@ function _buildOrderItemDetailHTML(item) {
 
     // Build full product name with variant details
     // Product names from DB already include sleeve type (e.g., "SSA CliniFlex Scrub™ - Round Neck")
-    // Only append the selected color
+    // Only append the selected color — escape once at template level only
     let productNameDisplay = item.name || 'Ordered item';
-    productNameDisplay = escapeRichText(productNameDisplay);
-    
     if (item.selectedColor) {
-        productNameDisplay = productNameDisplay + ' — ' + escapeRichText(item.selectedColor);
+        productNameDisplay = productNameDisplay + ' — ' + item.selectedColor;
     }
 
     return `
