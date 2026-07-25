@@ -95,13 +95,11 @@ async function saveCustomerToDb(customerData) {
 }
 
 // Keep old names as aliases for backward compatibility
-const saveOrderToFirebase    = saveOrderToDb;
-const saveCustomerToFirebase = saveCustomerToDb;
+// Supabase is the only DB backend — no Firebase aliases needed
 
 window.saveOrderToDb          = saveOrderToDb;
 window.saveCustomerToDb       = saveCustomerToDb;
-window.saveOrderToFirebase    = saveOrderToDb;
-window.saveCustomerToFirebase = saveCustomerToDb;
+// Supabase backend functions exposed globally
 window.syncPendingOrders      = syncPendingOrders;
 
 // ===== Inventory stock status =====

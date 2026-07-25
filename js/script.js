@@ -3011,30 +3011,41 @@ function _resolveOrderItemMeta(item) {
 function _getOrderReturnMeta(order) {
     const statusKey = _orderStatusKey(order.status);
     if (statusKey !== 'delivered') {
-        return { eligible: false, note: 'Return option unlocks 2 days after delivery.' };
+        return { eligible: false, note: 'Return/Exchange available for 2 days after delivery.' };
     }
     const deliveredAt = _normalizeOrderDateValue(order.deliveredAt || order.updatedAt || order.date);
     if (!deliveredAt) {
         return { eligible: false, note: 'Waiting for delivery confirmation.' };
     }
-    const enableAt = new Date(deliveredAt.getTime() + (2 * 24 * 60 * 60 * 1000));
-    if (Date.now() >= enableAt.getTime()) {
-        return { eligible: true, note: 'Return and exchange support is now available.' };
+    // Window: available immediately after delivery, expires after 2 days
+    const expireAt = new Date(deliveredAt.getTime() + (2 * 24 * 60 * 60 * 1000));
+    if (Date.now() <= expireAt.getTime()) {
+        // Check if already submitted a request
+        if (order.returnRequest && order.returnRequest.status) {
+            return { eligible: false, requested: true, request: order.returnRequest, note: '' };
+        }
+        return { eligible: true, note: 'Return/Exchange open until ' + _formatOrderDateTime(expireAt) + '.' };
     }
-    return { eligible: false, note: 'Return available from ' + _formatOrderDateTime(enableAt) + '.' };
+    if (order.returnRequest && order.returnRequest.status) {
+        return { eligible: false, requested: true, request: order.returnRequest, note: '' };
+    }
+    return { eligible: false, note: 'Return/Exchange window closed (2-day window expired).' };
 }
 
 function _buildOrderTimeline(order) {
     const current = _orderStatusKey(order.status);
+    const history = order.statusHistory || {};
     if (current === 'cancelled') {
-        return '<div class="acct-order-timeline is-cancelled"><span class="timeline-node active">Placed</span><span class="timeline-node active danger">Cancelled</span></div>';
+        const cancelledAt = history['cancelled'] ? '<small>' + _formatOrderDateTime(history['cancelled']) + '</small>' : '';
+        return '<div class="acct-order-timeline is-cancelled"><div class="timeline-node active"><span>Placed</span>' + (history['processing'] ? '<small>' + _formatOrderDateTime(history['processing']) + '</small>' : '') + '</div><div class="timeline-node active danger"><span>Cancelled</span>' + cancelledAt + '</div></div>';
     }
     const steps = ['processing', 'approved', 'packed', 'shipped', 'delivered'];
     const labels = { processing: 'Placed', approved: 'Approved', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered' };
     const currentIndex = steps.includes(current) ? steps.indexOf(current) : 0;
     return '<div class="acct-order-timeline">' + steps.map((step, index) => {
         const active = index <= currentIndex ? ' active' : '';
-        return '<span class="timeline-node' + active + '">' + labels[step] + '</span>';
+        const ts = history[step] ? '<small>' + _formatOrderDateTime(history[step]) + '</small>' : '';
+        return '<div class="timeline-node' + active + '"><span>' + labels[step] + '</span>' + ts + '</div>';
     }).join('') + '</div>';
 }
 
@@ -3170,7 +3181,7 @@ function _buildOrderCardsHTML(orders) {
                         <button class="btn btn-outline-dark btn-sm" onclick="downloadInvoice('${order.id}')"><i class="fas fa-file-invoice"></i> Invoice</button>
                         <button class="btn btn-primary btn-sm" onclick="reorderFromHistory('${order.id}')"><i class="fas fa-redo"></i> Reorder</button>
                         <button class="btn btn-outline-dark btn-sm acct-share-btn" onclick="shareOrderResult('${order.id}')"><i class="fas fa-share-alt"></i> Share</button>
-                        ${actions.eligible ? `<button class="btn btn-outline-dark btn-sm acct-return-btn" onclick="requestOrderReturn('${order.id}')"><i class="fas fa-rotate-left"></i> Return / Exchange</button>` : `<span class="acct-action-note">${escapeRichText(actions.note)}</span>`}
+                        ${actions.requested ? _buildReturnRequestStatusHTML(actions.request) : actions.eligible ? `<button class="btn btn-outline-dark btn-sm acct-return-btn" onclick="requestOrderReturn('${order.id}')"><i class="fas fa-rotate-left"></i> Return / Exchange</button>` : actions.note ? `<span class="acct-action-note">${escapeRichText(actions.note)}</span>` : ''}
                     </div>
                     ${ratingHtml}
                 </div>
@@ -3203,11 +3214,111 @@ function contactOrderSupport(orderId) {
 }
 window.contactOrderSupport = contactOrderSupport;
 
+function _buildReturnRequestStatusHTML(req) {
+    if (!req) return '';
+    const statusColors = { pending: '#f59e0b', approved: '#10b981', rejected: '#ef4444', refunded: '#6366f1', processing: '#3b82f6' };
+    const color = statusColors[String(req.status || 'pending').toLowerCase()] || '#6b7280';
+    const refundInfo = req.refundCredited ? `<span style="color:#10b981;font-size:0.78rem;"><i class="fas fa-check-circle"></i> Refund credited${req.expectedRefundDate ? ' on ' + req.expectedRefundDate : ''}</span>` : (req.expectedRefundDate ? `<span style="color:#6b7280;font-size:0.78rem;">Expected refund: ${req.expectedRefundDate}</span>` : '');
+    return `<div class="acct-return-status"><i class="fas fa-rotate-left" style="color:${color}"></i> <span style="color:${color};font-weight:700;">${escapeRichText(req.type || 'Return')} ${escapeRichText(req.status || 'Pending')}</span>${refundInfo ? ' · ' + refundInfo : ''}</div>`;
+}
+window._buildReturnRequestStatusHTML = _buildReturnRequestStatusHTML;
+
 function requestOrderReturn(orderId) {
-    const msg = `Hi SSA team, I want to request a return or exchange for order #${orderId}. Please guide me on the next steps.`;
-    window.open('https://wa.me/' + ORDER_SUPPORT_WHATSAPP + '?text=' + encodeURIComponent(msg), '_blank');
+    const modal = document.getElementById('authModal');
+    if (!modal) return;
+    modal.innerHTML = `
+        <div class="modal modal-sm" style="max-width:480px;padding:0;">
+            <div style="background:linear-gradient(135deg,#0d9488,#0f766e);padding:20px 24px;border-radius:16px 16px 0 0;">
+                <button class="acct-close" onclick="closeAuthModal()" style="color:#fff;background:rgba(255,255,255,0.15);"><i class="fas fa-times"></i></button>
+                <h3 style="color:#fff;margin:0;font-size:1.05rem;"><i class="fas fa-rotate-left" style="margin-right:8px;"></i>Return / Exchange Request</h3>
+                <p style="color:rgba(255,255,255,0.8);font-size:0.82rem;margin:4px 0 0;">Order #${escapeRichText(orderId)}</p>
+            </div>
+            <div style="padding:22px 24px;">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:0.82rem;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Request Type</label>
+                    <div style="display:flex;gap:10px;">
+                        <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;cursor:pointer;font-size:0.88rem;font-weight:600;" id="retTypeReturn">
+                            <input type="radio" name="retType" value="Return" checked onchange="document.getElementById('retTypeReturn').style.borderColor='#0d9488';document.getElementById('retTypeExchange').style.borderColor='#e2e8f0';" style="accent-color:#0d9488;"> Return
+                        </label>
+                        <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;cursor:pointer;font-size:0.88rem;font-weight:600;" id="retTypeExchange">
+                            <input type="radio" name="retType" value="Exchange" onchange="document.getElementById('retTypeExchange').style.borderColor='#0d9488';document.getElementById('retTypeReturn').style.borderColor='#e2e8f0';" style="accent-color:#0d9488;"> Exchange
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:0.82rem;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Reason</label>
+                    <select id="retReason" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.88rem;font-family:inherit;outline:none;">
+                        <option value="">— Select a reason —</option>
+                        <option value="Wrong size received">Wrong size received</option>
+                        <option value="Wrong color received">Wrong color received</option>
+                        <option value="Defective / damaged product">Defective / damaged product</option>
+                        <option value="Product not as described">Product not as described</option>
+                        <option value="Size doesn't fit">Size doesn't fit</option>
+                        <option value="Duplicate order">Duplicate order</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:18px;">
+                    <label style="font-size:0.82rem;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Additional Details <span style="color:#94a3b8;font-weight:400;">(optional)</span></label>
+                    <textarea id="retNote" rows="3" placeholder="Describe the issue..." style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.88rem;font-family:inherit;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+                </div>
+                <button class="btn btn-gradient btn-full" onclick="submitOrderReturn('${orderId}')" style="margin-bottom:0;"><i class="fas fa-paper-plane"></i> Submit Request</button>
+                <button class="btn btn-outline-dark btn-full" onclick="closeAuthModal()" style="margin-top:8px;">Cancel</button>
+            </div>
+        </div>
+    `;
+    document.body.style.overflow = 'hidden';
+    modal.classList.add('active');
 }
 window.requestOrderReturn = requestOrderReturn;
+
+async function submitOrderReturn(orderId) {
+    const type = document.querySelector('input[name="retType"]:checked')?.value || 'Return';
+    const reason = document.getElementById('retReason')?.value || '';
+    const note = document.getElementById('retNote')?.value?.trim() || '';
+    if (!reason) { showToast('Please select a reason', 'error'); return; }
+
+    const returnRequest = {
+        type, reason, note,
+        status: 'Pending',
+        submittedAt: new Date().toISOString(),
+        refundCredited: false,
+        expectedRefundDate: null
+    };
+
+    try {
+        if (window.db) {
+            // Find the order document by orderId
+            const snap = await db.collection('orders').where('orderId', '==', orderId).get();
+            if (!snap.empty) {
+                const docId = snap.docs[0].id;
+                await db.collection('orders').doc(docId).update({ returnRequest });
+            } else {
+                // Fallback: try matching by id field
+                const snap2 = await db.collection('orders').get();
+                const doc = snap2.docs.find(d => d.data().orderId === orderId || d.id === orderId);
+                if (doc) await db.collection('orders').doc(doc.id).update({ returnRequest });
+            }
+        }
+    } catch (err) {
+        console.warn('[return] DB save failed, storing in localStorage:', err.message);
+    }
+
+    // Always update localStorage copy too
+    if (currentUser?.email) {
+        const key = 'ssa_orders_' + currentUser.email;
+        try {
+            const orders = JSON.parse(localStorage.getItem(key) || '[]');
+            const idx = orders.findIndex(o => (o.orderId || o.id) === orderId);
+            if (idx !== -1) { orders[idx].returnRequest = returnRequest; localStorage.setItem(key, JSON.stringify(orders)); }
+        } catch (e) { /* ignore */ }
+    }
+
+    closeAuthModal();
+    showToast('Return/Exchange request submitted! Our team will contact you within 24 hours.', 'success');
+    setTimeout(() => openAccountPanel(), 500);
+}
+window.submitOrderReturn = submitOrderReturn;
 function shareOrderResult(orderId) {
     const shareText = `Just ordered premium hospital uniforms from Siva Suresh Agency! 🏥 Quality medical wear. Order #${orderId} — Check them out: ${window.location.origin}/sivasureshagency/`;
     if (navigator.share) {

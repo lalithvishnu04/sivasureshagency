@@ -1107,10 +1107,14 @@ body.modal-open { overflow: hidden; touch-action: none; }
 .hero-micro-label { display: block; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #0d9488; margin-bottom: 7px; }
 .acct-order-hero-card strong { display: block; font-size: 0.96rem; color: var(--navy); }
 .acct-order-hero-card p { margin-top: 5px; font-size: 0.77rem; color: var(--text-muted); line-height: 1.6; }
-.acct-order-timeline { display: flex; gap: 10px; flex-wrap: wrap; padding: 14px 18px 8px; }
-.timeline-node { position: relative; padding: 8px 12px; border-radius: 999px; background: #e2e8f0; color: #64748b; font-size: 0.72rem; font-weight: 700; }
-.timeline-node.active { background: linear-gradient(135deg, #0d9488, #14b8a6); color: #fff; box-shadow: 0 10px 22px rgba(13,148,136,0.25); }
+.acct-order-timeline { display: flex; gap: 6px; flex-wrap: wrap; padding: 14px 18px 8px; }
+.timeline-node { position: relative; padding: 8px 12px; border-radius: 10px; background: #e2e8f0; color: #64748b; font-size: 0.72rem; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 68px; text-align: center; }
+.timeline-node span { font-size: 0.73rem; font-weight: 700; }
+.timeline-node small { font-size: 0.63rem; font-weight: 500; color: #94a3b8; line-height: 1.3; display: block; }
+.timeline-node.active { background: linear-gradient(135deg, #0d9488, #14b8a6); color: #fff; box-shadow: 0 6px 16px rgba(13,148,136,0.22); }
+.timeline-node.active small { color: rgba(255,255,255,0.8); }
 .timeline-node.danger, .timeline-node.active.danger { background: linear-gradient(135deg, #ef4444, #f97316); }
+.acct-return-status { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; padding: 8px 14px; background: #f8fafc; border-radius: 10px; border: 1.5px solid #e2e8f0; margin-top: 4px; }
 .acct-order-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.9fr); gap: 14px; padding: 10px 18px 0; }
 .acct-order-main { min-width: 0; }
 .acct-order-side { display: flex; flex-direction: column; gap: 12px; }

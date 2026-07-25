@@ -539,6 +539,27 @@ async function viewOrder(docId) {
                 <button class="btn-primary" onclick="saveOrderUpdate('${docId}')"><i class="fas fa-save"></i> Update</button>
                 <button class="btn-secondary" onclick="printOrderInvoice('${docId}')"><i class="fas fa-file-invoice"></i> Invoice</button>
             </div>
+            ${o.returnRequest ? `
+            <div class="od-section" style="border:2px solid #fbbf24;border-radius:12px;padding:14px 16px;background:#fffbeb;">
+                <h5 style="color:#b45309;margin-bottom:10px;"><i class="fas fa-rotate-left"></i> ${o.returnRequest.type || 'Return'} Request &mdash; <span style="text-transform:capitalize;">${o.returnRequest.status || 'Pending'}</span></h5>
+                <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Reason:</strong> ${o.returnRequest.reason || '—'}</p>
+                ${o.returnRequest.note ? `<p style="font-size:0.83rem;color:#64748b;margin-bottom:8px;">${o.returnRequest.note}</p>` : ''}
+                <p style="font-size:0.78rem;color:#94a3b8;margin-bottom:10px;">Submitted: ${o.returnRequest.submittedAt ? new Date(o.returnRequest.submittedAt).toLocaleString('en-IN') : '—'}</p>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                    <select id="returnStatusSelect" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.84rem;font-family:inherit;">
+                        <option value="Pending" ${(o.returnRequest.status||'Pending')==='Pending'?'selected':''}>Pending</option>
+                        <option value="Processing" ${o.returnRequest.status==='Processing'?'selected':''}>Processing</option>
+                        <option value="Approved" ${o.returnRequest.status==='Approved'?'selected':''}>Approved</option>
+                        <option value="Rejected" ${o.returnRequest.status==='Rejected'?'selected':''}>Rejected</option>
+                        <option value="Refunded" ${o.returnRequest.status==='Refunded'?'selected':''}>Refunded</option>
+                    </select>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:0.83rem;font-weight:600;">
+                        <input type="checkbox" id="refundCreditedCheck" ${o.returnRequest.refundCredited?'checked':''} style="accent-color:#0d9488;"> Refund Credited
+                    </label>
+                    <input type="date" id="expectedRefundDate" value="${o.returnRequest.expectedRefundDate||''}" placeholder="Expected refund date" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.84rem;font-family:inherit;">
+                    <button class="btn-primary" style="padding:7px 14px;font-size:0.84rem;" onclick="saveReturnUpdate('${docId}')"><i class="fas fa-save"></i> Save Return Update</button>
+                </div>
+            </div>` : ''}
         </div>
     `;
     openModal('orderModal');
@@ -552,7 +573,15 @@ async function saveOrderUpdate(docId) {
         const existingOrder = allOrders.find(x => x.docId === docId) || {};
         const updatePayload = { status, trackingId, updatedAt: fsServerTimestamp() };
         if (String(status || '').toLowerCase() === 'delivered' && !existingOrder.deliveredAt) updatePayload.deliveredAt = fsServerTimestamp();
-        // Core update: status + trackingId (always works — these columns exist)
+
+        // Track status history timestamps: record timestamp when each status is first set
+        const statusKey = String(status || '').toLowerCase().replace(/\s+/g, '');
+        const existingHistory = existingOrder.statusHistory || {};
+        if (!existingHistory[statusKey]) {
+            updatePayload.statusHistory = { ...existingHistory, [statusKey]: new Date().toISOString() };
+        }
+
+        // Core update: status + trackingId + statusHistory
         await db.collection('orders').doc(docId).update(updatePayload);
 
         // Optional: estimated delivery (column may not exist yet — fails silently)
@@ -573,6 +602,7 @@ async function saveOrderUpdate(docId) {
             allOrders[idx].trackingId = trackingId;
             if (updatePayload.deliveredAt) allOrders[idx].deliveredAt = new Date().toISOString();
             if (estimatedDelivery) allOrders[idx].estimatedDelivery = estimatedDelivery;
+            if (updatePayload.statusHistory) allOrders[idx].statusHistory = updatePayload.statusHistory;
         }
         showAdminToast('Order updated successfully');
         closeModal('orderModal');
@@ -582,6 +612,30 @@ async function saveOrderUpdate(docId) {
         showAdminToast('Error: ' + err.message, 'error');
     }
 }
+
+async function saveReturnUpdate(docId) {
+    const returnStatus = document.getElementById('returnStatusSelect')?.value || 'Pending';
+    const refundCredited = document.getElementById('refundCreditedCheck')?.checked || false;
+    const expectedRefundDate = document.getElementById('expectedRefundDate')?.value?.trim() || null;
+    try {
+        const existingOrder = allOrders.find(x => x.docId === docId) || {};
+        const existing = existingOrder.returnRequest || {};
+        const updatedRequest = { ...existing, status: returnStatus, refundCredited, expectedRefundDate, adminUpdatedAt: new Date().toISOString() };
+        try {
+            await db.collection('orders').doc(docId).update({ returnRequest: updatedRequest });
+        } catch (e) {
+            console.warn('[admin] returnRequest column missing. Run migration.sql.', e.message);
+        }
+        const idx = allOrders.findIndex(x => x.docId === docId);
+        if (idx !== -1) allOrders[idx].returnRequest = updatedRequest;
+        showAdminToast('Return/Exchange status updated');
+        closeModal('orderModal');
+        loadOrders();
+    } catch (err) {
+        showAdminToast('Error: ' + err.message, 'error');
+    }
+}
+window.saveReturnUpdate = saveReturnUpdate;
 
 async function updateOrderStatus(docId) {
     viewOrder(docId);
@@ -917,8 +971,7 @@ async function saveProduct(e) {
     const _map = _resolveProductMapping(document.getElementById('pCategory').value, (document.getElementById('pSubCategory') && document.getElementById('pSubCategory').value) || '');
     const data = {
         name: document.getElementById('pName').value.trim(),
-        categoryNode: document.getElementById('pCategory').value,
-        subCategoryNode: (document.getElementById('pSubCategory') && document.getElementById('pSubCategory').value) || null,
+        // categoryNode / subCategoryNode are UI-only — not stored in Supabase schema
         category: _map.category,
         subCategory: _map.subCategory || null,
         price: parseInt(document.getElementById('pPrice').value),
