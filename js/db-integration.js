@@ -26,7 +26,9 @@ async function saveOrderToDb(order, shippingDetails) {
                 customerEmail: shippingDetails.email,
                 customerPhone: shippingDetails.phone || '',
                 address: shippingDetails.address, city: shippingDetails.city, pincode: shippingDetails.pincode,
-                items: order.items, total: order.total, payment: order.payment
+                items: order.items, total: order.total, payment: order.payment,
+                paymentStatus: order.paymentStatus || '', trackingId: order.trackingId || '',
+                deliveredAt: order.deliveredAt || null, addressLabel: order.addressLabel || ''
             });
             await window.ssaApi.postCustomer({ email: shippingDetails.email, firstName: shippingDetails.firstname, lastName: shippingDetails.lastname, phone: shippingDetails.phone || '' }).catch(() => {});
             _markSynced(order.id, shippingDetails.email);
@@ -40,7 +42,8 @@ async function saveOrderToDb(order, shippingDetails) {
             customerPhone: shippingDetails.phone,
             address: shippingDetails.address, city: shippingDetails.city, pincode: shippingDetails.pincode,
             items: order.items, total: order.total, payment: order.payment,
-            status: 'Processing', trackingId: '', inventoryDeducted: false,
+            paymentStatus: order.paymentStatus || '', status: 'Processing', trackingId: order.trackingId || '',
+            deliveredAt: order.deliveredAt || null, addressLabel: order.addressLabel || '', inventoryDeducted: false,
             createdAt: fsServerTimestamp(), updatedAt: fsServerTimestamp()
         });
         _markSynced(order.id, shippingDetails.email);

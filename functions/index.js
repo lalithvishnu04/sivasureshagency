@@ -107,7 +107,8 @@ app.get('/api/inventory/status', publicLimiter, async (req, res) => {
 app.post('/api/orders', writeLimiter, async (req, res) => {
     try {
         const { customerEmail, customerName, customerPhone,
-                items, total, payment, address, city, pincode, orderId } = req.body;
+                items, total, payment, paymentStatus, address, city, pincode, orderId,
+                trackingId, deliveredAt, addressLabel } = req.body;
         if (!customerEmail || !items?.length) {
             return res.status(400).json({ ok: false, error: 'customerEmail and items required' });
         }
@@ -115,8 +116,11 @@ app.post('/api/orders', writeLimiter, async (req, res) => {
             orderId:       orderId || ('SSA' + Date.now().toString(36).toUpperCase()),
             customerEmail, customerName, customerPhone,
             items, total, payment, address, city, pincode,
+            paymentStatus: paymentStatus || '',
             status:     'Processing',
-            trackingId: '',
+            trackingId: trackingId || '',
+            deliveredAt: deliveredAt || null,
+            addressLabel: addressLabel || '',
             createdAt:  admin.firestore.FieldValue.serverTimestamp(),
             updatedAt:  admin.firestore.FieldValue.serverTimestamp()
         });
@@ -235,13 +239,15 @@ app.get('/api/admin/orders', adminLimiter, adminOnly, async (req, res) => {
 
 app.patch('/api/admin/orders/:id', adminLimiter, adminOnly, async (req, res) => {
     try {
-        const { status, trackingId, address, city, pincode } = req.body;
+        const { status, trackingId, address, city, pincode, deliveredAt, paymentStatus } = req.body;
         const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
         if (status     !== undefined) update.status     = status;
         if (trackingId !== undefined) update.trackingId = trackingId;
         if (address    !== undefined) update.address    = address;
         if (city       !== undefined) update.city       = city;
         if (pincode    !== undefined) update.pincode    = pincode;
+        if (deliveredAt !== undefined) update.deliveredAt = deliveredAt;
+        if (paymentStatus !== undefined) update.paymentStatus = paymentStatus;
         await db.collection('orders').doc(req.params.id).update(update);
         bust('orders_all', 'admin_dashboard');
         res.json({ ok: true });

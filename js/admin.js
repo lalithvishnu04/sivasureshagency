@@ -549,8 +549,11 @@ async function saveOrderUpdate(docId) {
     const trackingId = document.getElementById('orderTracking').value.trim();
     const estimatedDelivery = document.getElementById('orderEstDelivery')?.value?.trim() || null;
     try {
+        const existingOrder = allOrders.find(x => x.docId === docId) || {};
+        const updatePayload = { status, trackingId, updatedAt: fsServerTimestamp() };
+        if (String(status || '').toLowerCase() === 'delivered' && !existingOrder.deliveredAt) updatePayload.deliveredAt = fsServerTimestamp();
         // Core update: status + trackingId (always works — these columns exist)
-        await db.collection('orders').doc(docId).update({ status, trackingId, updatedAt: fsServerTimestamp() });
+        await db.collection('orders').doc(docId).update(updatePayload);
 
         // Optional: estimated delivery (column may not exist yet — fails silently)
         if (estimatedDelivery) {
@@ -568,6 +571,7 @@ async function saveOrderUpdate(docId) {
         if (idx !== -1) {
             allOrders[idx].status = status;
             allOrders[idx].trackingId = trackingId;
+            if (updatePayload.deliveredAt) allOrders[idx].deliveredAt = new Date().toISOString();
             if (estimatedDelivery) allOrders[idx].estimatedDelivery = estimatedDelivery;
         }
         showAdminToast('Order updated successfully');
@@ -913,6 +917,8 @@ async function saveProduct(e) {
     const _map = _resolveProductMapping(document.getElementById('pCategory').value, (document.getElementById('pSubCategory') && document.getElementById('pSubCategory').value) || '');
     const data = {
         name: document.getElementById('pName').value.trim(),
+        categoryNode: document.getElementById('pCategory').value,
+        subCategoryNode: (document.getElementById('pSubCategory') && document.getElementById('pSubCategory').value) || null,
         category: _map.category,
         subCategory: _map.subCategory || null,
         price: parseInt(document.getElementById('pPrice').value),
@@ -2350,9 +2356,34 @@ window._resolveProductMapping = _resolveProductMapping;
 function _findProductNode(product) {
     const tax = _adminTax || _readCachedTax();
     if (!product) { const first = tax[0] && tax[0].cats && tax[0].cats[0]; return { catSlug: first ? first.slug : '', subSlug: '' }; }
+    if (product.categoryNode) {
+        for (const heading of tax) {
+            for (const cat of (heading.cats || [])) {
+                if (cat.slug === product.categoryNode) return { catSlug: cat.slug, subSlug: product.subCategoryNode || '' };
+            }
+        }
+    }
     const pc = product.category || '', pg = product.gender || '', ps = product.sleeve || '', psub = product.subCategory || '';
     for (const h of tax) for (const c of (h.cats || [])) for (const s of (c.subs || [])) { const r = _adminResolveSub(c, s); if (r.cat === pc && (r.gender || '') === pg && (r.sleeve || '') === ps && (r.sub || '') === psub && (r.sub || r.gender || r.sleeve)) return { catSlug: c.slug, subSlug: s.slug }; }
     for (const h of tax) for (const c of (h.cats || [])) { const r = _adminResolveCat(c); if (r.cat === pc && (r.gender || '') === pg && (r.sleeve || '') === ps) return { catSlug: c.slug, subSlug: '' }; }
+    for (const h of tax) for (const c of (h.cats || [])) {
+        if (String(psub || '').trim() && [c.slug, c.label].some(v => String(v || '').trim().toLowerCase() === String(psub).trim().toLowerCase())) return { catSlug: c.slug, subSlug: '' };
+    }
+    const canonicalMatches = [];
+    for (const h of tax) for (const c of (h.cats || [])) {
+        const r = _adminResolveCat(c);
+        if (r.cat === pc) canonicalMatches.push({ cat: c, map: r });
+    }
+    if (canonicalMatches.length === 1) return { catSlug: canonicalMatches[0].cat.slug, subSlug: '' };
+    if (canonicalMatches.length > 1) {
+        const hints = [psub, product.name, product.description].map(v => String(v || '').toLowerCase()).join(' ');
+        const genderHinted = canonicalMatches.filter(entry => {
+            if (!entry.map.gender) return false;
+            const aliases = entry.map.gender === 'female' ? ['female', 'ladies', 'women'] : entry.map.gender === 'male' ? ['male', 'gents', 'men'] : [entry.map.gender];
+            return aliases.some(alias => hints.includes(alias));
+        });
+        if (genderHinted.length === 1) return { catSlug: genderHinted[0].cat.slug, subSlug: '' };
+    }
     for (const h of tax) for (const c of (h.cats || [])) { if (c.slug === pc) return { catSlug: c.slug, subSlug: psub || '' }; }
     return { catSlug: '', subSlug: '' };
 }
@@ -2897,23 +2928,11 @@ window.saveMegaMenu = saveMegaMenu;
 
 // Fill the product-modal category <select> from the managed category list.
 function populateCategorySelect(selected) {
-    const sel = document.getElementById('pCategory');
-    if (!sel) return;
-    const list = (Array.isArray(_adminCategories) && _adminCategories.length)
-        ? _adminCategories
-        : _readCachedCategories();
-    sel.innerHTML = list.map(c =>
-        `<option value="${_escHtmlCat(c.slug)}">${c.signature ? '\u2605 ' : ''}${_escHtmlCat(c.label)}</option>`
-    ).join('');
-    if (selected) {
-        // If the product's category isn't in the list (removed), add a temporary option
-        if (!list.some(c => c.slug === selected)) {
-            const opt = document.createElement('option');
-            opt.value = selected;
-            opt.textContent = selected.replace(/-/g, ' ') + ' (removed)';
-            sel.appendChild(opt);
-        }
-        sel.value = selected;
+    if (typeof populateProductMainCat === 'function') {
+        populateProductMainCat(selected);
+        const current = document.getElementById('pCategory')?.value || selected || '';
+        if (typeof populateProductSub === 'function') populateProductSub(current, document.getElementById('pSubCategory')?.value || '');
+        return;
     }
 }
 window.populateCategorySelect = populateCategorySelect;
@@ -2921,20 +2940,10 @@ window.populateCategorySelect = populateCategorySelect;
 // Fill the product-modal Sub-Category <select> from the chosen category's subs.
 // Hidden when the category has no sub-categories.
 function populateSubCategorySelect(catSlug, selected) {
-    const group = document.getElementById('pSubCategoryGroup');
-    const sel = document.getElementById('pSubCategory');
-    if (!sel || !group) return;
-    const cat = (_adminCategories || _readCachedCategories()).find(c => c.slug === catSlug);
-    const subs = (cat && Array.isArray(cat.subs)) ? cat.subs.filter(s => s && s.slug) : [];
-    if (!subs.length) { group.style.display = 'none'; sel.innerHTML = '<option value="">\u2014 None \u2014</option>'; return; }
-    group.style.display = '';
-    sel.innerHTML = '<option value="">\u2014 None \u2014</option>' + subs.map(s => `<option value="${_escHtmlCat(s.slug)}">${_escHtmlCat(s.label || s.slug)}</option>`).join('');
-    if (selected && !subs.some(s => s.slug === selected)) {
-        const opt = document.createElement('option');
-        opt.value = selected; opt.textContent = selected.replace(/-/g, ' ') + ' (removed)';
-        sel.appendChild(opt);
+    if (typeof populateProductSub === 'function') {
+        populateProductSub(catSlug, selected);
+        return;
     }
-    sel.value = selected || '';
 }
 window.populateSubCategorySelect = populateSubCategorySelect;
 
@@ -2943,6 +2952,10 @@ window.populateSubCategorySelect = populateSubCategorySelect;
 function refreshProductSubSelect(selected) {
     const catSel = document.getElementById('pCategory');
     if (!catSel) return;
+    if (typeof populateProductSub === 'function') {
+        populateProductSub(catSel.value, selected || '');
+        return;
+    }
     populateSubCategorySelect(catSel.value, selected);
 }
 window.refreshProductSubSelect = refreshProductSubSelect;

@@ -1542,7 +1542,7 @@ function initCommon() {
 
     // Checkout modal
     const modalClose = document.getElementById('modalClose');
-    if (modalClose) modalClose.addEventListener('click', () => document.getElementById('checkoutModal').classList.remove('active'));
+    if (modalClose) modalClose.addEventListener('click', closeCheckoutModal);
     const checkoutForm = document.getElementById('checkoutForm');
     if (checkoutForm) checkoutForm.addEventListener('submit', (e) => { e.preventDefault(); if (!validateShippingForm()) { nextStep(1); return; } placeOrder(); });
 
@@ -2233,6 +2233,147 @@ function updateQty(id, delta) {
 }
 function saveCart() { localStorage.setItem('ssa_cart', JSON.stringify(cart)); }
 
+const ORDER_SUPPORT_PHONE = '+91 93666 40050';
+const ORDER_SUPPORT_WHATSAPP = '919366640050';
+
+function getSavedAddresses() {
+    if (!currentUser || !currentUser.email) return [];
+    try { return JSON.parse(localStorage.getItem('ssa_addresses_' + currentUser.email) || '[]'); }
+    catch (e) { return []; }
+}
+
+function _normalizeAddressRecord(address, index) {
+    const street = String(address?.street || address?.address || '').trim();
+    const city = String(address?.city || '').trim();
+    const pincode = String(address?.pincode || address?.pin || '').trim();
+    const state = String(address?.state || 'Tamil Nadu').trim() || 'Tamil Nadu';
+    const label = String(address?.label || '').trim() || (index === 0 ? 'Default address' : 'Saved address ' + (index + 1));
+    return {
+        id: String(address?.id || 'addr-' + index),
+        label,
+        street,
+        city,
+        pincode,
+        state,
+        summary: [street, city, pincode].filter(Boolean).join(', ')
+    };
+}
+
+function _addressSignature(address) {
+    return [address?.street, address?.city, address?.pincode, address?.state]
+        .map(v => String(v || '').trim().toLowerCase())
+        .join('||');
+}
+
+function upsertSavedAddressForCurrentUser(address) {
+    if (!currentUser || !currentUser.email) return { saved: false, list: [] };
+    const street = String(address?.address || address?.street || '').trim();
+    const city = String(address?.city || '').trim();
+    const pincode = String(address?.pincode || '').trim();
+    const state = String(address?.state || 'Tamil Nadu').trim() || 'Tamil Nadu';
+    if (!street || !city || !pincode) return { saved: false, list: getSavedAddresses() };
+    const list = getSavedAddresses();
+    const next = { street, city, pincode, state };
+    const sig = _addressSignature(next);
+    const existingIndex = list.findIndex(addr => _addressSignature(addr) === sig);
+    if (existingIndex === -1) {
+        list.unshift(next);
+    } else {
+        const [matched] = list.splice(existingIndex, 1);
+        list.unshift({ ...matched, ...next });
+    }
+    localStorage.setItem('ssa_addresses_' + currentUser.email, JSON.stringify(list));
+    return { saved: true, list };
+}
+
+function fillShippingFormFromAddress(address) {
+    if (!address) return;
+    const addrEl = document.querySelector('[name="address"]');
+    const cityEl = document.querySelector('[name="city"]');
+    const pinEl = document.querySelector('[name="pincode"]');
+    if (addrEl) addrEl.value = address.street || '';
+    if (cityEl) cityEl.value = address.city || '';
+    if (pinEl) pinEl.value = address.pincode || '';
+}
+
+function renderCheckoutAddressOptions(selectedValue) {
+    const wrap = document.getElementById('checkoutAddressPicker');
+    const select = document.getElementById('checkoutAddressSelect');
+    const hint = document.getElementById('checkoutAddressHint');
+    if (!wrap || !select) return;
+
+    const addresses = getSavedAddresses().map(_normalizeAddressRecord);
+    if (!currentUser) {
+        wrap.style.display = 'none';
+        return;
+    }
+
+    wrap.style.display = 'block';
+    let html = '<option value="new">+ Add new address</option>';
+    html += addresses.map((address, index) => `<option value="${index}">${escapeRichText(address.label)} - ${escapeRichText(address.summary || address.state)}</option>`).join('');
+    select.innerHTML = html;
+
+    if (selectedValue === undefined || selectedValue === null || selectedValue === '') {
+        const currentSig = _addressSignature({
+            street: document.querySelector('[name="address"]')?.value || '',
+            city: document.querySelector('[name="city"]')?.value || '',
+            pincode: document.querySelector('[name="pincode"]')?.value || ''
+        });
+        const matchedIndex = addresses.findIndex(address => _addressSignature(address) === currentSig);
+        selectedValue = matchedIndex >= 0 ? String(matchedIndex) : (addresses.length ? '0' : 'new');
+    }
+
+    select.value = selectedValue;
+    const active = selectedValue !== 'new' ? addresses[parseInt(selectedValue, 10)] : null;
+    hint.textContent = active
+        ? 'Using ' + active.label + '. Switch to "+ Add new address" to create a fresh address at checkout.'
+        : 'Create a fresh shipping address here. It will be saved to your account after you place the order.';
+}
+
+function handleCheckoutAddressSelection(value) {
+    const addresses = getSavedAddresses().map(_normalizeAddressRecord);
+    const hint = document.getElementById('checkoutAddressHint');
+    if (value === 'new') {
+        const addrEl = document.querySelector('[name="address"]');
+        const cityEl = document.querySelector('[name="city"]');
+        const pinEl = document.querySelector('[name="pincode"]');
+        if (addrEl) addrEl.value = '';
+        if (cityEl) cityEl.value = '';
+        if (pinEl) pinEl.value = '';
+        if (hint) hint.textContent = 'Create a fresh shipping address here. It will be saved to your account after you place the order.';
+        return;
+    }
+    const address = addresses[parseInt(value, 10)];
+    if (!address) return;
+    fillShippingFormFromAddress(address);
+    if (hint) hint.textContent = 'Loaded ' + address.label + ' for this order.';
+}
+
+function ensureCheckoutAddressUI() {
+    const addressGroup = document.querySelector('#checkoutForm [name="address"]')?.closest('.form-group');
+    if (!addressGroup || document.getElementById('checkoutAddressPicker')) return;
+    const picker = document.createElement('div');
+    picker.id = 'checkoutAddressPicker';
+    picker.className = 'checkout-address-picker';
+    picker.innerHTML = `
+        <div class="checkout-address-picker-head">
+            <div>
+                <span class="checkout-address-eyebrow">Saved Addresses</span>
+                <h5>Select a saved address or add a new one</h5>
+            </div>
+            <i class="fas fa-map-marked-alt"></i>
+        </div>
+        <div class="checkout-address-select-wrap">
+            <select id="checkoutAddressSelect" class="checkout-address-select"></select>
+        </div>
+        <p class="checkout-address-hint" id="checkoutAddressHint"></p>
+    `;
+    addressGroup.parentNode.insertBefore(picker, addressGroup);
+    picker.querySelector('#checkoutAddressSelect').addEventListener('change', (event) => {
+        handleCheckoutAddressSelection(event.target.value);
+    });
+}
+
 function updateCartUI() {
     const cartCount = document.getElementById('cartCount');
     const cartItems = document.getElementById('cartItems');
@@ -2254,12 +2395,15 @@ function updateCartUI() {
 
 function openCart() { document.getElementById('cartDrawer').classList.add('open'); document.getElementById('cartOverlay').classList.add('open'); }
 function closeCart() { document.getElementById('cartDrawer').classList.remove('open'); document.getElementById('cartOverlay').classList.remove('open'); }
+function closeCheckoutModal() { document.getElementById('checkoutModal').classList.remove('active'); document.body.style.overflow = 'auto'; }
 
 // ===== Checkout =====
 function openCheckout() {
     closeCart();
+    document.body.style.overflow = 'hidden';
     document.getElementById('checkoutModal').classList.add('active');
     nextStep(1);
+    ensureCheckoutAddressUI();
     // Pre-fill contact fields from logged-in user (readonly)
     if (currentUser) {
         const phoneEl = document.querySelector('[name="cphone"]');
@@ -2272,17 +2416,13 @@ function openCheckout() {
         const nameParts = (currentUser.name || '').split(' ');
         if (fnEl && !fnEl.value) fnEl.value = nameParts[0] || '';
         if (lnEl && !lnEl.value) lnEl.value = nameParts.slice(1).join(' ') || '';
-        // Pre-fill saved address if available
-        const addrs = JSON.parse(localStorage.getItem('ssa_addresses_' + currentUser.email) || '[]');
-        if (addrs.length > 0) {
-            const a = addrs[0];
-            const addrEl = document.querySelector('[name="address"]');
-            const cityEl = document.querySelector('[name="city"]');
-            const pinEl  = document.querySelector('[name="pincode"]');
-            if (addrEl && !addrEl.value) addrEl.value = a.street || '';
-            if (cityEl && !cityEl.value) cityEl.value = a.city || '';
-            if (pinEl  && !pinEl.value)  pinEl.value  = a.pincode || '';
+        const addresses = getSavedAddresses();
+        if (addresses.length > 0 && !document.querySelector('[name="address"]')?.value.trim()) {
+            fillShippingFormFromAddress(_normalizeAddressRecord(addresses[0], 0));
         }
+        renderCheckoutAddressOptions();
+    } else {
+        renderCheckoutAddressOptions('new');
     }
 }
 function nextStep(step) {
@@ -2670,26 +2810,42 @@ async function handleRegister() {
     }
     closeAuthModal(); updateAuthUI(); showToast(`Welcome, ${firstName}!`);
 }
-function closeAuthModal() { document.getElementById('authModal').classList.remove('active'); }
+function closeAuthModal() { 
+    document.getElementById('authModal').classList.remove('active'); 
+    document.body.style.overflow = 'auto';
+}
 async function openAccountPanel() {
+    // Guard: check if user is logged in
+    if (!currentUser || !currentUser.email) {
+        openLoginModal();
+        return;
+    }
+    
     const modal = document.getElementById('authModal');
     modal.innerHTML = `<div class="modal account-modal-v2"><button class="acct-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button><div style="text-align:center;padding:50px 30px;"><div class="loader"><div class="loader-ring"></div><span class="loader-text">SSA</span></div><p style="margin-top:14px;color:var(--text-muted);font-size:0.88rem;">Loading your account...</p></div></div>`;
+    document.body.style.overflow = 'hidden';
     modal.classList.add('active');
     let supabaseOrders = [];
     if (window.db) {
         try {
             const snap = await db.collection('orders').where('customerEmail', '==', currentUser.email).get();
             supabaseOrders = snap.docs.map(d => ({
-                id: d.data().orderId,
+                id: d.data().orderId || d.id,
+                docId: d.id,
                 date: d.data().createdAt?.seconds ? new Date(d.data().createdAt.seconds*1000).toISOString() : new Date().toISOString(),
                 items: d.data().items || [],
                 total: d.data().total || 0,
                 payment: d.data().payment || 'COD',
+                paymentStatus: d.data().paymentStatus || '',
                 status: d.data().status || 'Processing',
                 rating: d.data().rating || null,
                 ratingComment: d.data().ratingComment || null,
                 ratingImage: d.data().ratingImage || null,
                 estimatedDelivery: d.data().estimatedDelivery || null,
+                trackingId: d.data().trackingId || '',
+                deliveredAt: d.data().deliveredAt || null,
+                updatedAt: d.data().updatedAt || null,
+                addressLabel: d.data().addressLabel || '',
                 shipping: {
                     name: d.data().customerName || currentUser.name,
                     email: d.data().customerEmail || currentUser.email,
@@ -2706,7 +2862,7 @@ async function openAccountPanel() {
     const isAuthenticatedUser = !!(window.getCurrentUser && window.getCurrentUser());
     const rawOrders = (supabaseOrders.length > 0 || isAuthenticatedUser) ? supabaseOrders : localOrders;
     // Sort latest first
-    const orders = rawOrders.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+    const orders = rawOrders.map(_normalizeAccountOrder).sort((a, b) => (_normalizeOrderDateValue(b.date)?.getTime() || 0) - (_normalizeOrderDateValue(a.date)?.getTime() || 0));
     const avatar = localStorage.getItem('ssa_avatar_' + currentUser.email) || '';
     const avatarHtml = avatar ? `<img src="${avatar}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.15);">` : `<i class="fas fa-user-circle" style="font-size:72px;color:#0066cc;"></i>`;
     modal.innerHTML = `<div class="modal account-modal-v2">
@@ -2774,68 +2930,255 @@ async function openAccountPanel() {
         setTimeout(() => window.SSAAnims.initRatingStars(document.getElementById('accountOrders')), 100);
     }
 }
-function _buildOrderItemDetailHTML(i) {
-    var variants = '';
-    if (i.selectedSize) variants += '<span class="od-tag">Size: ' + i.selectedSize + '</span>';
-    if (i.selectedColor) variants += '<span class="od-tag od-tag-color">Color: ' + i.selectedColor + '</span>';
-    var embHtml = '';
-    var emb = i.embroidery;
-    if (emb) {
-        var ep = [];
-        if (emb.type) ep.push(emb.type);
-        if (emb.line1) ep.push('"' + emb.line1 + '"');
-        if (emb.line2) ep.push('"' + emb.line2 + '"');
-        if (emb.line3) ep.push('"' + emb.line3 + '"');
-        if (emb.color) ep.push('Thread: ' + emb.color);
-        embHtml = '<div class="od-emb"><i class="fas fa-pen-nib"></i> Embroidery: ' + ep.join(' \xb7 ') + '</div>';
-    }
-    var lineTotal = (i.price * i.qty).toLocaleString('en-IN');
-    return '<div class="od-item-detail">'
-        + '<div class="od-item-name"><i class="fas fa-box"></i> ' + i.name + ' <strong>&times;' + i.qty + '</strong></div>'
-        + '<div class="od-item-variants">' + variants + '</div>'
-        + embHtml
-        + '<div class="od-item-price">&#8377;' + lineTotal + '<small> (&#8377;' + i.price + ' each)</small></div>'
-        + '</div>';
+function _normalizeOrderDateValue(value) {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (value?.seconds) return new Date(value.seconds * 1000);
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
-function _buildOrderCardsHTML(orders) {
-    return orders.map(function(o) {
-        var itemSummary = o.items.slice(0, 2).map(function(i) { return i.name; }).join(', ')
-            + (o.items.length > 2 ? ' +' + (o.items.length - 2) + ' more' : '');
-        var detailRows = o.items.map(_buildOrderItemDetailHTML).join('');
-        var shipParts = o.shipping ? [o.shipping.name, o.shipping.address, o.shipping.city, o.shipping.pincode].filter(Boolean) : [];
-        var shipInfo = shipParts.length ? '<div class="od-shipping"><i class="fas fa-map-marker-alt"></i> ' + shipParts.join(', ') + '</div>' : '';
-        var statusCls = (o.status || 'processing').toLowerCase();
-        var dateStr = new Date(o.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'});
-        var deliveryHtml = '';
-        if (o.estimatedDelivery) {
-            var dStr = new Date(o.estimatedDelivery + 'T00:00:00').toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'});
-            deliveryHtml = '<div style="padding:6px 14px 4px;font-size:0.78rem;color:#0d9488;font-weight:600"><i class="fas fa-calendar-check"></i> Est. Delivery: ' + dStr + '</div>';
+
+function _orderStatusKey(status) {
+    return String(status || 'Processing').trim().toLowerCase().replace(/\s+/g, '-');
+}
+
+function _formatOrderDate(value, opts) {
+    const dt = _normalizeOrderDateValue(value);
+    if (!dt) return 'Not available';
+    return dt.toLocaleDateString('en-IN', opts || { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function _formatOrderDateTime(value) {
+    const dt = _normalizeOrderDateValue(value);
+    if (!dt) return 'Not available';
+    return dt.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function _normalizeAccountOrder(order) {
+    const shipping = order?.shipping || {};
+    return {
+        ...order,
+        id: order?.id || order?.orderId || 'SSA' + Date.now().toString(36).toUpperCase(),
+        date: order?.date || new Date().toISOString(),
+        items: Array.isArray(order?.items) ? order.items : [],
+        total: Number(order?.total || 0),
+        payment: order?.payment || 'COD',
+        paymentStatus: order?.paymentStatus || '',
+        status: order?.status || 'Processing',
+        trackingId: order?.trackingId || '',
+        deliveredAt: order?.deliveredAt || null,
+        estimatedDelivery: order?.estimatedDelivery || null,
+        updatedAt: order?.updatedAt || null,
+        addressLabel: order?.addressLabel || '',
+        shipping: {
+            name: shipping.name || currentUser?.name || '',
+            email: shipping.email || currentUser?.email || '',
+            phone: shipping.phone || currentUser?.phone || '',
+            address: shipping.address || '',
+            city: shipping.city || '',
+            pincode: shipping.pincode || '',
+            state: shipping.state || 'Tamil Nadu'
         }
-        var ratingHtml = (window.buildRatingUI ? window.buildRatingUI(o.id, o.rating || null, o.ratingComment || null, o.ratingImage || null) : '');
-        return '<div class="acct-order-card">'
-            + '<div class="acct-order-head"><div>'
-            + '<span class="acct-order-id">#' + o.id + '</span>'
-            + '<span class="acct-order-date">' + dateStr + '</span></div>'
-            + '<span class="acct-order-status ' + statusCls + '">' + o.status + '</span></div>'
-            + '<div class="acct-order-summary" onclick="toggleOrderDetails(\'' + o.id + '\')">'
-            + '<span class="acct-order-summary-text"><i class="fas fa-shopping-bag"></i> ' + itemSummary + '</span>'
-            + '<button class="acct-view-details-btn" id="viewBtn-' + o.id + '"><i class="fas fa-chevron-down"></i> View Details</button>'
-            + '</div>'
-            + '<div class="acct-order-details" id="orderDetails-' + o.id + '" style="display:none">'
-            + '<div class="od-items-list">' + detailRows + '</div>'
-            + shipInfo + '</div>'
-            + '<div class="acct-order-foot">'
-            + '<span class="acct-order-total">Total: &#8377;' + o.total.toLocaleString('en-IN') + '</span>'
-            + '<span class="acct-order-pay"><i class="fas fa-credit-card"></i> ' + o.payment + '</span></div>'
-            + deliveryHtml
-            + '<div style="display:flex;gap:8px;padding:0 14px 12px;flex-wrap:wrap;">'
-            + '<button class="btn btn-outline-dark btn-sm" style="flex:1;min-width:100px;justify-content:center;" onclick="downloadInvoice(\'' + o.id + '\')"><i class="fas fa-file-invoice"></i> Invoice</button>'
-            + '<button class="btn btn-primary btn-sm" style="flex:1;min-width:100px;justify-content:center;" onclick="reorderFromHistory(\'' + o.id + '\')"><i class="fas fa-redo"></i> Reorder</button>'
-            + '<button class="btn btn-sm" style="flex:0;justify-content:center;background:#f0fdf4;color:#16a34a;border:1px solid #86efac;padding:6px 10px;border-radius:8px;cursor:pointer;" onclick="shareOrderResult(\'' + o.id + '\')"><i class="fas fa-share-alt"></i></button>'
-            + '</div>'
-            + ratingHtml
-            + '</div>';
-    }).join('');
+    };
+}
+
+function _getPaymentMethodLabel(payment) {
+    const key = String(payment || '').trim().toUpperCase();
+    if (key === 'COD') return 'Cash on Delivery';
+    if (key === 'UPI') return 'UPI Payment';
+    if (key === 'BANK') return 'Bank Transfer';
+    return payment || 'Payment pending';
+}
+
+function _getPaymentStatus(order) {
+    if (order.paymentStatus) return order.paymentStatus;
+    const key = String(order.payment || '').trim().toUpperCase();
+    if (key === 'COD') return order.status === 'Delivered' ? 'Collected on delivery' : 'Pay on delivery';
+    return order.status === 'Cancelled' ? 'Refund review pending' : 'Awaiting payment confirmation';
+}
+
+function _resolveOrderItemMeta(item) {
+    const product = (item.productId ? productsData.find(p => String(p.id) === String(item.productId)) : null)
+        || productsData.find(p => p.name === item.name);
+    return {
+        image: item.image || item.mainImage || product?.mainImage || product?.image || '',
+        categoryLabel: typeof getCategoryLabel === 'function' ? getCategoryLabel(item.category || product?.category || '') : (item.category || product?.category || ''),
+        gender: item.gender || product?.gender || '',
+        sleeve: item.sleeve || product?.sleeve || ''
+    };
+}
+
+function _getOrderReturnMeta(order) {
+    const statusKey = _orderStatusKey(order.status);
+    if (statusKey !== 'delivered') {
+        return { eligible: false, note: 'Return option unlocks 2 days after delivery.' };
+    }
+    const deliveredAt = _normalizeOrderDateValue(order.deliveredAt || order.updatedAt || order.date);
+    if (!deliveredAt) {
+        return { eligible: false, note: 'Waiting for delivery confirmation.' };
+    }
+    const enableAt = new Date(deliveredAt.getTime() + (2 * 24 * 60 * 60 * 1000));
+    if (Date.now() >= enableAt.getTime()) {
+        return { eligible: true, note: 'Return and exchange support is now available.' };
+    }
+    return { eligible: false, note: 'Return available from ' + _formatOrderDateTime(enableAt) + '.' };
+}
+
+function _buildOrderTimeline(order) {
+    const current = _orderStatusKey(order.status);
+    if (current === 'cancelled') {
+        return '<div class="acct-order-timeline is-cancelled"><span class="timeline-node active">Placed</span><span class="timeline-node active danger">Cancelled</span></div>';
+    }
+    const steps = ['processing', 'approved', 'packed', 'shipped', 'delivered'];
+    const labels = { processing: 'Placed', approved: 'Approved', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered' };
+    const currentIndex = steps.includes(current) ? steps.indexOf(current) : 0;
+    return '<div class="acct-order-timeline">' + steps.map((step, index) => {
+        const active = index <= currentIndex ? ' active' : '';
+        return '<span class="timeline-node' + active + '">' + labels[step] + '</span>';
+    }).join('') + '</div>';
+}
+
+function _buildOrderItemDetailHTML(item) {
+    const meta = _resolveOrderItemMeta(item);
+    const tags = [];
+    if (item.selectedSize) tags.push('<span class="od-tag">Size: ' + escapeRichText(item.selectedSize) + '</span>');
+    if (meta.gender) tags.push('<span class="od-tag od-tag-gender">' + escapeRichText(meta.gender) + '</span>');
+    if (meta.sleeve) tags.push('<span class="od-tag od-tag-sleeve">' + escapeRichText(meta.sleeve) + ' sleeve</span>');
+
+    const emb = item.embroidery;
+    let embHtml = '<div class="od-emb od-emb-muted"><i class="fas fa-pen-nib"></i> Embroidery not selected</div>';
+    if (emb) {
+        const lines = [];
+        if (emb.type) lines.push(escapeRichText(emb.type));
+        if (emb.line1) lines.push('&ldquo;' + escapeRichText(emb.line1) + '&rdquo;');
+        if (emb.line2) lines.push('&ldquo;' + escapeRichText(emb.line2) + '&rdquo;');
+        if (emb.line3) lines.push('&ldquo;' + escapeRichText(emb.line3) + '&rdquo;');
+        if (emb.color) lines.push('Thread: ' + escapeRichText(emb.color));
+        if (emb.position) lines.push('Text: ' + escapeRichText(emb.position));
+        if (emb.logoPosition) lines.push('Logo: ' + escapeRichText(emb.logoPosition));
+        embHtml = '<div class="od-emb"><i class="fas fa-pen-nib"></i> ' + lines.join(' <span class="dot">•</span> ') + '</div>';
+    }
+
+    // Build full product name with variant details
+    // Product names from DB already include sleeve type (e.g., "SSA CliniFlex Scrub™ - Round Neck")
+    // Only append the selected color
+    let productNameDisplay = item.name || 'Ordered item';
+    productNameDisplay = escapeRichText(productNameDisplay);
+    
+    if (item.selectedColor) {
+        productNameDisplay = productNameDisplay + ' — ' + escapeRichText(item.selectedColor);
+    }
+
+    return `
+        <article class="od-item-detail">
+            <div class="od-item-visual">
+                ${meta.image ? `<img src="${meta.image}" alt="${escapeRichText(item.name || 'Ordered item')}">` : '<div class="od-item-fallback"><i class="fas fa-box-open"></i></div>'}
+            </div>
+            <div class="od-item-copy">
+                <div class="od-item-topline">
+                    <div>
+                        <h5 class="od-item-name">${escapeRichText(productNameDisplay)}</h5>
+                        <p class="od-item-category">${escapeRichText(meta.categoryLabel || 'Product')}</p>
+                    </div>
+                    <span class="od-item-qty">Qty ${item.qty || 1}</span>
+                </div>
+                <div class="od-item-variants">${tags.join('')}</div>
+                ${embHtml}
+                <div class="od-item-price">₹${((item.price || 0) * (item.qty || 1)).toLocaleString('en-IN')}<small>₹${(item.price || 0).toLocaleString('en-IN')} each</small></div>
+            </div>
+        </article>
+    `;
+}
+
+function _buildOrderCardsHTML(orders) {
+    return '<div class="acct-orders-hub">' + orders.map(function(order) {
+        const statusKey = _orderStatusKey(order.status);
+        const paymentStatus = _getPaymentStatus(order);
+        const tracking = order.trackingId ? escapeRichText(order.trackingId) : 'Tracking will be shared once dispatched';
+        const shipParts = [order.shipping?.address, order.shipping?.city, order.shipping?.pincode, order.shipping?.state].filter(Boolean);
+        const itemSummary = order.items.slice(0, 2).map(item => item.name).join(', ') + (order.items.length > 2 ? ' +' + (order.items.length - 2) + ' more' : '');
+        const actions = _getOrderReturnMeta(order);
+        const detailRows = order.items.map(_buildOrderItemDetailHTML).join('');
+        const estimatedDelivery = order.estimatedDelivery ? _formatOrderDate(order.estimatedDelivery) : 'Will be updated by our team';
+        const ratingHtml = window.buildRatingUI ? window.buildRatingUI(order.id, order.rating || null, order.ratingComment || null, order.ratingImage || null) : '';
+        return `
+            <section class="acct-order-card acct-order-card-modern status-${statusKey}">
+                <div class="acct-order-head acct-order-head-modern">
+                    <div>
+                        <p class="acct-order-label">Order No.</p>
+                        <span class="acct-order-id">#${escapeRichText(order.id)}</span>
+                        <span class="acct-order-date">Placed on ${_formatOrderDate(order.date)}</span>
+                    </div>
+                    <div class="acct-order-badges">
+                        <span class="acct-order-status ${statusKey}">${escapeRichText(order.status)}</span>
+                        <span class="acct-order-pill">${escapeRichText(paymentStatus)}</span>
+                    </div>
+                </div>
+                <div class="acct-order-summary" onclick="toggleOrderDetails('${order.id}')">
+                    <span class="acct-order-summary-text"><i class="fas fa-shopping-bag"></i> ${escapeRichText(itemSummary)}</span>
+                    <button class="acct-view-details-btn" id="viewBtn-${order.id}"><i class="fas fa-chevron-down"></i> View full order</button>
+                </div>
+                <div class="acct-order-details" id="orderDetails-${order.id}" style="display:none">
+                    <div class="acct-order-hero">
+                        <div class="acct-order-hero-card">
+                            <span class="hero-micro-label">Payment Method</span>
+                            <strong>${escapeRichText(_getPaymentMethodLabel(order.payment))}</strong>
+                            <p>${escapeRichText(paymentStatus)}</p>
+                        </div>
+                        <div class="acct-order-hero-card">
+                            <span class="hero-micro-label">Order Status</span>
+                            <strong>${escapeRichText(order.status)}</strong>
+                            <p>${escapeRichText(tracking)}</p>
+                        </div>
+                        <div class="acct-order-hero-card">
+                            <span class="hero-micro-label">Expected Delivery</span>
+                            <strong>${escapeRichText(estimatedDelivery)}</strong>
+                            <p>${order.deliveredAt ? 'Delivered on ' + escapeRichText(_formatOrderDate(order.deliveredAt)) : 'Updates appear here as your order moves.'}</p>
+                        </div>
+                    </div>
+                    ${_buildOrderTimeline(order)}
+                    <div class="acct-order-grid">
+                        <div class="acct-order-main">
+                            <div class="od-items-list">${detailRows}</div>
+                        </div>
+                        <aside class="acct-order-side">
+                            <div class="acct-side-card">
+                                <h5><i class="fas fa-location-dot"></i> Shipping Address</h5>
+                                <p>${escapeRichText(order.shipping?.name || currentUser?.name || 'Customer')}</p>
+                                <p>${escapeRichText(shipParts.join(', ') || 'Address not available')}</p>
+                                <p>${escapeRichText(order.shipping?.phone || currentUser?.phone || '')}</p>
+                            </div>
+                            <div class="acct-side-card">
+                                <h5><i class="fas fa-receipt"></i> Billing Snapshot</h5>
+                                <div class="acct-side-meta"><span>Total</span><strong>₹${order.total.toLocaleString('en-IN')}</strong></div>
+                                <div class="acct-side-meta"><span>Payment</span><strong>${escapeRichText(_getPaymentMethodLabel(order.payment))}</strong></div>
+                                <div class="acct-side-meta"><span>Payment Status</span><strong>${escapeRichText(paymentStatus)}</strong></div>
+                            </div>
+                            <div class="acct-side-card acct-support-card">
+                                <h5><i class="fas fa-headset"></i> Customer Care</h5>
+                                <p>Questions on delivery, invoice, exchange, or embroidery changes? Reach support directly with your order number.</p>
+                                <div class="acct-support-actions">
+                                    <button class="btn btn-outline-dark btn-sm" onclick="contactOrderSupport('${order.id}')"><i class="fab fa-whatsapp"></i> Customer Care</button>
+                                    <a class="btn btn-outline-dark btn-sm" href="tel:${ORDER_SUPPORT_PHONE.replace(/\s+/g, '')}"><i class="fas fa-phone"></i> Call</a>
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+                    <div class="acct-order-foot acct-order-foot-modern">
+                        <span class="acct-order-total">Total: ₹${order.total.toLocaleString('en-IN')}</span>
+                        <span class="acct-order-pay"><i class="fas fa-credit-card"></i> ${escapeRichText(_getPaymentMethodLabel(order.payment))}</span>
+                    </div>
+                    <div class="acct-order-actions-row">
+                        <button class="btn btn-outline-dark btn-sm" onclick="downloadInvoice('${order.id}')"><i class="fas fa-file-invoice"></i> Invoice</button>
+                        <button class="btn btn-primary btn-sm" onclick="reorderFromHistory('${order.id}')"><i class="fas fa-redo"></i> Reorder</button>
+                        <button class="btn btn-outline-dark btn-sm acct-share-btn" onclick="shareOrderResult('${order.id}')"><i class="fas fa-share-alt"></i> Share</button>
+                        ${actions.eligible ? `<button class="btn btn-outline-dark btn-sm acct-return-btn" onclick="requestOrderReturn('${order.id}')"><i class="fas fa-rotate-left"></i> Return / Exchange</button>` : `<span class="acct-action-note">${escapeRichText(actions.note)}</span>`}
+                    </div>
+                    ${ratingHtml}
+                </div>
+            </section>
+        `;
+    }).join('') + '</div>';
 }
 function showAccountTab(tab) {
     document.querySelectorAll('.acct-tab-btn, .account-tab').forEach(t => t.classList.remove('active'));
@@ -2856,6 +3199,17 @@ function toggleOrderDetails(orderId) {
     panel.classList.toggle('od-open', open);
 }
 window.toggleOrderDetails = toggleOrderDetails;
+function contactOrderSupport(orderId) {
+    const msg = `Hi SSA team, I need help with order #${orderId}. Please assist me with the latest update.`;
+    window.open('https://wa.me/' + ORDER_SUPPORT_WHATSAPP + '?text=' + encodeURIComponent(msg), '_blank');
+}
+window.contactOrderSupport = contactOrderSupport;
+
+function requestOrderReturn(orderId) {
+    const msg = `Hi SSA team, I want to request a return or exchange for order #${orderId}. Please guide me on the next steps.`;
+    window.open('https://wa.me/' + ORDER_SUPPORT_WHATSAPP + '?text=' + encodeURIComponent(msg), '_blank');
+}
+window.requestOrderReturn = requestOrderReturn;
 function shareOrderResult(orderId) {
     const shareText = `Just ordered premium hospital uniforms from Siva Suresh Agency! 🏥 Quality medical wear. Order #${orderId} — Check them out: ${window.location.origin}/sivasureshagency/`;
     if (navigator.share) {
@@ -2899,7 +3253,7 @@ function saveProfileChanges() {
 }
 function renderAddressList() {
     const el = document.getElementById('addressList'); if (!el) return;
-    const addrs = JSON.parse(localStorage.getItem('ssa_addresses_' + currentUser.email) || '[]');
+    const addrs = getSavedAddresses();
     if (addrs.length === 0) { el.innerHTML = '<p style="color:#94a3b8;font-size:0.85rem;text-align:center;padding:10px 0">No saved addresses yet</p>'; return; }
     el.innerHTML = addrs.map((a, i) => `<div class="addr-card" style="border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:8px;position:relative;">
         ${i===0?'<span style="font-size:0.7rem;font-weight:700;color:#0066cc;margin-bottom:4px;display:block">DEFAULT</span>':''}
@@ -2915,24 +3269,27 @@ function saveNewAddress() {
     const pin    = document.getElementById('addrPin')?.value.trim();
     const state  = document.getElementById('addrState')?.value.trim();
     if (!street || !city || !pin) { showToast('Please fill street, city and PIN'); return; }
-    const addrs = JSON.parse(localStorage.getItem('ssa_addresses_' + currentUser.email) || '[]');
+    const addrs = getSavedAddresses();
     addrs.push({ street, city, pincode: pin, state: state || 'Tamil Nadu' });
     localStorage.setItem('ssa_addresses_' + currentUser.email, JSON.stringify(addrs));
     document.getElementById('addAddressForm').style.display = 'none';
     renderAddressList();
+    renderCheckoutAddressOptions(String(addrs.length - 1));
     showToast('Address saved!');
 }
 function deleteAddress(i) {
-    const addrs = JSON.parse(localStorage.getItem('ssa_addresses_' + currentUser.email) || '[]');
+    const addrs = getSavedAddresses();
     addrs.splice(i, 1);
     localStorage.setItem('ssa_addresses_' + currentUser.email, JSON.stringify(addrs));
     renderAddressList();
+    renderCheckoutAddressOptions();
 }
 function setDefaultAddress(i) {
-    const addrs = JSON.parse(localStorage.getItem('ssa_addresses_' + currentUser.email) || '[]');
+    const addrs = getSavedAddresses();
     const [a] = addrs.splice(i, 1); addrs.unshift(a);
     localStorage.setItem('ssa_addresses_' + currentUser.email, JSON.stringify(addrs));
     renderAddressList();
+    renderCheckoutAddressOptions('0');
 }
 async function changePassword() {
     const curr    = document.getElementById('pwdCurrent')?.value;
@@ -3213,7 +3570,12 @@ function reorderFromHistory(orderId) {
 
 // ===== Place Order =====
 function placeOrder() {
-    if (!currentUser) { document.getElementById('checkoutModal').classList.remove('active'); openLoginModal(); showToast('Please login first'); return; }
+    if (!currentUser) { 
+        closeCheckoutModal();
+        openLoginModal(); 
+        showToast('Please login first'); 
+        return; 
+    }
     const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
     const pm = document.querySelector('[name="payment"]:checked');
     const shipping = {
@@ -3223,23 +3585,50 @@ function placeOrder() {
         phone: document.querySelector('[name="cphone"]')?.value || '',
         address: document.querySelector('[name="address"]')?.value || '',
         city: document.querySelector('[name="city"]')?.value || '',
-        pincode: document.querySelector('[name="pincode"]')?.value || ''
+        pincode: document.querySelector('[name="pincode"]')?.value || '',
+        state: 'Tamil Nadu'
     };
+    const paymentMethod = pm ? pm.value.toUpperCase() : 'COD';
+    const paymentStatus = paymentMethod === 'COD' ? 'Pay on delivery' : 'Awaiting payment confirmation';
+    const addressSelect = document.getElementById('checkoutAddressSelect');
+    const addressChoice = addressSelect ? addressSelect.value : 'new';
+    const addressSave = upsertSavedAddressForCurrentUser(shipping);
+    const savedAddresses = addressSave.list || getSavedAddresses();
+    const chosenLabel = addressChoice !== 'new'
+        ? _normalizeAddressRecord(savedAddresses[parseInt(addressChoice, 10)] || savedAddresses[0] || {}, 0).label
+        : (savedAddresses.length ? _normalizeAddressRecord(savedAddresses[0], 0).label : 'New checkout address');
 
     const order = {
         id: 'SSA' + Date.now().toString(36).toUpperCase(),
         date: new Date().toISOString(),
-        items: cart.map(i => ({ name: i.name, selectedSize: i.selectedSize, selectedColor: i.selectedColor || null, qty: i.qty, price: i.price, embroidery: i.embroidery || null })),
+        items: cart.map(i => ({
+            productId: i.id,
+            name: i.name,
+            image: i.mainImage || i.image || '',
+            category: i.category || '',
+            gender: i.gender || '',
+            sleeve: i.sleeve || '',
+            selectedSize: i.selectedSize,
+            selectedColor: i.selectedColor || null,
+            qty: i.qty,
+            price: i.price,
+            embroidery: i.embroidery || null
+        })),
         total: total > 2000 ? total : total + 150,
-        payment: pm ? pm.value.toUpperCase() : 'COD',
+        payment: paymentMethod,
+        paymentStatus,
         status: 'Processing',
+        trackingId: '',
+        deliveredAt: null,
+        addressLabel: chosenLabel,
         shipping: {
             name: (shipping.firstname + ' ' + shipping.lastname).trim(),
             email: shipping.email,
             phone: shipping.phone,
             address: shipping.address,
             city: shipping.city,
-            pincode: shipping.pincode
+            pincode: shipping.pincode,
+            state: shipping.state
         }
     };
     const key = 'ssa_orders_' + currentUser.email;
@@ -3247,7 +3636,7 @@ function placeOrder() {
     orders.unshift(order); localStorage.setItem(key, JSON.stringify(orders));
     // Save to Supabase
     if (typeof saveOrderToDb === 'function') saveOrderToDb(order, shipping);
-    document.getElementById('checkoutModal').classList.remove('active');
+    closeCheckoutModal();
     document.getElementById('orderId').textContent = order.id;
     document.getElementById('successModal').classList.add('active');
     cart = []; saveCart(); updateCartUI();
