@@ -3576,42 +3576,24 @@ async function initOrderDetailPage() {
         return;
     }
 
-    // Load order from Supabase (via compat layer) with fallback to localStorage
+    // ---- Step 1: Check localStorage first (fast, always works regardless of Supabase RLS / JWT) ----
     let order = null;
-    try {
-        if (window.db) {
-            // Primary: query by orderId field (Supabase column)
-            const snap = await db.collection('orders').where('orderId', '==', orderId).get();
-            if (!snap.empty) {
-                const d = snap.docs[0].data();
-                order = _normalizeAccountOrder({
-                    id: d.orderId || snap.docs[0].id,
-                    docId: snap.docs[0].id,
-                    date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : (d.createdAt || new Date().toISOString()),
-                    items: d.items || [], total: d.total || 0, payment: d.payment || 'COD',
-                    paymentStatus: d.paymentStatus || '', status: d.status || 'Processing',
-                    trackingId: d.trackingId || '', deliveredAt: d.deliveredAt || null,
-                    estimatedDelivery: d.estimatedDelivery || null, updatedAt: d.updatedAt || null,
-                    addressLabel: d.addressLabel || '', statusHistory: d.statusHistory || {},
-                    returnRequest: d.returnRequest || null, cancellation: d.cancellation || null,
-                    rating: d.rating || null, ratingComment: d.ratingComment || null, ratingImage: d.ratingImage || null,
-                    shipping: { name: d.customerName || currentUser.name, email: d.customerEmail || currentUser.email,
-                        phone: d.customerPhone || currentUser.phone || '', address: d.address || '',
-                        city: d.city || '', pincode: d.pincode || '' }
-                });
-            }
-            // Secondary: scan all orders for this customer (catches orderId field mismatches)
-            if (!order && currentUser?.email) {
-                const snap2 = await db.collection('orders').where('customerEmail', '==', currentUser.email).get();
-                const matched = snap2.docs.find(doc => {
-                    const d = doc.data();
-                    return d.orderId === orderId || doc.id === orderId;
-                });
-                if (matched) {
-                    const d = matched.data();
+    if (currentUser?.email) {
+        const localOrders = JSON.parse(localStorage.getItem('ssa_orders_' + currentUser.email) || '[]');
+        const lo = localOrders.find(o => (o.id || o.orderId || '') === orderId);
+        if (lo) order = _normalizeAccountOrder(lo);
+    }
+
+    // ---- Step 2: If not in localStorage, try Supabase (works when user has a Supabase JWT) ----
+    if (!order) {
+        try {
+            if (window.db) {
+                // Primary: query by orderId field
+                const snap = await db.collection('orders').where('orderId', '==', orderId).get();
+                if (!snap.empty) {
+                    const d = snap.docs[0].data();
                     order = _normalizeAccountOrder({
-                        id: d.orderId || matched.id,
-                        docId: matched.id,
+                        id: d.orderId || snap.docs[0].id, docId: snap.docs[0].id,
                         date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : (d.createdAt || new Date().toISOString()),
                         items: d.items || [], total: d.total || 0, payment: d.payment || 'COD',
                         paymentStatus: d.paymentStatus || '', status: d.status || 'Processing',
@@ -3625,15 +3607,45 @@ async function initOrderDetailPage() {
                             city: d.city || '', pincode: d.pincode || '' }
                     });
                 }
+                // Secondary: scan customer orders (catches orderId field mismatches)
+                if (!order && currentUser?.email) {
+                    const snap2 = await db.collection('orders').where('customerEmail', '==', currentUser.email).get();
+                    const matched = snap2.docs.find(doc => {
+                        const d = doc.data();
+                        return d.orderId === orderId || doc.id === orderId;
+                    });
+                    if (matched) {
+                        const d = matched.data();
+                        order = _normalizeAccountOrder({
+                            id: d.orderId || matched.id, docId: matched.id,
+                            date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : (d.createdAt || new Date().toISOString()),
+                            items: d.items || [], total: d.total || 0, payment: d.payment || 'COD',
+                            paymentStatus: d.paymentStatus || '', status: d.status || 'Processing',
+                            trackingId: d.trackingId || '', deliveredAt: d.deliveredAt || null,
+                            estimatedDelivery: d.estimatedDelivery || null, updatedAt: d.updatedAt || null,
+                            addressLabel: d.addressLabel || '', statusHistory: d.statusHistory || {},
+                            returnRequest: d.returnRequest || null, cancellation: d.cancellation || null,
+                            rating: d.rating || null, ratingComment: d.ratingComment || null, ratingImage: d.ratingImage || null,
+                            shipping: { name: d.customerName || currentUser.name, email: d.customerEmail || currentUser.email,
+                                phone: d.customerPhone || currentUser.phone || '', address: d.address || '',
+                                city: d.city || '', pincode: d.pincode || '' }
+                        });
+                    }
+                }
             }
-        }
-    } catch(e) { console.warn('[odp] Supabase query failed:', e.message); }
+        } catch(e) { console.warn('[odp] Supabase query failed:', e.message); }
+    }
 
-    // Fallback to localStorage (covers offline / sync-pending orders)
-    if (!order && currentUser?.email) {
-        const localOrders = JSON.parse(localStorage.getItem('ssa_orders_' + currentUser.email) || '[]');
-        const lo = localOrders.find(o => (o.id || o.orderId || '') === orderId);
-        if (lo) order = _normalizeAccountOrder(lo);
+    // Cache to localStorage so future loads (and offline) work without Supabase
+    if (order && currentUser?.email) {
+        try {
+            const lsKey = 'ssa_orders_' + currentUser.email;
+            const lsOrders = JSON.parse(localStorage.getItem(lsKey) || '[]');
+            if (!lsOrders.find(o => (o.id || o.orderId) === orderId)) {
+                lsOrders.unshift({ ...order, _synced: true });
+                localStorage.setItem(lsKey, JSON.stringify(lsOrders.slice(0, 50)));
+            }
+        } catch (_) {}
     }
 
     if (loading) loading.style.display = 'none';
@@ -4128,7 +4140,7 @@ async function placeOrder() {
             state: shipping.state
         }
     };
-    // Save to Supabase — DB is the source of truth, no localStorage
+    // Save to Supabase (primary) and localStorage (fallback for order-detail lookup)
     if (typeof saveOrderToDb === 'function') {
         try {
             await saveOrderToDb(order, shipping);
@@ -4138,6 +4150,16 @@ async function placeOrder() {
             return;
         }
     }
+    // Also cache in localStorage so order-detail page can always find it
+    // (Supabase RLS may block reads for users without a Supabase auth JWT)
+    try {
+        const lsKey = 'ssa_orders_' + currentUser.email;
+        const existingOrders = JSON.parse(localStorage.getItem(lsKey) || '[]');
+        if (!existingOrders.find(o => o.id === order.id)) {
+            existingOrders.unshift({ ...order, _synced: true });
+            localStorage.setItem(lsKey, JSON.stringify(existingOrders.slice(0, 50)));
+        }
+    } catch (_) {}
     closeCheckoutModal();
     document.getElementById('orderId').textContent = order.id;
     document.getElementById('successModal').classList.add('active');

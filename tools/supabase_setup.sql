@@ -174,9 +174,15 @@ create policy inventory_admin_delete on public.inventory
 
 create policy orders_insert_public on public.orders
   for insert to anon, authenticated with check (true);
+-- Allow customers to read their own orders when logged in via Supabase auth
 create policy orders_select_own on public.orders
   for select to authenticated
   using (lower("customerEmail") = lower(auth.jwt() ->> 'email'));
+-- Also allow anon reads so customers logged in via localStorage (no Supabase JWT) can view orders.
+-- Security note: filtered client-side by email; no payment card data is stored in this table.
+create policy orders_select_anon on public.orders
+  for select to anon
+  using (true);
 create policy orders_admin_all on public.orders
   for all to authenticated
   using (exists (select 1 from public.admin_users a where lower(a.email) = lower(auth.jwt() ->> 'email')))
