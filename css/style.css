@@ -881,11 +881,13 @@ body.modal-open { overflow: hidden; touch-action: none; }
 .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
 .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes typing { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
-.chatbot-input { display: flex; gap: 6px; padding: 10px; border-top: 1px solid var(--border); }
+.chatbot-input { display: flex; gap: 6px; padding: 10px; border-top: 1px solid var(--border); align-items: center; }
 .chatbot-input input { flex: 1; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 50px; font-size: 0.82rem; outline: none; font-family: var(--font); }
 .chatbot-input input:focus { border-color: var(--primary); }
-.chatbot-input button { width: 34px; height: 34px; border-radius: 50%; background: var(--primary); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+.chatbot-input button { width: 34px; height: 34px; border-radius: 50%; background: var(--primary); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); flex-shrink: 0; }
 .chatbot-input button:hover { background: var(--primary-dark); }
+.chat-attach-btn { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 0.85rem; transition: var(--transition); flex-shrink: 0; }
+.chat-attach-btn:hover { color: var(--primary); background: #f0fdfa; }
 
 /* ── 24. About Page ───────────────────────────────────────────── */
 .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 52px; align-items: center; }
@@ -948,6 +950,8 @@ body.modal-open { overflow: hidden; touch-action: none; }
 .contact-social { margin-top: 20px; }
 .contact-social h4 { font-size: 0.87rem; margin-bottom: 8px; font-weight: 700; }
 .contact-form-wrapper { background: #fff; border-radius: var(--radius-lg); padding: 26px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+.file-drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; transition: var(--transition); background: var(--bg-off); }
+.file-drop-zone:hover { border-color: var(--primary); background: #f0fdfa; }
 .map-section { margin-top: -4px; }
 .map-section iframe { display: block; width: 100%; }
 

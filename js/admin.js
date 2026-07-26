@@ -240,7 +240,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         if (page === 'customers') loadCustomers();
         if (page === 'messages') loadMessages();
         if (page === 'dashboard') loadDashboard();
-        if (page === 'settings') loadSettings();
+        if (page === 'settings') { loadSettings(); if (typeof loadWebhookSettings === 'function') loadWebhookSettings(); }
         // Update subtitle
         const subtitles = {dashboard:'Overview & analytics',orders:'Manage customer orders',products:'Product catalogue',categories:'Add & remove shop categories',inventory:'Stock levels',customers:'Registered users',messages:'Contact form submissions',settings:'Site configuration'};
         const sub = document.getElementById('pageSubtitle');
@@ -1785,7 +1785,7 @@ function printOrderInvoice(docId) {
                 <img class="logo" src="${logoUrl}" alt="SSA Logo">
                 <div>
                     <h1>Siva Suresh Agency</h1>
-                    <p>PVT Towers, 37/10, Selvam Nagar, Erode - 638011<br>Phone: +91 93666 40060 | Email: sivasureshagency@gmail.com</p>
+                    <p>PVT Towers, 37/10, Selvam Nagar, Erode - 638011<br>Phone: +91 93666 40060 | Email: info@sivasureshagency.onmicrosoft.com</p>
                 </div>
             </div>
             <div class="meta">
@@ -3347,7 +3347,31 @@ window.saveSettings = saveSettings;
 window.updateBrandPreview = updateBrandPreview;
 window.insertScrubBrandSymbol = insertScrubBrandSymbol;
 
-function applyTextFormat(fieldId, action) {
+// ── Webhook Settings ──────────────────────────────────────────
+function loadWebhookSettings() {
+    if (!window.SSA_COMM) return;
+    const cfg = window.SSA_COMM.getConfig();
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    set('webhookContactForm', cfg.contactFormWebhook);
+    set('webhookTicketStatus', cfg.ticketStatusWebhook);
+    set('webhookRating', cfg.ratingWebhook);
+    set('webhookLiveAgent', cfg.liveAgentWebhook);
+}
+function saveWebhookSettings() {
+    if (!window.SSA_COMM) { showAdminToast('Comm module not loaded', 'error'); return; }
+    const get = id => document.getElementById(id)?.value?.trim() || '';
+    window.SSA_COMM.saveConfig({
+        contactFormWebhook: get('webhookContactForm'),
+        ticketStatusWebhook: get('webhookTicketStatus'),
+        ratingWebhook: get('webhookRating'),
+        liveAgentWebhook: get('webhookLiveAgent')
+    });
+    showAdminToast('Webhook URLs saved. Communication flows are now active.');
+}
+window.loadWebhookSettings = loadWebhookSettings;
+window.saveWebhookSettings = saveWebhookSettings;
+
+
     const inp = document.getElementById(fieldId);
     if (!inp) return;
     inp.focus();
@@ -3781,20 +3805,22 @@ function handleProductImageUpload(event) {
     reader.readAsDataURL(file);
 }
 
-// ===== Messages =====
+// ===== Messages / Support Tickets =====
 let allMessages = [];
+const TICKET_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
+const TICKET_STATUS_COLORS = { 'Open': '#6366f1', 'In Progress': '#f59e0b', 'Resolved': '#10b981', 'Closed': '#94a3b8' };
 
 async function loadMessages() {
     const container = document.getElementById('messagesList');
     if (!container) return;
-    container.innerHTML = '<p class="empty">Loading messages...</p>';
+    container.innerHTML = '<p class="empty">Loading tickets...</p>';
     try {
         const snap = await db.collection('messages').get();
         allMessages = snap.docs.map(d => ({ docId: d.id, ...d.data() }))
             .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         renderMessages();
     } catch (err) {
-        container.innerHTML = '<p class="empty" style="color:red">Error loading messages: ' + err.message + '</p>';
+        container.innerHTML = '<p class="empty" style="color:red">Error loading tickets: ' + err.message + '</p>';
     }
 }
 
@@ -3802,29 +3828,63 @@ function renderMessages() {
     const container = document.getElementById('messagesList');
     if (!container) return;
     const search = (document.getElementById('messageSearch')?.value || '').toLowerCase();
+    const statusFilter = document.getElementById('ticketStatusFilter')?.value || '';
     let msgs = allMessages;
-    if (search) msgs = msgs.filter(m => (m.name||'').toLowerCase().includes(search) || (m.email||'').toLowerCase().includes(search) || (m.message||'').toLowerCase().includes(search));
+    if (search) msgs = msgs.filter(m => (m.name||'').toLowerCase().includes(search) || (m.email||'').toLowerCase().includes(search) || (m.message||'').toLowerCase().includes(search) || (m.ticketId||'').toLowerCase().includes(search));
+    if (statusFilter) msgs = msgs.filter(m => (m.status || 'Open') === statusFilter);
 
     if (!msgs.length) {
-        container.innerHTML = '<p class="empty"><i class="fas fa-envelope-open"></i>No messages found</p>';
+        container.innerHTML = '<p class="empty"><i class="fas fa-ticket-alt"></i>No tickets found</p>';
         return;
     }
-    container.innerHTML = msgs.map(m => `
-        <div class="msg-card ${m.read ? '' : 'unread'}" onclick="toggleMessage('${m.docId}')">
-            <div class="msg-header">
-                <span class="msg-sender"><i class="fas fa-user-circle" style="color:#6366f1;margin-right:6px"></i>${m.name || 'Unknown'}</span>
-                <span class="msg-time">${m.createdAt ? new Date(m.createdAt.seconds*1000).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'N/A'}</span>
+    container.innerHTML = msgs.map(m => {
+        const status = m.status || 'Open';
+        const statusColor = TICKET_STATUS_COLORS[status] || '#6366f1';
+        const ts = m.createdAt ? new Date(m.createdAt.seconds * 1000).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+        const attachments = m.attachmentUrls && m.attachmentUrls.length ? m.attachmentUrls.map(url => `<a href="${url}" target="_blank" style="color:var(--primary-teal);font-size:0.75rem;"><i class="fas fa-paperclip"></i> Attachment</a>`).join(' ') : '';
+        return `
+        <div class="msg-card ${m.read ? '' : 'unread'}" id="ticket-card-${m.docId}">
+            <div class="msg-header" onclick="toggleMessage('${m.docId}')">
+                <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                    ${m.ticketId ? `<span style="font-size:0.7rem;font-weight:800;color:${statusColor};background:${statusColor}18;border-radius:6px;padding:3px 8px;letter-spacing:0.5px;white-space:nowrap;">${m.ticketId}</span>` : ''}
+                    <span class="msg-sender" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="fas fa-user-circle" style="color:#6366f1;margin-right:5px"></i>${m.name || 'Unknown'}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                    <span style="font-size:0.7rem;font-weight:700;color:${statusColor};background:${statusColor}18;border:1px solid ${statusColor}40;border-radius:20px;padding:2px 9px;">${status}</span>
+                    <span class="msg-time">${ts}</span>
+                </div>
             </div>
-            <div class="msg-subject">${m.subject || 'General Inquiry'}</div>
-            <div class="msg-preview">${m.message || ''}</div>
+            <div class="msg-subject" onclick="toggleMessage('${m.docId}')" style="cursor:pointer;">${m.subject || 'General Inquiry'}</div>
             <div class="msg-meta">
                 <span class="msg-tag"><i class="fas fa-envelope"></i> ${m.email || ''}</span>
                 ${m.phone ? `<span class="msg-tag"><i class="fas fa-phone"></i> ${m.phone}</span>` : ''}
+                ${m.customerId ? `<span class="msg-tag"><i class="fas fa-id-badge"></i> ${m.customerId}</span>` : ''}
                 ${!m.read ? '<span class="msg-tag" style="background:#ede9fe;color:#6366f1;">New</span>' : ''}
             </div>
-            <div class="msg-full" id="msg-full-${m.docId}">${(m.message||'').replace(/\n/g,'<br>')}</div>
-        </div>
-    `).join('');
+            <!-- Expandable full message -->
+            <div class="msg-full" id="msg-full-${m.docId}">
+                <div style="padding:12px 0;border-top:1px solid var(--border);margin-top:10px;">
+                    <p style="margin-bottom:10px;color:var(--text-dark);line-height:1.7;">${(m.message||'').replace(/\n/g,'<br>')}</p>
+                    ${attachments ? `<div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;">${attachments}</div>` : ''}
+                    <!-- Admin Reply / Status Update -->
+                    <div style="background:var(--bg-secondary);border-radius:10px;padding:14px;margin-top:10px;">
+                        <div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);margin-bottom:10px;">Admin Response</div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
+                            <label style="font-size:0.78rem;font-weight:600;color:var(--text-muted);">Update Status:</label>
+                            <select id="ticketStatus-${m.docId}" onchange="" style="padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:0.82rem;background:#fff;cursor:pointer;">
+                                ${TICKET_STATUSES.map(s => `<option value="${s}" ${(m.status||'Open')===s?'selected':''}>${s}</option>`).join('')}
+                            </select>
+                        </div>
+                        <textarea id="ticketNote-${m.docId}" placeholder="Add a note to customer (optional)..." rows="3" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.82rem;resize:vertical;outline:none;">${m.adminNote || ''}</textarea>
+                        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                            <button class="btn btn-sm" style="background:var(--primary-teal);color:#fff;padding:7px 18px;font-size:0.8rem;" onclick="updateTicketStatus('${m.docId}')"><i class="fas fa-save"></i> Save & Notify Customer</button>
+                            <button class="btn btn-sm" style="background:var(--bg-primary);border:1.5px solid var(--border);padding:7px 18px;font-size:0.8rem;" onclick="replyToCustomer('${m.email||''}','${m.ticketId||''}')"><i class="fas fa-envelope"></i> Email Customer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 async function toggleMessage(docId) {
@@ -3836,21 +3896,66 @@ async function toggleMessage(docId) {
         try {
             await db.collection('messages').doc(docId).update({ read: true });
             msg.read = true;
-            renderMessages();
-            loadDashboard(); // refresh badge
+            const card = document.getElementById('ticket-card-' + docId);
+            if (card) card.classList.remove('unread');
+            loadDashboard();
         } catch (e) { /* ignore */ }
     }
 }
 
+async function updateTicketStatus(docId) {
+    const statusEl = document.getElementById('ticketStatus-' + docId);
+    const noteEl = document.getElementById('ticketNote-' + docId);
+    if (!statusEl) return;
+    const newStatus = statusEl.value;
+    const adminNote = noteEl?.value?.trim() || '';
+
+    try {
+        await db.collection('messages').doc(docId).update({
+            status: newStatus, adminNote, read: true,
+            updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date()
+        });
+
+        const msg = allMessages.find(m => m.docId === docId);
+        if (msg) { msg.status = newStatus; msg.adminNote = adminNote; msg.read = true; }
+
+        showAdminToast(`Ticket updated: ${newStatus}`);
+
+        // Send notification to customer via Power Automate
+        if (window.SSA_COMM && window.SSA_COMM.sendTicketStatusUpdate && msg) {
+            await window.SSA_COMM.sendTicketStatusUpdate({
+                ticketId: msg.ticketId || docId,
+                customerEmail: msg.email,
+                customerName: msg.name,
+                newStatus,
+                adminNote
+            });
+        }
+
+        renderMessages();
+        loadDashboard();
+    } catch (err) {
+        showAdminToast('Error: ' + err.message, 'error');
+    }
+}
+window.updateTicketStatus = updateTicketStatus;
+
+function replyToCustomer(email, ticketId) {
+    if (!email) return;
+    const subject = encodeURIComponent(`[${ticketId || 'SSA Ticket'}] Response from Siva Suresh Agency`);
+    window.open(`mailto:${email}?subject=${subject}`, '_blank');
+}
+window.replyToCustomer = replyToCustomer;
+
 async function markAllRead() {
     const unread = allMessages.filter(m => !m.read);
-    if (!unread.length) { showAdminToast('All messages already read'); return; }
+    if (!unread.length) { showAdminToast('All tickets already read'); return; }
     try {
         await Promise.all(unread.map(m => db.collection('messages').doc(m.docId).update({ read: true })));
         unread.forEach(m => m.read = true);
         renderMessages();
         loadDashboard();
-        showAdminToast('All messages marked as read');
+        showAdminToast('All tickets marked as read');
     } catch (err) {
         showAdminToast('Error: ' + err.message, 'error');
     }

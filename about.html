@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -24,7 +24,7 @@
                 <div class="top-bar-content">
                     <div class="top-info">
                         <span><i class="fas fa-phone-alt"></i> Siva: +91 93666 40060 | Suresh: +91 93666 40050</span>
-                        <span><i class="fas fa-envelope"></i> sivasureshagency@gmail.com</span>
+                        <span><i class="fas fa-envelope"></i> info@sivasureshagency.onmicrosoft.com</span>
                     </div>
                     <div class="top-social">
                         <button class="track-order-btn" onclick="openTrackOrder()" aria-label="Track Order" title="Track any order"><i class="fas fa-location-arrow"></i> Track Order</button>
@@ -222,7 +222,7 @@
                 </div>
                 <div class="footer-links"><h4>Quick Links</h4><ul><li><a href="about.html">About Us</a></li><li><a href="categories.html">Shop Online</a></li><li><a href="services.html">Services</a></li><li><a href="contact.html">Contact</a></li></ul></div>
                 <div class="footer-links"><h4>Categories</h4><ul><li><a href="categories.html?cat=doctor-uniform">Doctor Uniform</a></li><li><a href="categories.html?cat=staff-uniform">Staff Uniform</a></li><li><a href="categories.html?cat=bedsheets">Bedsheets</a></li><li><a href="categories.html?cat=hospital-linen">Hospital Linen</a></li><li><a href="categories.html?cat=hotel-linen">Hotel Linen</a></li></ul></div>
-                <div class="footer-contact"><h4>Get In Touch</h4><p><i class="fas fa-map-marker-alt"></i> PVT Towers, 37/10, Selvam Nagar, Erode - 638 011</p><p><i class="fas fa-envelope"></i> <a href="mailto:sivasureshagency@gmail.com">sivasureshagency@gmail.com</a></p><p><i class="fas fa-phone-alt"></i> <a href="tel:+919366640050">+91 93666 40050</a></p></div>
+                <div class="footer-contact"><h4>Get In Touch</h4><p><i class="fas fa-map-marker-alt"></i> PVT Towers, 37/10, Selvam Nagar, Erode - 638 011</p><p><i class="fas fa-envelope"></i> <a href="mailto:info@sivasureshagency.onmicrosoft.com">info@sivasureshagency.onmicrosoft.com</a></p><p><i class="fas fa-phone-alt"></i> <a href="tel:+919366640050">+91 93666 40050</a></p></div>
             </div>
             <div class="footer-bottom"><p>&copy; 2024 Siva Suresh Agency. All rights reserved.</p><div class="footer-bottom-links"><a href="#" onclick="openPolicyModal('privacy');return false;">Privacy Policy</a><a href="#" onclick="openPolicyModal('terms');return false;">Terms of Service</a><a href="#" onclick="openPolicyModal('shipping');return false;">Shipping Policy</a></div></div>
         </div>
@@ -250,13 +250,8 @@
             </div>
         </div>
     </div>
-    <div class="modal-overlay" id="productDetailModal"></div>
-
-    <!-- Chatbot -->
-    <div class="chatbot-container" id="chatbotContainer"><div class="chatbot-window" id="chatbotWindow"><div class="chatbot-header"><div class="chatbot-header-info"><div class="chatbot-avatar"><i class="fas fa-robot"></i></div><div><h4>SSA Assistant</h4><span class="chatbot-status"><i class="fas fa-circle"></i> Online</span></div></div><button class="chatbot-minimize" id="chatbotMinimize"><i class="fas fa-minus"></i></button></div><div class="chatbot-messages" id="chatbotMessages"><div class="chat-message bot"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content"><p>Hello! ?? How can I help you today?</p><div class="quick-replies"><button class="quick-reply" data-msg="What products do you offer?">Products</button><button class="quick-reply" data-msg="Tell me about pricing">Pricing</button><button class="quick-reply" data-msg="How to place an order?">How to Order</button></div></div></div></div><div class="chatbot-input"><input type="text" id="chatInput" placeholder="Type your message..."><button id="chatSend"><i class="fas fa-paper-plane"></i></button></div></div><button class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-comments"></i><span class="chatbot-badge">1</span></button></div>
-
-    <button id="backToTop" class="back-to-top"><i class="fas fa-chevron-up"></i></button>
-        <!-- AI Chatbot -->
+    <div class="modal-overlay" id="productDetailModal"></div></div><div class="chatbot-input"><input type="text" id="chatInput" placeholder="Type your message..."><button id="chatSend"><i class="fas fa-paper-plane"></i></button></div></div><button class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-comments"></i><span class="chatbot-badge">1</span></button></div>
+    <!-- AI Chatbot -->
     <div class="chatbot-container" id="chatbotContainer">
         <div class="chatbot-window" id="chatbotWindow">
             <div class="chatbot-header">
@@ -264,32 +259,26 @@
                     <div class="chatbot-avatar"><i class="fas fa-robot"></i></div>
                     <div><h4>SSA Assistant</h4><span class="chatbot-status"><i class="fas fa-circle"></i> Online</span></div>
                 </div>
-                <button class="chatbot-minimize" id="chatbotMinimize"><i class="fas fa-minus"></i></button>
+                <button class="chatbot-minimize" id="chatbotMinimize" title="Minimize"><i class="fas fa-minus"></i></button>
             </div>
-            <div class="chatbot-messages" id="chatbotMessages">
-                <div class="chat-message bot">
-                    <div class="message-avatar"><i class="fas fa-robot"></i></div>
-                    <div class="message-content">
-                        <p>Hello! Welcome to Siva Suresh Agency. How can I help you today?</p>
-                        <div class="quick-replies">
-                            <button class="quick-reply" data-msg="What products do you offer?">Products</button>
-                            <button class="quick-reply" data-msg="Tell me about pricing">Pricing</button>
-                            <button class="quick-reply" data-msg="How to place an order?">How to Order</button>
-                            <button class="quick-reply" data-msg="Do you deliver all over India?">Delivery</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div class="chatbot-messages" id="chatbotMessages"></div>
+            <div class="chatbot-file-preview" id="chatbotFilePreview" style="display:none;padding:6px 12px;background:#f0fdfa;border-top:1px solid #e2e8f0;font-size:0.78rem;"></div>
             <div class="chatbot-input">
+                <label for="chatFileInput" class="chat-attach-btn" title="Attach file"><i class="fas fa-paperclip"></i></label>
+                <input type="file" id="chatFileInput" accept="image/*,.pdf" style="display:none" onchange="handleChatFile(this)">
                 <input type="text" id="chatInput" placeholder="Type your message...">
-                <button id="chatSend"><i class="fas fa-paper-plane"></i></button>
+                <button id="chatSend" title="Send"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
-        <button class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-comments"></i><span class="chatbot-badge">1</span></button>
+        <button class="chatbot-toggle" id="chatbotToggle" aria-label="Open chat"><i class="fas fa-comments"></i><span class="chatbot-badge">1</span></button>
     </div>
+
+
+    <button id="backToTop" class="back-to-top"><i class="fas fa-chevron-up"></i></button>
     <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
     <script src="js/product-helpers.js" defer></script>
-    <script src="js/script.js?v=108" defer></script>
+    <script src="js/ssa-comm.js?v=1" defer></script>
+    <script src="js/script.js?v=109" defer></script>
     <script src="js/animations.js?v=5" defer></script>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>

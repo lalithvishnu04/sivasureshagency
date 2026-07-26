@@ -527,6 +527,30 @@
                     localStorage.setItem(key, JSON.stringify(orders));
                 }
             }
+
+            // Send rating notification via Power Automate webhook
+            if (window.SSA_COMM && window.SSA_COMM.sendRatingNotification) {
+                const orderItems = [];
+                try {
+                    if (window.db) {
+                        const oSnap2 = await window.db.collection('orders').where('orderId', '==', orderId).get();
+                        if (!oSnap2.empty) {
+                            const od = oSnap2.docs[0].data();
+                            (od.items||[]).forEach(it => orderItems.push(it.name || it.productName || 'Product'));
+                        }
+                    }
+                } catch(e2) { /* ignore */ }
+                const cu = JSON.parse(localStorage.getItem('ssa_user') || 'null');
+                window.SSA_COMM.sendRatingNotification({
+                    orderId,
+                    productName: orderItems.join(', ') || 'Products',
+                    rating,
+                    comment: comment || '',
+                    customerName: cu?.name || 'Customer',
+                    customerEmail: cu?.email || '',
+                    imageUrl: imageDataUrl || ''
+                }).catch(() => {});
+            }
         } catch (e) { console.warn('[Rating] localStorage save failed:', e); }
 
         // Replace the whole rating block with a "thank you" showing stars + comment
@@ -557,7 +581,7 @@
        injects it into the order success / account order section.
     ────────────────────────────────────────────────────────── */
     const SHARE_ITEMS = [
-        { cls: 'share-whatsapp', icon: 'fab fa-whatsapp',  label: 'WhatsApp',  href: d => `https://wa.me/?text=${encodeURIComponent(d)}` },
+        { cls: 'share-contact',  icon: 'fas fa-envelope',   label: 'Contact Us', href: _ => window.location.origin + '/sivasureshagency/contact.html' },
         { cls: 'share-instagram', icon: 'fab fa-instagram', label: 'Instagram', href: _ => 'https://www.instagram.com/' },
         { cls: 'share-facebook',  icon: 'fab fa-facebook-f',label: 'Facebook',  href: d => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(d)}` },
         { cls: 'share-twitter',   icon: 'fab fa-x-twitter', label: 'X',         href: d => `https://twitter.com/intent/tweet?text=${encodeURIComponent(d)}` },

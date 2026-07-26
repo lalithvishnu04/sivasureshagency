@@ -337,14 +337,21 @@
             <!-- Messages Page -->
             <div class="page" id="page-messages">
                 <div class="page-toolbar">
-                    <div class="toolbar-left"><h3 style="margin:0;font-size:1rem;font-weight:700;">Customer Messages</h3></div>
+                    <div class="toolbar-left"><h3 style="margin:0;font-size:1rem;font-weight:700;"><i class="fas fa-ticket-alt"></i> Support Tickets</h3></div>
                     <div class="toolbar-right">
+                        <select id="ticketStatusFilter" onchange="renderMessages()" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:0.82rem;cursor:pointer;">
+                            <option value="">All Status</option>
+                            <option value="Open">Open</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                            <option value="Closed">Closed</option>
+                        </select>
                         <button class="btn-secondary" onclick="markAllRead()"><i class="fas fa-check-double"></i> Mark All Read</button>
-                        <input type="text" id="messageSearch" placeholder="Search messages..." class="search-input" oninput="renderMessages()">
+                        <input type="text" id="messageSearch" placeholder="Search tickets..." class="search-input" oninput="renderMessages()">
                     </div>
                 </div>
-                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>Business Email Setup:</strong> To receive these messages at <em>admin@sivasureshagency.com</em>, set up email hosting via your domain provider (e.g., Zoho Mail Free, Google Workspace). Contact form submissions are saved here automatically.</div></div>
-                <div id="messagesList"><p class="empty"><i class="fas fa-envelope-open"></i>No messages yet. Messages from the contact form will appear here.</p></div>
+                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>Support Tickets:</strong> All messages from the contact form appear here as tickets with unique IDs. Update status to notify customers automatically. Admin email: <strong>info@sivasureshagency.onmicrosoft.com</strong></div></div>
+                <div id="messagesList"><p class="empty"><i class="fas fa-ticket-alt"></i>No tickets yet. Messages from the contact form will appear here.</p></div>
             </div>
 
             <!-- Settings Page -->
@@ -358,8 +365,19 @@
                 <div class="settings-panel">
                     <div class="settings-section">
                         <h4 class="settings-section-title"><i class="fas fa-tag"></i> Signature Collection Name</h4>
-                        <p class="settings-section-desc">To rename the Signature collection (e.g. "CliniFlex&trade;"), go to <strong>Categories</strong> ? expand the Signature heading ? edit the name inline, then click <strong>Save &amp; Publish</strong>.</p>
+                        <p class="settings-section-desc">To rename the Signature collection (e.g. "CliniFlex&trade;"), go to <strong>Categories</strong> &rarr; expand the Signature heading &rarr; edit the name inline, then click <strong>Save &amp; Publish</strong>.</p>
                         <div class="info-banner"><i class="fas fa-info-circle"></i><div>The name you type in the Category Tree is what appears in the navigation, product tiles, hero section, and everywhere on the site. The symbol (&trade;/&reg;) can be inserted at any cursor position using the <strong>&trade;</strong> and <strong>&reg;</strong> buttons next to the heading name.</div></div>
+                    </div>
+                    <!-- Communication / Power Automate Webhook Settings -->
+                    <div class="settings-section">
+                        <h4 class="settings-section-title"><i class="fas fa-share-alt"></i> Communication Webhooks (Power Automate)</h4>
+                        <p class="settings-section-desc">Paste Power Automate HTTP trigger URLs here. These send emails to <strong>info@sivasureshagency.onmicrosoft.com</strong> and Teams notifications automatically.</p>
+                        <div class="form-group"><label><i class="fas fa-envelope"></i> Contact Form Webhook URL</label><input type="url" id="webhookContactForm" placeholder="https://prod-xx.westus.logic.azure.com/..."></div>
+                        <div class="form-group"><label><i class="fas fa-ticket-alt"></i> Ticket Status Update Webhook URL</label><input type="url" id="webhookTicketStatus" placeholder="https://prod-xx.westus.logic.azure.com/..."></div>
+                        <div class="form-group"><label><i class="fas fa-star"></i> Rating Notification Webhook URL</label><input type="url" id="webhookRating" placeholder="https://prod-xx.westus.logic.azure.com/..."></div>
+                        <div class="form-group"><label><i class="fas fa-headset"></i> Live Agent Request Webhook URL (Teams)</label><input type="url" id="webhookLiveAgent" placeholder="https://prod-xx.westus.logic.azure.com/..."></div>
+                        <button class="btn-primary" onclick="saveWebhookSettings()"><i class="fas fa-save"></i> Save Webhook URLs</button>
+                        <div class="info-banner" style="margin-top:12px;"><i class="fab fa-microsoft"></i><div><strong>Power Automate Setup:</strong> Create 4 flows (one per webhook). Each flow: <em>When an HTTP request is received</em> &rarr; <em>Send an email (V2) via Outlook 365</em> + <em>Post message in Teams channel</em>. Copy the trigger URL into each field above. <a href="https://make.powerautomate.com" target="_blank" style="color:var(--primary-teal);">Open Power Automate &rarr;</a></div></div>
                     </div>
                 </div>
             </div>
@@ -661,7 +679,8 @@
     <script src="js/backend-config.js?v=75" defer></script>
     <script src="js/db-init.js?v=80" defer></script>
     <script src="js/product-helpers.js" defer></script>
-    <script defer src="js/admin.js?v=102"></script>
+    <script src="js/ssa-comm.js?v=1" defer></script>
+    <script defer src="js/admin.js?v=103"></script>
     <script defer src="js/animations.js?v=4"></script>
 </body>
 </html>

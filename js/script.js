@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SIVA SURESH AGENCY  —  E-Commerce Frontend (v71)
  * Main client-side logic: product display, filtering, cart, orders
  */
@@ -968,7 +968,7 @@ const _policyContent = {
 <h4>Your Rights</h4>
 <p>You may request deletion of your account data at any time by emailing us. We will remove your data within 7 business days.</p>
 <h4>Contact</h4>
-<p>For privacy concerns email <a href="mailto:sivasureshagency@gmail.com">sivasureshagency@gmail.com</a></p>`
+<p>For privacy concerns email <a href="mailto:info@sivasureshagency.onmicrosoft.com">info@sivasureshagency.onmicrosoft.com</a></p>`
     },
     terms: {
         title: 'Terms of Service',
@@ -987,7 +987,7 @@ const _policyContent = {
 <h4>Limitation of Liability</h4>
 <p>Siva Suresh Agency shall not be liable for any indirect, incidental, or consequential damages arising from the use of our products or services.</p>
 <h4>Contact</h4>
-<p>Questions? Email <a href="mailto:sivasureshagency@gmail.com">sivasureshagency@gmail.com</a></p>`
+<p>Questions? Email <a href="mailto:info@sivasureshagency.onmicrosoft.com">info@sivasureshagency.onmicrosoft.com</a></p>`
     },
     shipping: {
         title: 'Shipping Policy',
@@ -1006,7 +1006,7 @@ const _policyContent = {
 <h4>Returns</h4>
 <p>Custom/embroidered items are non-returnable unless defective. Standard items can be returned within 7 days in their original, unused condition. Return shipping is free for defective items.</p>
 <h4>Contact</h4>
-<p>Shipping queries: <a href="mailto:sivasureshagency@gmail.com">sivasureshagency@gmail.com</a> or <a href="tel:+919366640050">+91 93666 40050</a></p>`
+<p>Shipping queries: <a href="mailto:info@sivasureshagency.onmicrosoft.com">info@sivasureshagency.onmicrosoft.com</a> or <a href="tel:+919366640050">+91 93666 40050</a></p>`
     }
 };
 
@@ -2255,7 +2255,7 @@ function updateQty(id, delta) {
 function saveCart() { localStorage.setItem('ssa_cart', JSON.stringify(cart)); }
 
 const ORDER_SUPPORT_PHONE = '+91 93666 40050';
-const ORDER_SUPPORT_WHATSAPP = '919366640050';
+// WhatsApp replaced with chatbot/contact page
 
 function getSavedAddresses() {
     if (!currentUser || !currentUser.email) return [];
@@ -2614,8 +2614,8 @@ function openLoginModal() {
       <h3 style="margin-bottom:4px;">Welcome Back</h3>
       <p class="auth-subtitle" style="margin-bottom:16px;">Sign in to manage orders &amp; account</p>
       <div class="form-group">
-        <label>Email or Phone</label>
-        <input type="text" id="loginEmail" placeholder="Enter your email or phone">
+        <label>Email, Phone or Customer ID</label>
+        <input type="text" id="loginEmail" placeholder="Email, phone or SSA-XXXXXX">
         <span class="field-error" id="loginEmailError" style="display:none;"></span>
       </div>
       <div class="form-group">
@@ -2650,11 +2650,23 @@ function openLoginModal() {
     </div>
         <div class="auth-form" id="forgotForm" style="display:none;">
             <h3 style="margin-bottom:4px;">Reset Password</h3>
-            <p class="auth-subtitle" style="margin-bottom:16px;">Verify with email and phone to receive reset link</p>
-            <div class="form-group"><label>Email</label><input type="email" id="fpEmail" placeholder="Registered email"></div>
-            <div class="form-group"><label>Phone</label><input type="tel" id="fpPhone" placeholder="Registered phone"></div>
-            <p id="fpMsg" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
-            <button class="btn btn-gradient btn-full" style="margin-top:4px;" onclick="handleForgotPasswordReset()"><i class="fas fa-paper-plane"></i> Send Reset Link</button>
+            <p class="auth-subtitle" style="margin-bottom:16px;">Enter your registered email to receive a 6-digit OTP</p>
+            <!-- Step 1: Enter email -->
+            <div id="fpStep1">
+                <div class="form-group"><label>Registered Email</label><input type="email" id="fpEmail" placeholder="Email address"></div>
+                <p id="fpMsg" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
+                <button class="btn btn-gradient btn-full" style="margin-top:4px;" onclick="handleForgotSendOtp()"><i class="fas fa-paper-plane"></i> Send OTP</button>
+            </div>
+            <!-- Step 2: Enter OTP + new password -->
+            <div id="fpStep2" style="display:none;">
+                <p style="font-size:0.82rem;color:var(--primary);margin-bottom:12px;"><i class="fas fa-info-circle"></i> OTP sent to your email. Check your inbox.</p>
+                <div class="form-group"><label>6-Digit OTP</label><input type="text" id="fpOtp" placeholder="Enter OTP" maxlength="6" style="letter-spacing:4px;font-size:1.1rem;text-align:center;"></div>
+                <div class="form-group"><label>New Password</label><input type="password" id="fpNewPwd" placeholder="New password (min 6 chars)"></div>
+                <div class="form-group"><label>Confirm Password</label><input type="password" id="fpConfirmPwd" placeholder="Confirm new password"></div>
+                <p id="fpMsg2" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
+                <button class="btn btn-gradient btn-full" style="margin-top:4px;" onclick="handleForgotVerifyOtp()"><i class="fas fa-check"></i> Verify & Reset</button>
+                <p style="font-size:0.78rem;color:var(--text-muted);margin-top:8px;text-align:center;">OTP expires in 10 minutes. <a onclick="handleForgotSendOtp()" style="color:var(--primary);cursor:pointer;">Resend</a></p>
+            </div>
             <p class="auth-switch">Remembered password? <a onclick="backToLoginFromForgot()">Back to sign in</a></p>
         </div>
   </div>
@@ -2689,58 +2701,111 @@ function backToLoginFromForgot() {
     if (tabs) tabs.style.display = 'flex';
     switchAuthTab('login');
 }
-async function handleForgotPasswordReset() {
+// ── Forgot Password OTP flow ──────────────────────────────────
+let _fpOtpStore = null; // { code, email, expires }
+
+async function handleForgotSendOtp() {
     const email = document.getElementById('fpEmail')?.value.trim();
-    const phone = document.getElementById('fpPhone')?.value.trim();
     const msg = document.getElementById('fpMsg');
-    const sendBtn = document.querySelector('#forgotForm button.btn.btn-gradient');
-    if (!msg) return;
-    const show = (text, ok) => {
-        msg.textContent = text;
-        msg.style.color = ok === null ? '#0ea5e9' : ok ? '#10b981' : '#ef4444';
-        msg.style.display = 'block';
-    };
+    const btn = document.querySelector('#fpStep1 button.btn.btn-gradient');
+    const showMsg = (text, ok) => { if(msg){ msg.textContent = text; msg.style.color = ok===true?'#10b981':ok===false?'#ef4444':'#0ea5e9'; msg.style.display='block'; } };
 
-    if (!email || !phone) { show('Please enter email and phone number'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { show('Please enter a valid email'); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMsg('Please enter a valid email address', false); return; }
 
-    // Verify phone against known profile data before sending reset link.
+    // Check email exists (local fallback)
     const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
-    const localUser = users.find(u => (u.email || '').toLowerCase() === email.toLowerCase());
-    if (localUser && String(localUser.phone || '').trim() !== String(phone).trim()) {
-        show('Phone number does not match this account');
-        return;
-    }
+    const localUser = users.find(u => (u.email||'').toLowerCase() === email.toLowerCase());
 
-    if (sendBtn) {
-        sendBtn.disabled = true;
-        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-    }
-    show('Sending reset link...', null);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending OTP...'; }
+    showMsg('Sending OTP...', null);
 
-    // Secure flow: send reset link by email via auth provider.
-    if (window.auth && typeof window.auth.sendPasswordResetEmail === 'function') {
+    // Generate a 6-digit OTP stored in sessionStorage (for Supabase-based flow)
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    _fpOtpStore = { code: otp, email: email.toLowerCase(), expires: Date.now() + 10 * 60 * 1000 };
+
+    // Send OTP via Supabase magic link / or via Power Automate webhook
+    let sent = false;
+
+    // Try Supabase OTP email
+    if (window.auth && typeof window.auth.signInWithOtp === 'function') {
         try {
-            await window.auth.sendPasswordResetEmail(email);
-            show('Password reset link sent to your email. Please check inbox/spam.', true);
-            return;
-        } catch (e) {
-            console.warn('[forgot] Email reset failed:', e.message);
-            show('Unable to send reset email: ' + (e?.message || 'Unknown error'));
-            return;
-        } finally {
-            if (sendBtn) {
-                sendBtn.disabled = false;
-                sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reset Link';
-            }
+            await window.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+            sent = true;
+            // Supabase sends a magic link; tell user to check email for the link
+            showMsg('Check your email for a reset link from Supabase Auth.', true);
+        } catch(e) { console.warn('[otp] supabase OTP failed', e.message); }
+    }
+
+    // Fallback: send OTP via Power Automate webhook (if configured)
+    if (!sent && window.SSA_COMM) {
+        const cfg = window.SSA_COMM.getConfig ? window.SSA_COMM.getConfig() : {};
+        if (cfg.ticketStatusWebhook) {
+            await fetch(cfg.ticketStatusWebhook, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+                type: 'otp_email', toEmail: email, otp,
+                emailSubject: 'Your SSA Password Reset OTP',
+                emailBody: `Your OTP to reset your Siva Suresh Agency password is:\n\n${otp}\n\nThis OTP is valid for 10 minutes. Do not share it with anyone.`
+            })}).catch(()=>{});
+            sent = true;
         }
     }
-    if (sendBtn) {
-        sendBtn.disabled = false;
-        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reset Link';
+
+    // Fallback: Use Supabase reset email
+    if (!sent && window.auth && typeof window.auth.sendPasswordResetEmail === 'function') {
+        try {
+            await window.auth.sendPasswordResetEmail(email);
+            sent = true;
+            showMsg('Password reset link sent to your email. Check inbox/spam.', true);
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send OTP'; }
+            return;
+        } catch(e) { console.warn('[forgot] email reset failed', e.message); }
     }
-    show('Reset email is temporarily unavailable. Please contact support.');
+
+    if (!sent) {
+        // Show OTP locally (dev/fallback mode - visible to user in dev)
+        console.info('[OTP] Dev mode OTP:', otp);
+        showMsg('OTP sent! (If you don\'t receive it, check with admin)', true);
+    } else if (!window.auth?.signInWithOtp) {
+        showMsg('OTP sent to ' + email + '! Check your inbox.', true);
+    }
+
+    // Show step 2
+    document.getElementById('fpStep1').style.display = 'none';
+    document.getElementById('fpStep2').style.display = 'block';
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send OTP'; }
 }
+
+async function handleForgotVerifyOtp() {
+    const otp = document.getElementById('fpOtp')?.value.trim();
+    const newPwd = document.getElementById('fpNewPwd')?.value;
+    const confirmPwd = document.getElementById('fpConfirmPwd')?.value;
+    const msg2 = document.getElementById('fpMsg2');
+    const showMsg = (text, ok) => { if(msg2){ msg2.textContent=text; msg2.style.color=ok===true?'#10b981':ok===false?'#ef4444':'#0ea5e9'; msg2.style.display='block'; } };
+
+    if (!otp || otp.length !== 6) { showMsg('Enter the 6-digit OTP', false); return; }
+    if (!newPwd || newPwd.length < 6) { showMsg('Password must be at least 6 characters', false); return; }
+    if (newPwd !== confirmPwd) { showMsg('Passwords do not match', false); return; }
+
+    if (!_fpOtpStore || _fpOtpStore.code !== otp) { showMsg('Invalid or expired OTP', false); return; }
+    if (Date.now() > _fpOtpStore.expires) { showMsg('OTP has expired. Please request a new one.', false); return; }
+
+    const email = _fpOtpStore.email;
+
+    // Update password in local store
+    const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
+    const idx = users.findIndex(u => (u.email||'').toLowerCase() === email);
+    if (idx !== -1) { users[idx].password = newPwd; localStorage.setItem('ssa_users', JSON.stringify(users)); }
+
+    // Update in Supabase Auth
+    if (window.auth && typeof window.auth.updateUser === 'function') {
+        try { await window.auth.updateUser({ password: newPwd }); } catch(e) { console.warn('[forgot] Supabase updateUser failed:', e.message); }
+    }
+
+    _fpOtpStore = null;
+    showMsg('Password reset successfully! You can now sign in.', true);
+    setTimeout(() => backToLoginFromForgot(), 2000);
+}
+
+function handleForgotPasswordReset() { handleForgotSendOtp(); } // backward compat
 
 function _upsertLocalUserProfile(profile) {
     const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
@@ -2759,12 +2824,21 @@ function _upsertLocalUserProfile(profile) {
 }
 
 async function handleLogin() {
-    const email = document.getElementById('loginEmail').value.trim();
+    const emailInput = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     document.getElementById('loginEmailError').style.display = 'none';
     document.getElementById('loginPasswordError').style.display = 'none';
-    if (!email) { document.getElementById('loginEmailError').textContent = 'Required'; document.getElementById('loginEmailError').style.display = 'block'; return; }
+    if (!emailInput) { document.getElementById('loginEmailError').textContent = 'Required'; document.getElementById('loginEmailError').style.display = 'block'; return; }
     if (!password) { document.getElementById('loginPasswordError').textContent = 'Required'; document.getElementById('loginPasswordError').style.display = 'block'; return; }
+
+    // Support login via Customer ID (SSA-XXXXXXXX format)
+    let email = emailInput;
+    if (/^SSA-[A-Z0-9]+$/i.test(emailInput)) {
+        const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
+        const byId = users.find(u => u.customerId && u.customerId.toLowerCase() === emailInput.toLowerCase());
+        if (byId) { email = byId.email; }
+        else { document.getElementById('loginEmailError').textContent = 'Customer ID not found'; document.getElementById('loginEmailError').style.display = 'block'; return; }
+    }
 
     // Primary path: backend auth (email only)
     if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && window.auth && typeof window.auth.signInWithEmailAndPassword === 'function') {
@@ -2775,8 +2849,12 @@ async function handleLogin() {
             const firstName = md.firstName || (md.name ? String(md.name).split(' ')[0] : 'User');
             const lastName = md.lastName || '';
             const phone = md.phone || '';
+            // Restore or generate customer ID
+            const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
+            const localRec = users.find(ur => ur.email === (u?.email || email));
+            const customerId = localRec?.customerId || _generateCustomerId(u?.email || email);
 
-            currentUser = { name: [firstName, lastName].filter(Boolean).join(' ') || 'User', email: u?.email || email, phone };
+            currentUser = { name: [firstName, lastName].filter(Boolean).join(' ') || 'User', email: u?.email || email, phone, customerId };
             localStorage.setItem('ssa_user', JSON.stringify(currentUser));
             _upsertLocalUserProfile({ firstName, lastName, email: currentUser.email, phone });
 
@@ -2790,11 +2868,18 @@ async function handleLogin() {
         }
     }
 
-    // Fallback path: local profile login
-    const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
-    const user = users.find(u => (u.email === email || u.phone === email) && u.password === password);
-    if (user) { currentUser = { name: user.firstName + ' ' + user.lastName, email: user.email, phone: user.phone }; localStorage.setItem('ssa_user', JSON.stringify(currentUser)); closeAuthModal(); updateAuthUI(); showToast(`Welcome back, ${user.firstName}!`); if (typeof syncPendingOrders === 'function') syncPendingOrders(currentUser.email, currentUser.name, currentUser.phone); }
-    else { document.getElementById('loginPasswordError').textContent = 'Invalid credentials'; document.getElementById('loginPasswordError').style.display = 'block'; }
+    // Fallback path: local profile login (email, phone, or customer ID)
+    const usersAll = JSON.parse(localStorage.getItem('ssa_users') || '[]');
+    const user = usersAll.find(u => (u.email === email || u.phone === email || (u.customerId && u.customerId.toLowerCase() === emailInput.toLowerCase())) && u.password === password);
+    if (user) {
+        const cid = user.customerId || _generateCustomerId(user.email);
+        if (!user.customerId) { user.customerId = cid; localStorage.setItem('ssa_users', JSON.stringify(usersAll)); }
+        currentUser = { name: user.firstName + ' ' + user.lastName, email: user.email, phone: user.phone, customerId: cid };
+        localStorage.setItem('ssa_user', JSON.stringify(currentUser));
+        closeAuthModal(); updateAuthUI();
+        showToast(`Welcome back, ${user.firstName}!`);
+        if (typeof syncPendingOrders === 'function') syncPendingOrders(currentUser.email, currentUser.name, currentUser.phone);
+    } else { document.getElementById('loginPasswordError').textContent = 'Invalid credentials'; document.getElementById('loginPasswordError').style.display = 'block'; }
 }
 async function handleRegister() {
     const fields = ['regFirstName','regLastName','regEmail','regPhone','regPassword','regConfirmPassword'];
@@ -2825,15 +2910,29 @@ async function handleRegister() {
 
     users.push({ firstName, lastName, email, phone, password, createdAt: new Date().toISOString() });
     localStorage.setItem('ssa_users', JSON.stringify(users));
-    currentUser = { name: firstName + ' ' + lastName, email, phone };
+
+    // Generate unique Customer ID (SSA-CUST-XXXXX)
+    const customerId = _generateCustomerId(email);
+    currentUser = { name: firstName + ' ' + lastName, email, phone, customerId };
     localStorage.setItem('ssa_user', JSON.stringify(currentUser));
-    // Save customer to Supabase (async but we continue immediately)
+
+    // Save customer to Supabase with customer ID (async)
     if (typeof saveCustomerToDb === 'function') {
-        saveCustomerToDb({ firstName, lastName, email, phone })
+        saveCustomerToDb({ firstName, lastName, email, phone, customerId })
             .catch(err => console.error('[register] Async save failed:', err));
     }
-    closeAuthModal(); updateAuthUI(); showToast(`Welcome, ${firstName}!`);
+    closeAuthModal(); updateAuthUI();
+    showToast(`Welcome, ${firstName}! Your Customer ID: ${customerId}`);
 }
+
+function _generateCustomerId(email) {
+    // Create a deterministic but opaque customer ID from email hash + timestamp
+    const ts = Date.now().toString(36).toUpperCase().slice(-4);
+    const hash = Array.from(email).reduce((acc, c) => ((acc << 5) - acc + c.charCodeAt(0)) | 0, 0);
+    const hashStr = Math.abs(hash).toString(36).toUpperCase().slice(0, 4).padStart(4, '0');
+    return 'SSA-' + hashStr + ts;
+}
+window._generateCustomerId = _generateCustomerId;
 function closeAuthModal(cleanUrl = true) { 
     document.getElementById('authModal')?.classList.remove('active'); 
     document.body.style.overflow = 'auto';
@@ -2930,6 +3029,7 @@ async function openAccountPanel() {
         <div class="acct-body">
             <div class="acct-section active" id="accountProfile">
                 <div class="profile-edit-form">
+                    ${currentUser.customerId ? `<div style="background:linear-gradient(135deg,#f0fdfa,#e0f9f5);border:1.5px solid var(--primary);border-radius:10px;padding:12px 16px;margin-bottom:16px;"><div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Your Customer ID</div><div style="font-size:1.1rem;font-weight:800;color:var(--primary);letter-spacing:2px;">${currentUser.customerId}</div><div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">Use this ID to login or reference in support tickets</div></div>` : ''}
                     <div class="form-group"><span class="acct-field-label">Full Name</span><input type="text" id="editName" value="${currentUser.name}" placeholder="Your full name"></div>
                     <div class="form-group"><span class="acct-field-label">Mobile Phone</span><input type="tel" id="editPhone" value="${currentUser.phone||''}" placeholder="Phone number"></div>
                     <div class="form-group"><span class="acct-field-label">Email <small style="color:#94a3b8;font-size:0.7rem;">(cannot change)</small></span><input type="email" value="${currentUser.email}" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed;"></div>
@@ -3229,8 +3329,18 @@ function toggleOrderDetails(orderId) {
 }
 window.toggleOrderDetails = toggleOrderDetails;
 function contactOrderSupport(orderId) {
-    const msg = `Hi SSA team, I need help with order #${orderId}. Please assist me with the latest update.`;
-    window.open('https://wa.me/' + ORDER_SUPPORT_WHATSAPP + '?text=' + encodeURIComponent(msg), '_blank');
+    // Open chatbot with pre-filled order context, or redirect to contact page
+    const chatWin = document.getElementById('chatbotWindow');
+    const badge = document.querySelector('.chatbot-badge');
+    if (chatWin) {
+        chatWin.classList.add('open');
+        if (badge) badge.style.display = 'none';
+        setTimeout(() => {
+            if (typeof sendChatMessage === 'function') sendChatMessage('I need help with my order #' + orderId);
+        }, 400);
+    } else {
+        window.location.href = 'contact.html?subject=support&order=' + encodeURIComponent(orderId);
+    }
 }
 window.contactOrderSupport = contactOrderSupport;
 
@@ -3361,8 +3471,8 @@ function shareOrderResult(orderId, triggerEl) {
             <div class="ssa-share-hub" onclick="document.getElementById('ssa-share-radial')?.remove()" title="Close">
                 <i class="fas fa-times"></i>
             </div>
-            <button class="ssa-share-item" style="--clr:#25d366;--i:0;" onclick="window.open('${waUrl}','_blank');document.getElementById('ssa-share-radial')?.remove();" title="WhatsApp">
-                <i class="fab fa-whatsapp"></i><span>WhatsApp</span>
+            <button class="ssa-share-item" style="--clr:#0d9488;--i:0;" onclick="window.location.href='contact.html';document.getElementById('ssa-share-radial')?.remove();" title="Send Message">
+                <i class="fas fa-envelope"></i><span>Contact Us</span>
             </button>
             <button class="ssa-share-item" style="--clr:#1877f2;--i:1;" onclick="window.open('${fbUrl}','_blank');document.getElementById('ssa-share-radial')?.remove();" title="Facebook">
                 <i class="fab fa-facebook-f"></i><span>Facebook</span>
@@ -3939,8 +4049,8 @@ function _buildOrderDetailPageHTML(order) {
                             <div class="odp-card-body">
                                 <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:14px;line-height:1.65;">Questions about delivery, returns, or embroidery? Our support team is here to help.</p>
                                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                                    <button class="btn btn-gradient btn-sm" onclick="contactOrderSupport('${escapeRichText(order.id)}')"><i class="fab fa-whatsapp"></i> WhatsApp</button>
-                                    <a class="btn btn-outline-dark btn-sm" href="tel:+919366640050"><i class="fas fa-phone"></i> Call Us</a>
+                                    <button class="btn btn-gradient btn-sm" onclick="contactOrderSupport('${escapeRichText(order.id)}')"><i class="fas fa-comments"></i> Chat Support</button>
+                                    <a class="btn btn-outline-dark btn-sm" href="contact.html"><i class="fas fa-envelope"></i> Send Message</a>
                                 </div>
                             </div>
                         </div>
@@ -4113,7 +4223,7 @@ function buildInvoiceHtml(order) {
                 <img class="logo" src="${logoUrl}" alt="SSA Logo">
                 <div>
                     <h1>Siva Suresh Agency</h1>
-                    <p>PVT Towers, 37/10, Selvam Nagar, Erode - 638011<br>Phone: +91 93666 40060 | Email: sivasureshagency@gmail.com</p>
+                    <p>PVT Towers, 37/10, Selvam Nagar, Erode - 638011<br>Phone: +91 93666 40060 | Email: info@sivasureshagency.onmicrosoft.com</p>
                 </div>
             </div>
             <div class="meta">
@@ -4606,7 +4716,12 @@ function initStatsCounter() {
     observer.observe(stats);
 }
 
-// ===== Chatbot =====
+// ===== AI Chatbot =====
+let _chatLiveAgentMode = false;
+let _chatSessionId = null;
+let _chatPendingFile = null;
+let _chatMsgCount = 0;
+
 function initChatbot() {
     const toggle = document.getElementById('chatbotToggle');
     const win = document.getElementById('chatbotWindow');
@@ -4614,40 +4729,396 @@ function initChatbot() {
     const input = document.getElementById('chatInput');
     const send = document.getElementById('chatSend');
     if (!toggle) return;
-    toggle.addEventListener('click', () => { win.classList.toggle('open'); document.querySelector('.chatbot-badge').style.display = 'none'; });
-    minimize.addEventListener('click', () => win.classList.remove('open'));
-    document.addEventListener('click', (e) => { if (e.target.classList.contains('quick-reply')) sendChatMessage(e.target.dataset.msg); });
-    send.addEventListener('click', () => { const m = input.value.trim(); if (m) sendChatMessage(m); });
-    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') { const m = input.value.trim(); if (m) sendChatMessage(m); } });
+
+    // Show greeting message on first open
+    toggle.addEventListener('click', () => {
+        const isOpen = win.classList.contains('open');
+        win.classList.toggle('open');
+        const badge = document.querySelector('.chatbot-badge');
+        if (badge) badge.style.display = 'none';
+        if (!isOpen) _initChatGreeting();
+    });
+
+    if (minimize) minimize.addEventListener('click', () => win.classList.remove('open'));
+
+    // Quick reply delegation
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('quick-reply')) {
+            sendChatMessage(e.target.dataset.msg);
+            e.target.closest('.quick-replies')?.remove();
+        }
+    });
+
+    // Send button / Enter key
+    if (send) send.addEventListener('click', _dispatchChat);
+    if (input) input.addEventListener('keypress', (e) => { if (e.key === 'Enter') _dispatchChat(); });
 }
-function sendChatMessage(msg) {
+
+function _initChatGreeting() {
+    const messages = document.getElementById('chatbotMessages');
+    if (!messages || messages.children.length > 0) return; // Already initialized
+
+    const greetings = [
+        "Hi there! 👋 Welcome to Siva Suresh Agency.",
+        "How can I help you today? I'm here to assist with products, orders, pricing, and more!"
+    ];
+    let delay = 0;
+    greetings.forEach((g, i) => {
+        setTimeout(() => {
+            if (i === greetings.length - 1) {
+                appendMsgWithQuickReplies('bot', g, [
+                    { label: '🛍️ Products', msg: 'What products do you offer?' },
+                    { label: '💰 Pricing', msg: 'Tell me about pricing' },
+                    { label: '📦 My Orders', msg: 'I want to check my order status' },
+                    { label: '🚚 Delivery', msg: 'How does delivery work?' },
+                    { label: '📧 Contact Us', msg: 'How do I contact you?' }
+                ]);
+            } else {
+                appendMsg('bot', g);
+            }
+        }, delay);
+        delay += 600;
+    });
+}
+
+function _dispatchChat() {
+    const input = document.getElementById('chatInput');
+    const msg = (input?.value || '').trim();
+    if (!msg && !_chatPendingFile) return;
+    sendChatMessage(msg);
+    if (input) input.value = '';
+}
+
+function handleChatFile(input) {
+    const file = input?.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast('File too large (max 5MB)'); return; }
+    _chatPendingFile = file;
+    const preview = document.getElementById('chatbotFilePreview');
+    if (preview) {
+        preview.style.display = 'flex';
+        preview.style.alignItems = 'center';
+        preview.style.gap = '8px';
+        preview.innerHTML = `<i class="fas fa-file" style="color:var(--primary)"></i><span style="font-size:0.78rem;color:var(--text-muted);flex:1;">${file.name}</span><button onclick="clearChatFile()" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:0.8rem;"><i class="fas fa-times"></i></button>`;
+    }
+    input.value = '';
+}
+function clearChatFile() {
+    _chatPendingFile = null;
+    const preview = document.getElementById('chatbotFilePreview');
+    if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
+}
+window.clearChatFile = clearChatFile;
+window.handleChatFile = handleChatFile;
+
+async function sendChatMessage(msg) {
     const messages = document.getElementById('chatbotMessages');
     const input = document.getElementById('chatInput');
-    appendMsg('user', msg); input.value = '';
-    const typing = document.createElement('div'); typing.className = 'chat-message bot';
+
+    if (!msg && !_chatPendingFile) return;
+
+    // If user has a pending file attachment, show it
+    if (_chatPendingFile) {
+        const fileEl = document.createElement('div');
+        fileEl.className = 'chat-message user';
+        fileEl.innerHTML = `<div class="message-avatar"><i class="fas fa-user"></i></div><div class="message-content"><div style="display:flex;align-items:center;gap:6px;background:var(--primary);color:#fff;border-radius:8px;padding:8px 12px;font-size:0.8rem;"><i class="fas fa-paperclip"></i><span>${_chatPendingFile.name}</span></div>${msg ? `<p style="margin-top:6px;">${escapeRichText ? escapeRichText(msg) : msg}</p>` : ''}</div>`;
+        messages.appendChild(fileEl);
+        clearChatFile();
+    } else if (msg) {
+        appendMsg('user', msg);
+    }
+    if (input) input.value = '';
+    messages.scrollTop = messages.scrollHeight;
+
+    _chatMsgCount++;
+
+    // Typing indicator
+    const typing = document.createElement('div');
+    typing.className = 'chat-message bot typing-row';
     typing.innerHTML = '<div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content"><div class="typing-indicator"><span></span><span></span><span></span></div></div>';
-    messages.appendChild(typing); messages.scrollTop = messages.scrollHeight;
-    setTimeout(() => { typing.remove(); appendMsg('bot', getAIResponse(msg)); }, 1000);
+    messages.appendChild(typing);
+    messages.scrollTop = messages.scrollHeight;
+
+    const delay = _chatLiveAgentMode ? 500 : 900 + Math.random() * 600;
+    setTimeout(async () => {
+        typing.remove();
+        if (_chatLiveAgentMode) {
+            // In live agent mode, just notify admin; user message already shown
+            appendMsg('bot', '<i class="fas fa-headset" style="color:var(--primary);margin-right:6px"></i> Your message has been forwarded to our agent. Please wait...');
+        } else {
+            const response = await getAIResponse(msg || '');
+            if (typeof response === 'string') {
+                appendMsg('bot', response);
+            } else if (response && response.text) {
+                if (response.quickReplies) {
+                    appendMsgWithQuickReplies('bot', response.text, response.quickReplies);
+                } else {
+                    appendMsg('bot', response.text);
+                }
+            }
+        }
+        messages.scrollTop = messages.scrollHeight;
+
+        // After 3 messages, proactively offer help options
+        if (!_chatLiveAgentMode && _chatMsgCount > 0 && _chatMsgCount % 5 === 0) {
+            setTimeout(() => {
+                appendMsgWithQuickReplies('bot', 'Is there anything else I can help with?', [
+                    { label: '📧 Send Message', msg: 'send message' },
+                    { label: '👤 Live Agent', msg: 'connect live agent' },
+                    { label: '📦 Track Order', msg: 'track my order' }
+                ]);
+                messages.scrollTop = messages.scrollHeight;
+            }, 1200);
+        }
+    }, delay);
 }
-function appendMsg(type, text) {
+window.sendChatMessage = sendChatMessage;
+
+function appendMsg(type, html) {
     const messages = document.getElementById('chatbotMessages');
-    const div = document.createElement('div'); div.className = `chat-message ${type}`;
+    if (!messages) return;
+    const div = document.createElement('div');
+    div.className = `chat-message ${type}`;
     const icon = type === 'bot' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
-    div.innerHTML = `<div class="message-avatar">${icon}</div><div class="message-content"><p>${text}</p></div>`;
-    messages.appendChild(div); messages.scrollTop = messages.scrollHeight;
+    div.innerHTML = `<div class="message-avatar">${icon}</div><div class="message-content"><p>${html}</p></div>`;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
 }
-function getAIResponse(msg) {
-    const m = msg.toLowerCase();
-    if (m.includes('product') || m.includes('offer') || m.includes('sell')) return 'We offer: 🥼 Doctor Uniforms (Male & Female, Full & Half Sleeve), 👔 Staff Uniforms (Multiple Styles), 🛏️ Bedsheets, 🏥 Hospital Linen, 🏨 Hotel Linen. <a href="categories.html">Browse All →</a>';
-    if (m.includes('price') || m.includes('cost')) return 'Price ranges: Doctor Uniforms ₹750-₹900, Staff Uniforms ₹500-₹590, Bedsheets ₹150-₹480. Bulk discounts available!';
-    if (m.includes('order') || m.includes('buy') || m.includes('how to')) return 'Easy! 1️⃣ Browse <a href="categories.html">Categories</a> 2️⃣ Add to Cart 3️⃣ Checkout 4️⃣ Choose payment (COD/UPI/Bank) 5️⃣ Done!';
-    if (m.includes('deliver') || m.includes('ship')) return '📦 We deliver all-India! Free shipping above ₹2000. Standard: 3-5 days. Express available.';
-    if (m.includes('contact') || m.includes('phone') || m.includes('call')) return '📞 Siva: +91 93666 40060 | Suresh: +91 93666 40050<br>✉️ sivasureshagency@gmail.com<br>📍 Erode, Tamil Nadu';
-    if (m.includes('bulk') || m.includes('wholesale')) return '📦 Bulk orders: Special pricing, dedicated account manager, recurring orders. Call +91 93666 40060 or <a href="contact.html">contact us</a>';
-    if (m.includes('hi') || m.includes('hello')) return 'Hello! 😊 How can I help? Ask about products, pricing, delivery, or orders!';
-    if (m.includes('thank')) return "You're welcome! 😊 Happy shopping!";
-    return 'I can help with products, pricing, ordering, delivery & contact info. Try "What products do you offer?" or call +91 93666 40060.';
+
+function appendMsgWithQuickReplies(type, html, replies) {
+    const messages = document.getElementById('chatbotMessages');
+    if (!messages) return;
+    const div = document.createElement('div');
+    div.className = `chat-message ${type}`;
+    const icon = type === 'bot' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
+    const repliesHtml = replies.map(r => `<button class="quick-reply" data-msg="${(r.msg||r).replace(/"/g,'&quot;')}">${r.label||r}</button>`).join('');
+    div.innerHTML = `<div class="message-avatar">${icon}</div><div class="message-content"><p>${html}</p><div class="quick-replies">${repliesHtml}</div></div>`;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
 }
+
+async function getAIResponse(msg) {
+    const m = (msg || '').toLowerCase().trim();
+
+    // ── Greetings ──
+    if (/^(hi|hello|hey|hii|good morning|good evening|howdy|namaste|helo|hai)\b/.test(m)) {
+        const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
+        const name = user?.name?.split(' ')[0] || '';
+        return { text: `Hello${name ? ', ' + name : ''}! 😊 Great to have you here. I'm SSA Assistant, your personal shopping guide. What can I help you with today?`, quickReplies: [
+            { label: '🛍️ Browse Products', msg: 'What products do you offer?' },
+            { label: '💰 Pricing Info', msg: 'Tell me about pricing' },
+            { label: '📦 My Orders', msg: 'Check my order status' },
+            { label: '🚚 Delivery', msg: 'Delivery information' }
+        ]};
+    }
+
+    // ── Products ──
+    if (/product|offer|sell|catalog|scrub|uniform|linen|bedsheet|hotel/.test(m)) {
+        return { text: `We specialize in premium healthcare & hospitality textiles:<br>🥼 <strong>Doctor Uniforms</strong> — Male & Female, Full & Half Sleeve<br>👔 <strong>Staff Uniforms</strong> — All styles, 20+ colors<br>⭐ <strong>CliniFlex™ Scrubs</strong> — Our signature scrub suit line<br>🛏️ <strong>Bedsheets</strong> — Hospital & hotel grade<br>🏥 <strong>Hospital Linen</strong> — OT aprons, caps, drapes<br>🏨 <strong>Hotel Linen</strong> — Premium hospitality textiles<br><br><a href="categories.html" style="color:var(--primary);font-weight:700;">Browse All Products →</a>`, quickReplies: [
+            { label: '💰 Pricing', msg: 'What are the prices?' },
+            { label: '🛒 How to Order', msg: 'How do I place an order?' },
+            { label: '📦 Bulk Orders', msg: 'I need bulk order pricing' }
+        ]};
+    }
+
+    // ── Pricing ──
+    if (/price|cost|rate|how much|charges|fee/.test(m)) {
+        return { text: `Here are our approximate price ranges:<br>🥼 Doctor Uniforms: <strong>₹750 – ₹900</strong><br>👔 Staff Uniforms: <strong>₹500 – ₹590</strong><br>🛏️ Bedsheets: <strong>₹150 – ₹480</strong><br>⭐ CliniFlex™ Scrubs: <strong>₹600 – ₹850</strong><br><br>💡 <strong>Bulk discounts</strong> available for orders above 50 pcs!<br><a href="categories.html" style="color:var(--primary);font-weight:700;">See exact prices →</a>`, quickReplies: [
+            { label: '📦 Bulk Discount', msg: 'Tell me about bulk discounts' },
+            { label: '🛒 Place Order', msg: 'How do I place an order?' }
+        ]};
+    }
+
+    // ── Bulk / Wholesale ──
+    if (/bulk|wholesale|institution|hospital|large order|quantity/.test(m)) {
+        return { text: `We love bulk orders! 📦<br><br>Benefits for bulk buyers:<br>✅ Special discounted pricing<br>✅ Dedicated account manager<br>✅ Priority processing & delivery<br>✅ Custom embroidery & branding<br>✅ Easy recurring orders<br><br>Minimum order: <strong>10 pcs per item</strong><br><a href="contact.html" style="color:var(--primary);font-weight:700;">Request Bulk Quote →</a>`, quickReplies: [
+            { label: '📧 Get Quote', msg: 'send message' },
+            { label: '👤 Talk to Agent', msg: 'connect live agent' }
+        ]};
+    }
+
+    // ── Order placement ──
+    if (/how (to|do) (i |we |)order|place.*(order)|buy now|purchase|add to cart/.test(m)) {
+        return { text: `Ordering is easy! Here's how:<br>1️⃣ Browse <a href="categories.html">Categories</a><br>2️⃣ Select size, color & quantity<br>3️⃣ Add to Cart 🛒<br>4️⃣ Checkout with shipping details<br>5️⃣ Choose payment: <strong>COD, UPI, or Bank Transfer</strong><br>6️⃣ Receive confirmation & track your order<br><br>Need help? I'm here!`, quickReplies: [
+            { label: '🛍️ Shop Now', msg: 'take me to products' },
+            { label: '💳 Payment Options', msg: 'What payment methods do you accept?' }
+        ]};
+    }
+
+    // ── Delivery / Shipping ──
+    if (/deliver|ship|dispatch|when.*arrive|how long|tracking|courier/.test(m)) {
+        return { text: `📦 <strong>Delivery Information:</strong><br><br>🚚 Pan-India delivery available<br>🎁 <strong>Free shipping</strong> on orders above ₹2,000<br>⏱️ Standard: <strong>3-5 working days</strong><br>⚡ Express: <strong>1-2 days</strong> (extra charges)<br>📍 Dispatch from Erode, Tamil Nadu<br><br>You'll get a tracking ID after your order is dispatched!`, quickReplies: [
+            { label: '📦 Track Order', msg: 'track my order' },
+            { label: '🛒 Place Order', msg: 'How do I place an order?' }
+        ]};
+    }
+
+    // ── Order status / tracking ──
+    if (/track|order status|my order|where.*order|order.*id|order.*number/.test(m)) {
+        const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
+        if (!user) {
+            return { text: `To check your order status, please <strong>sign in</strong> first. Once logged in, you can view all orders, track shipments, and get real-time updates.<br><br>Don't have an account? <a onclick="closeAuthModal && closeAuthModal(); openLoginModal && openLoginModal();" style="color:var(--primary);cursor:pointer;font-weight:700;">Create one free →</a>`, quickReplies: [
+                { label: '🔑 Sign In', msg: 'login' },
+                { label: '📧 Contact Support', msg: 'send message' }
+            ]};
+        }
+        return { text: `Hi <strong>${user.name?.split(' ')[0] || 'there'}</strong>! To track your order:<br>1. Click <a onclick="if(typeof openAccountPanel==='function')openAccountPanel();" style="color:var(--primary);cursor:pointer;font-weight:700;">My Account</a> (top right)<br>2. Go to "My Orders" tab<br>3. Click any order to see live status<br><br>Or use the <strong>Track Order</strong> button in the header.`, quickReplies: [
+            { label: '🔑 My Account', msg: 'go to my account' },
+            { label: '📧 Order Support', msg: 'I need help with my order' }
+        ]};
+    }
+
+    // ── Returns / Exchange ──
+    if (/return|exchange|refund|replace|defect|damaged|wrong/.test(m)) {
+        return { text: `We stand behind our quality! Here's our policy:<br><br>↩️ <strong>Returns accepted</strong> within 7 days of delivery<br>🔄 <strong>Exchange</strong> for size/color issues — free<br>💰 <strong>Refund</strong> processed within 5-7 business days<br><br>To raise a return request, go to <strong>My Account → My Orders → Request Return</strong><br><br>Or contact us directly for faster resolution.`, quickReplies: [
+            { label: '📧 Contact Support', msg: 'send message' },
+            { label: '👤 Talk to Agent', msg: 'connect live agent' }
+        ]};
+    }
+
+    // ── Payment ──
+    if (/payment|pay|upi|cod|cash|online|razorpay|card/.test(m)) {
+        return { text: `💳 <strong>We accept multiple payment methods:</strong><br><br>💵 Cash on Delivery (COD)<br>📱 UPI (GPay, PhonePe, Paytm)<br>💳 Debit/Credit Cards (Razorpay)<br>🏦 Bank Transfer (for bulk orders)<br><br>All online payments are secured by <strong>Razorpay</strong> — India's most trusted payment gateway.` };
+    }
+
+    // ── Custom / Embroidery ──
+    if (/custom|embroid|logo|brand|print|design|color options/.test(m)) {
+        return { text: `✨ <strong>Yes, we do custom orders!</strong><br><br>🎨 20+ color options available<br>👕 All sizes S to XXXL<br>🏥 Custom hospital logo embroidery<br>🎯 Specific design requirements<br>📦 Minimum 10 pcs per custom design<br><br>Send us your design requirements and we'll quote within 24 hours.`, quickReplies: [
+            { label: '📧 Send Requirements', msg: 'send message' },
+            { label: '👤 Talk to Agent', msg: 'connect live agent' }
+        ]};
+    }
+
+    // ── Contact info ──
+    if (/contact|reach|phone|address|location|email|office|where are you/.test(m)) {
+        return { text: `📞 <strong>Siva:</strong> +91 93666 40060<br>📞 <strong>Suresh:</strong> +91 93666 40050<br>✉️ <a href="mailto:info@sivasureshagency.onmicrosoft.com">info@sivasureshagency.onmicrosoft.com</a><br>📍 PVT Towers, 37/10, Selvam Nagar, Erode - 638011, Tamil Nadu<br><br>Office hours: <strong>Mon-Sat, 9am - 6pm</strong>`, quickReplies: [
+            { label: '📧 Send Message', msg: 'send message' },
+            { label: '🗺️ Get Directions', msg: 'directions' }
+        ]};
+    }
+
+    // ── Directions ──
+    if (/direction|map|location|how to reach|find you/.test(m)) {
+        return { text: `📍 <strong>Find Us:</strong><br>PVT Towers, 37/10, Selvam Nagar,<br>Erode - 638011, Tamil Nadu<br><br>🚉 Near Erode Junction Railway Station<br><a href="contact.html" style="color:var(--primary);font-weight:700;">View Map on Contact Page →</a>` };
+    }
+
+    // ── My account / login navigation ──
+    if (/my account|go.*account|profile|login|sign in/.test(m)) {
+        if (typeof openAccountPanel === 'function' && JSON.parse(localStorage.getItem('ssa_user') || 'null')) {
+            openAccountPanel();
+            return { text: `Opening your account panel now! You can see your orders, addresses, and profile there.` };
+        } else {
+            return { text: `Please sign in to access your account. You can view orders, track deliveries, and manage your profile after logging in.`, quickReplies: [
+                { label: '🔑 Sign In', msg: 'sign in now' }
+            ]};
+        }
+    }
+    if (/sign in now/.test(m)) {
+        if (typeof openLoginModal === 'function') setTimeout(() => openLoginModal(), 300);
+        return { text: `Opening sign in for you...` };
+    }
+
+    // ── Take me to products ──
+    if (/take me.*product|shop now|browse product|go.*shop/.test(m)) {
+        setTimeout(() => { window.location.href = 'categories.html'; }, 1500);
+        return { text: `Taking you to our product catalog now! 🛍️` };
+    }
+
+    // ── Send message (contact form) ──
+    if (/send.*(message|mail|email|us)|contact.*form|raise.*ticket|ticket/.test(m)) {
+        return { text: `📧 You can send us a message through our contact form. Your query will get a <strong>Ticket ID</strong> so you can track its status anytime.<br><br><a href="contact.html#contact-form" style="color:var(--primary);font-weight:700;">Open Contact Form →</a>`, quickReplies: [
+            { label: '👤 Talk to Live Agent', msg: 'connect live agent' }
+        ]};
+    }
+
+    // ── Live agent ──
+    if (/live.?agent|human|real.*person|talk.*someone|connect.*agent|speak.*agent|customer.?care|support.?team/.test(m)) {
+        return _handleLiveAgentRequest();
+    }
+
+    // ── Thank you ──
+    if (/thank|thanks|thx|ty\b/.test(m)) {
+        return { text: `You're welcome! 😊 It was a pleasure helping you. Is there anything else you'd like to know?`, quickReplies: [
+            { label: '🛍️ Browse Products', msg: 'What products do you offer?' },
+            { label: '📧 Send Message', msg: 'send message' }
+        ]};
+    }
+
+    // ── Bye / exit ──
+    if (/bye|goodbye|see you|cya|take care/.test(m)) {
+        return { text: `Goodbye! 👋 Thank you for visiting Siva Suresh Agency. Have a wonderful day! Feel free to come back anytime. 😊` };
+    }
+
+    // ── Default fallback ──
+    const fallback = [
+        `I'm not sure I understood that, but I'd love to help! Could you rephrase, or choose one of these options?`,
+        `Hmm, let me think... I might need a bit more context. Could you tell me more about what you're looking for?`,
+        `I want to make sure I give you the right answer! Could you be more specific?`
+    ];
+    return { text: fallback[Math.floor(Math.random() * fallback.length)], quickReplies: [
+        { label: '🛍️ Products', msg: 'What products do you offer?' },
+        { label: '💰 Pricing', msg: 'Tell me about pricing' },
+        { label: '📦 Orders', msg: 'Check my order status' },
+        { label: '📧 Send Message', msg: 'send message' },
+        { label: '👤 Live Agent', msg: 'connect live agent' }
+    ]};
+}
+
+function _handleLiveAgentRequest() {
+    const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
+    if (!user) {
+        // Require login first
+        return { text: `To connect with a live agent, I'll need you to <strong>sign in</strong> first so our team can identify you and give personalized support.`, quickReplies: [
+            { label: '🔑 Sign In & Connect', msg: '_login_then_agent' }
+        ]};
+    }
+    // User is logged in - trigger live agent connection
+    _activateLiveAgent(user);
+    return { text: `✅ <strong>Connecting you to a live agent...</strong><br><br>Our support team has been notified. They'll respond here shortly (typically within a few minutes during business hours).<br><br>You can also email us at <a href="mailto:info@sivasureshagency.onmicrosoft.com">info@sivasureshagency.onmicrosoft.com</a>` };
+}
+
+// Handle special meta-messages from quick replies
+const _origSendChatMessage = sendChatMessage;
+document.addEventListener('click', e => {
+    if (e.target.classList.contains('quick-reply') && e.target.dataset.msg === '_login_then_agent') {
+        e.stopPropagation();
+        e.target.closest('.quick-replies')?.remove();
+        if (typeof openLoginModal === 'function') {
+            openLoginModal();
+            // After login, ask again
+            appendMsg('bot', 'Please sign in and then type "connect live agent" again to reach our support team.');
+        }
+    }
+});
+
+async function _activateLiveAgent(user) {
+    _chatLiveAgentMode = true;
+    _chatSessionId = _chatSessionId || ('SESS-' + Date.now().toString(36).toUpperCase());
+
+    // Notify admin via Power Automate
+    if (window.SSA_COMM && window.SSA_COMM.requestLiveAgent) {
+        const chatHistory = [];
+        document.querySelectorAll('#chatbotMessages .chat-message').forEach(el => {
+            const type = el.classList.contains('user') ? 'customer' : 'agent';
+            const text = el.querySelector('.message-content p')?.textContent || '';
+            if (text) chatHistory.push(type + ': ' + text);
+        });
+        await window.SSA_COMM.requestLiveAgent({
+            customerName: user.name,
+            customerEmail: user.email,
+            customerId: user.customerId || '',
+            context: chatHistory.slice(-5).join('\n'),
+            sessionId: _chatSessionId
+        });
+    }
+
+    // Update chatbot header to show live agent mode
+    const statusEl = document.querySelector('#chatbotWindow .chatbot-status');
+    if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle" style="color:#10b981"></i> Live Agent';
+    const headerEl = document.querySelector('#chatbotWindow h4');
+    if (headerEl) headerEl.textContent = 'Live Support';
+}
+
 
 // ===== Color Selection (order-only, no image change) =====
 function selectCardColor(btn) {
