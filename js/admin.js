@@ -474,8 +474,15 @@ function renderOrders() {
         // Compact Cancellation notification badge (for refund column)
         const cr = o.cancellation;
         const crSt = cr ? (cr.status || 'Pending') : '';
+        const crRefund = cr ? (cr.refundStatus || '') : '';
         const cancelBadge = cr
-            ? `<span class="aob-flag aob-cancel ${crSt.toLowerCase()}" title="Cancellation: ${_escHtmlCat(crSt)}"><i class="fas fa-times-circle"></i> Cancel · ${_escHtmlCat(crSt)}</span>`
+            ? (crRefund === 'Processed'
+                ? `<span class="aob-flag aob-cancel processed" title="Refund Processed" style="background:#dcfce7;color:#15803d;border-color:#86efac;"><i class="fas fa-check-circle"></i> Refund · Processed</span>`
+                : crRefund === 'Initiated'
+                ? `<span class="aob-flag aob-cancel initiated" title="Refund Initiated" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;"><i class="fas fa-clock"></i> Refund · Initiated</span>`
+                : crRefund === 'Failed'
+                ? `<span class="aob-flag aob-cancel failed" title="Refund Failed" style="background:#fef2f2;color:#dc2626;border-color:#fca5a5;"><i class="fas fa-exclamation-circle"></i> Refund · Failed</span>`
+                : `<span class="aob-flag aob-cancel ${crSt.toLowerCase()}" title="Cancellation: ${_escHtmlCat(crSt)}"><i class="fas fa-times-circle"></i> Cancel · ${_escHtmlCat(crSt)}</span>`)
             : (o.status === 'Cancelled' ? `<span class="aob-flag aob-cancel cancelled" title="Order Cancelled"><i class="fas fa-ban"></i> Cancelled</span>` : '');
 
         const refundCell = (returnBadge || cancelBadge)
