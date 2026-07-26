@@ -2823,7 +2823,7 @@ async function openAccountPanel() {
     }
     
     const modal = document.getElementById('authModal');
-    modal.innerHTML = `<div class="modal account-modal-v2"><button class="acct-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button><div style="text-align:center;padding:50px 30px;"><div class="loader"><div class="loader-ring"></div><span class="loader-text">SSA</span></div><p style="margin-top:14px;color:var(--text-muted);font-size:0.88rem;">Loading your account...</p></div></div>`;
+    modal.innerHTML = `<div class="modal account-modal-v2"><button class="acct-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button><div class="acct-loading-state"><div class="acct-loading-ring"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="#0d9488" stroke-width="4" stroke-dasharray="80 40" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 24 24" to="360 24 24" dur="1s" repeatCount="indefinite"/></circle></svg></div><div class="acct-loading-logo">SSA</div><p class="acct-loading-text">Loading your account<span class="acct-loading-dots"><span>.</span><span>.</span><span>.</span></span></p></div></div>`;
     document.body.style.overflow = 'hidden';
     modal.classList.add('active');
     let supabaseOrders = [];
@@ -2907,6 +2907,11 @@ async function openAccountPanel() {
                     <p id="pwdMsg" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
                     <button class="btn btn-outline-dark btn-full" onclick="changePassword()"><i class="fas fa-key"></i> Update Password</button>
                 </div>
+                <hr class="acct-pwd-divider">
+                <div class="acct-profile-quicklinks">
+                    <a href="wishlist.html" class="acct-quicklink-btn wishlist-link" onclick="closeAuthModal()"><i class="fas fa-heart"></i> My Wishlist</a>
+                    <button class="acct-quicklink-btn signout-link" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+                </div>
             </div>
             <div class="acct-section" id="accountAddresses" style="display:none;">
                 <div id="addressList"></div>
@@ -2922,10 +2927,7 @@ async function openAccountPanel() {
                 ${orders.length === 0 ? '<div class="acct-orders-empty"><i class="fas fa-box-open"></i><p>No orders yet. Start shopping!</p><a href="categories.html" class="btn btn-gradient btn-sm" onclick="closeAuthModal()">Browse Products</a></div>' : _buildOrderCardsHTML(orders)}
             </div>
         </div>
-        <div class="acct-footer">
-            <a href="wishlist.html" class="btn btn-outline-dark" style="flex:1;justify-content:center;" onclick="closeAuthModal()"><i class="fas fa-heart"></i> Wishlist</a>
-            <button class="btn btn-outline-dark" style="flex:1;justify-content:center;color:var(--red);" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
-        </div>
+
     </div>`;
     renderAddressList();
     // Init rating stars and tab slider for the freshly rendered modal
@@ -3294,14 +3296,45 @@ async function submitOrderReturn(orderId) {
     setTimeout(() => openAccountPanel(), 500);
 }
 window.submitOrderReturn = submitOrderReturn;
-function shareOrderResult(orderId) {
+
+function shareOrderResult(orderId, triggerEl) {
     const shareText = `Just ordered premium hospital uniforms from Siva Suresh Agency! 🏥 Quality medical wear. Order #${orderId} — Check them out: ${window.location.origin}/sivasureshagency/`;
-    if (navigator.share) {
-        navigator.share({ title: 'Siva Suresh Agency Order', text: shareText, url: window.location.origin + '/sivasureshagency/' }).catch(() => {});
-    } else {
-        const wa = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-        window.open(wa, '_blank');
-    }
+    const pageUrl   = window.location.origin + '/sivasureshagency/';
+    const waUrl     = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+    const fbUrl     = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`;
+    const twUrl     = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+
+    // Remove any existing share menu
+    const existing = document.getElementById('ssa-share-radial');
+    if (existing) { existing.remove(); return; }
+
+    // Build radial share menu anchored to the trigger button
+    const menu = document.createElement('div');
+    menu.id = 'ssa-share-radial';
+    menu.className = 'ssa-share-radial';
+    menu.innerHTML = `
+        <div class="ssa-share-backdrop" onclick="document.getElementById('ssa-share-radial')?.remove()"></div>
+        <div class="ssa-share-menu">
+            <div class="ssa-share-hub" onclick="document.getElementById('ssa-share-radial')?.remove()" title="Close">
+                <i class="fas fa-times"></i>
+            </div>
+            <button class="ssa-share-item" style="--clr:#25d366;--i:0;" onclick="window.open('${waUrl}','_blank');document.getElementById('ssa-share-radial')?.remove();" title="WhatsApp">
+                <i class="fab fa-whatsapp"></i><span>WhatsApp</span>
+            </button>
+            <button class="ssa-share-item" style="--clr:#1877f2;--i:1;" onclick="window.open('${fbUrl}','_blank');document.getElementById('ssa-share-radial')?.remove();" title="Facebook">
+                <i class="fab fa-facebook-f"></i><span>Facebook</span>
+            </button>
+            <button class="ssa-share-item" style="--clr:#1b1e21;--i:2;" onclick="window.open('${twUrl}','_blank');document.getElementById('ssa-share-radial')?.remove();" title="Twitter/X">
+                <i class="fab fa-x-twitter"></i><span>Twitter</span>
+            </button>
+            <button class="ssa-share-item" style="--clr:#0d9488;--i:3;" onclick="navigator.clipboard?.writeText('${pageUrl}').then(()=>showToast('Link copied!'));document.getElementById('ssa-share-radial')?.remove();" title="Copy Link">
+                <i class="fas fa-link"></i><span>Copy Link</span>
+            </button>
+        </div>
+    `;
+    document.body.appendChild(menu);
+    // Animate in
+    requestAnimationFrame(() => menu.classList.add('active'));
 }
 window.shareOrderResult = shareOrderResult;
 function handleAvatarUpload(input) {
@@ -3516,9 +3549,13 @@ async function initOrderDetailPage() {
         return;
     }
 
-    // Wait for DB to be ready (up to 3 seconds)
+    // Wait for Supabase DB to be ready (up to 8 seconds)
     let waited = 0;
-    while (!window.db && waited < 30) { await new Promise(r => setTimeout(r, 100)); waited++; }
+    while (!window.db && waited < 80) { await new Promise(r => setTimeout(r, 100)); waited++; }
+
+    // Also wait for currentUser to be restored from session (up to 5 seconds)
+    let authWait = 0;
+    while (!currentUser && authWait < 25) { await new Promise(r => setTimeout(r, 200)); authWait++; }
 
     // Require login
     if (!currentUser) {
@@ -3539,18 +3576,60 @@ async function initOrderDetailPage() {
         return;
     }
 
-    // Load order
+    // Load order from Supabase (via compat layer) with fallback to localStorage
     let order = null;
-    if (window.db) {
-        try {
+    try {
+        if (window.db) {
+            // Primary: query by orderId field (Supabase column)
             const snap = await db.collection('orders').where('orderId', '==', orderId).get();
             if (!snap.empty) {
                 const d = snap.docs[0].data();
-                order = _normalizeAccountOrder({ id: d.orderId || snap.docs[0].id, docId: snap.docs[0].id, date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : new Date().toISOString(), items: d.items || [], total: d.total || 0, payment: d.payment || 'COD', paymentStatus: d.paymentStatus || '', status: d.status || 'Processing', trackingId: d.trackingId || '', deliveredAt: d.deliveredAt || null, estimatedDelivery: d.estimatedDelivery || null, updatedAt: d.updatedAt || null, addressLabel: d.addressLabel || '', statusHistory: d.statusHistory || {}, returnRequest: d.returnRequest || null, cancellation: d.cancellation || null, rating: d.rating || null, ratingComment: d.ratingComment || null, ratingImage: d.ratingImage || null, shipping: { name: d.customerName || currentUser.name, email: d.customerEmail || currentUser.email, phone: d.customerPhone || currentUser.phone || '', address: d.address || '', city: d.city || '', pincode: d.pincode || '' } });
+                order = _normalizeAccountOrder({
+                    id: d.orderId || snap.docs[0].id,
+                    docId: snap.docs[0].id,
+                    date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : (d.createdAt || new Date().toISOString()),
+                    items: d.items || [], total: d.total || 0, payment: d.payment || 'COD',
+                    paymentStatus: d.paymentStatus || '', status: d.status || 'Processing',
+                    trackingId: d.trackingId || '', deliveredAt: d.deliveredAt || null,
+                    estimatedDelivery: d.estimatedDelivery || null, updatedAt: d.updatedAt || null,
+                    addressLabel: d.addressLabel || '', statusHistory: d.statusHistory || {},
+                    returnRequest: d.returnRequest || null, cancellation: d.cancellation || null,
+                    rating: d.rating || null, ratingComment: d.ratingComment || null, ratingImage: d.ratingImage || null,
+                    shipping: { name: d.customerName || currentUser.name, email: d.customerEmail || currentUser.email,
+                        phone: d.customerPhone || currentUser.phone || '', address: d.address || '',
+                        city: d.city || '', pincode: d.pincode || '' }
+                });
             }
-        } catch(e) { console.warn('[odp]', e.message); }
-    }
-    // Fallback to localStorage
+            // Secondary: scan all orders for this customer (catches orderId field mismatches)
+            if (!order && currentUser?.email) {
+                const snap2 = await db.collection('orders').where('customerEmail', '==', currentUser.email).get();
+                const matched = snap2.docs.find(doc => {
+                    const d = doc.data();
+                    return d.orderId === orderId || doc.id === orderId;
+                });
+                if (matched) {
+                    const d = matched.data();
+                    order = _normalizeAccountOrder({
+                        id: d.orderId || matched.id,
+                        docId: matched.id,
+                        date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : (d.createdAt || new Date().toISOString()),
+                        items: d.items || [], total: d.total || 0, payment: d.payment || 'COD',
+                        paymentStatus: d.paymentStatus || '', status: d.status || 'Processing',
+                        trackingId: d.trackingId || '', deliveredAt: d.deliveredAt || null,
+                        estimatedDelivery: d.estimatedDelivery || null, updatedAt: d.updatedAt || null,
+                        addressLabel: d.addressLabel || '', statusHistory: d.statusHistory || {},
+                        returnRequest: d.returnRequest || null, cancellation: d.cancellation || null,
+                        rating: d.rating || null, ratingComment: d.ratingComment || null, ratingImage: d.ratingImage || null,
+                        shipping: { name: d.customerName || currentUser.name, email: d.customerEmail || currentUser.email,
+                            phone: d.customerPhone || currentUser.phone || '', address: d.address || '',
+                            city: d.city || '', pincode: d.pincode || '' }
+                    });
+                }
+            }
+        }
+    } catch(e) { console.warn('[odp] Supabase query failed:', e.message); }
+
+    // Fallback to localStorage (covers offline / sync-pending orders)
     if (!order && currentUser?.email) {
         const localOrders = JSON.parse(localStorage.getItem('ssa_orders_' + currentUser.email) || '[]');
         const lo = localOrders.find(o => (o.id || o.orderId || '') === orderId);
@@ -3560,7 +3639,7 @@ async function initOrderDetailPage() {
     if (loading) loading.style.display = 'none';
 
     if (!order) {
-        _showOdpError('Order Not Found', `We couldn't find order #${escapeRichText(orderId)} for your account.`);
+        _showOdpError('Order Not Found', `We couldn't find order #${escapeRichText(orderId)} linked to your account. If you just placed it, try again in a moment.`);
         return;
     }
 

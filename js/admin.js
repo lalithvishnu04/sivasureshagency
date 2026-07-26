@@ -440,6 +440,9 @@ function renderOrders() {
         const statusKey = (o.status || 'processing').toLowerCase().replace(/\s+/g, '-');
         const initials = (o.customerName || 'G').split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || 'G';
         const dateStr = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+        const returnBadge = o.returnRequest
+            ? `<span class="admin-order-return-badge ${(o.returnRequest.status||'pending').toLowerCase()}"><i class="fas fa-rotate-left"></i> ${_escHtmlCat(o.returnRequest.type || 'Return')} · ${_escHtmlCat(o.returnRequest.status || 'Pending')}</span>`
+            : '';
         return `
             <div class="admin-order-row">
                 <div class="admin-order-cell">
@@ -464,6 +467,7 @@ function renderOrders() {
                 <div class="admin-order-cell">
                     <span class="admin-order-status-badge ${statusKey}">${_escHtmlCat(o.status || 'Processing')}</span>
                     <span class="admin-order-payment-sm">${_escHtmlCat(o.payment || 'COD')}</span>
+                    ${returnBadge}
                 </div>
                 <div class="admin-order-cell">
                     <span style="font-size:0.8rem;color:var(--text-mid);">${dateStr}</span>
@@ -494,6 +498,26 @@ function backToOrdersList() {
     document.getElementById('adminOrdersDetailView').style.display = 'none';
 }
 window.backToOrdersList = backToOrdersList;
+
+async function saveAdminOrderAddress(docId) {
+    const street = document.getElementById('editAddrStreet')?.value.trim();
+    const city   = document.getElementById('editAddrCity')?.value.trim();
+    const pin    = document.getElementById('editAddrPin')?.value.trim();
+    if (!street || !city) { showAdminToast('Street and City are required', 'error'); return; }
+    const o = allOrders.find(x => x.docId === docId);
+    if (!o) return;
+    if (['Shipped','Delivered','Cancelled'].includes(o.status)) {
+        showAdminToast('Cannot edit address after shipping', 'error'); return;
+    }
+    try {
+        await db.collection('orders').doc(docId).update({ address: street, city, pincode: pin || o.pincode || '', updatedAt: fsServerTimestamp() });
+        const idx = allOrders.findIndex(x => x.docId === docId);
+        if (idx !== -1) { allOrders[idx].address = street; allOrders[idx].city = city; allOrders[idx].pincode = pin || o.pincode || ''; }
+        showAdminToast('Address updated successfully');
+        backToOrdersList(); loadOrders();
+    } catch (err) { showAdminToast('Error: ' + err.message, 'error'); }
+}
+window.saveAdminOrderAddress = saveAdminOrderAddress;
 
 function showAdminOrderDetail(docId) {
     const o = allOrders.find(x => x.docId === docId);
@@ -692,7 +716,28 @@ function showAdminOrderDetail(docId) {
                 <div class="admin-od-card">
                     <div class="admin-od-card-head"><i class="fas fa-map-marker-alt"></i><h4>Shipping Address</h4></div>
                     <div class="admin-od-card-body">
+                        ${['Shipped','Delivered','Cancelled'].includes(o.status) ? `
                         <div style="font-size:0.85rem;color:var(--text-mid);line-height:1.7;">${_escHtmlCat(o.address || 'N/A')}<br>${_escHtmlCat(o.city || '')}${o.pincode ? ' — ' + _escHtmlCat(o.pincode) : ''}</div>
+                        <div style="margin-top:8px;font-size:0.75rem;color:#94a3b8;display:flex;align-items:center;gap:5px;"><i class="fas fa-lock"></i> Address is locked after shipping</div>
+                        ` : `
+                        <div class="admin-od-edit-section">
+                            <label>Street / Door No.</label>
+                            <input type="text" id="editAddrStreet" value="${_escHtmlCat(o.address || '')}" placeholder="Street address">
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                            <div class="admin-od-edit-section">
+                                <label>City</label>
+                                <input type="text" id="editAddrCity" value="${_escHtmlCat(o.city || '')}" placeholder="City">
+                            </div>
+                            <div class="admin-od-edit-section">
+                                <label>PIN Code</label>
+                                <input type="text" id="editAddrPin" value="${_escHtmlCat(o.pincode || '')}" placeholder="PIN">
+                            </div>
+                        </div>
+                        <div class="admin-od-edit-actions">
+                            <button class="btn-primary" onclick="saveAdminOrderAddress('${docId}')"><i class="fas fa-save"></i> Save Address</button>
+                        </div>
+                        `}
                     </div>
                 </div>
                 <!-- Payment -->
