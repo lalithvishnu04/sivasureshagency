@@ -1708,8 +1708,11 @@ function printOrderInvoice(docId) {
         return `<tr><td>${i.name || 'Item'}${variant ? `<br><small class="variant">${variant}</small>` : ''}${embDetails}</td><td class="center">${qty}</td><td class="right">&#8377;${unit.toLocaleString('en-IN')}</td><td class="right">&#8377;${amount.toLocaleString('en-IN')}</td></tr>`;
     }).join('');
 
-    const subtotal = (o.items || []).reduce((s, i) => s + ((i.qty || 0) * (i.price || 0)), 0);
-    const shippingCharge = Math.max(0, (o.total || 0) - subtotal);
+    const _invItems = o.items || [];
+    const embTotal = _invItems.reduce((s, i) => s + ((i.embroidery?.price || 0) * (i.qty || 1)), 0);
+    const productSubtotal = _invItems.reduce((s, i) => s + ((i.price || 0) * (i.qty || 1)), 0) - embTotal;
+    const shippingCharge = Math.max(0, (o.total || 0) - (productSubtotal + embTotal));
+    const discountAmt = o.discount || 0;
     const shippingLine = [o.address, o.city, o.pincode].filter(Boolean).join(', ');
     const html = `<!DOCTYPE html>
 <html>
@@ -1805,9 +1808,11 @@ function printOrderInvoice(docId) {
                 <tbody>${rows}</tbody>
             </table>
             <div class="totals">
-                <div><span>Subtotal</span><span>&#8377;${subtotal.toLocaleString('en-IN')}</span></div>
-                <div><span>Shipping</span><span>${shippingCharge > 0 ? '&#8377;' + shippingCharge.toLocaleString('en-IN') : 'FREE'}</span></div>
-                <div class="grand"><span>Total</span><span>&#8377;${(o.total || 0).toLocaleString('en-IN')}</span></div>
+                <div><span>Product Subtotal</span><span>&#8377;${productSubtotal.toLocaleString('en-IN')}</span></div>
+                ${embTotal > 0 ? `<div><span>Embroidery</span><span>&#8377;${embTotal.toLocaleString('en-IN')}</span></div>` : ''}
+                ${discountAmt > 0 ? `<div style="color:#16a34a;"><span>Discount</span><span>\u2212&#8377;${discountAmt.toLocaleString('en-IN')}</span></div>` : ''}
+                <div><span>Shipping</span><span>${shippingCharge > 0 ? '&#8377;' + shippingCharge.toLocaleString('en-IN') : '<span style="color:#16a34a;font-weight:700;">FREE</span>'}</span></div>
+                <div class="grand"><span>Order Total</span><span>&#8377;${(o.total || 0).toLocaleString('en-IN')}</span></div>
             </div>
             <div class="foot">
                 <span>Invoice generated on ${new Date().toLocaleString('en-IN')}</span>
