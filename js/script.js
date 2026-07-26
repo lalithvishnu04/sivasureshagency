@@ -4301,38 +4301,6 @@ function _openRazorpayCheckout(order, shipping) {
             email: shipping.email,
             contact: shipping.phone
         },
-        // ── Payment method layout ──────────────────────────────────
-        // UPI first (with QR + GPay / PhonePe / Paytm / BHIM intent on mobile),
-        // followed by Cards, Netbanking, Pay Later.
-        // Wallets block intentionally excluded (removes Mobikwik, Airtel, Ola Money).
-        config: {
-            display: {
-                blocks: {
-                    upi: {
-                        name: 'Pay via UPI',
-                        instruments: [
-                            { method: 'upi' }
-                        ]
-                    },
-                    cards: {
-                        name: 'Debit / Credit Card',
-                        instruments: [{ method: 'card' }]
-                    },
-                    nb: {
-                        name: 'Net Banking',
-                        instruments: [{ method: 'netbanking' }]
-                    },
-                    paylater: {
-                        name: 'Pay Later',
-                        instruments: [{ method: 'paylater' }]
-                    }
-                },
-                sequence: ['block.upi', 'block.cards', 'block.nb', 'block.paylater'],
-                preferences: {
-                    show_default_blocks: false  // hides all other auto-detected methods (wallets etc.)
-                }
-            }
-        },
         theme: { color: rzpCfg.themeColor || '#0d9488' },
         handler: async function(response) {
             _hidePaymentOverlay();
