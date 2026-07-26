@@ -465,15 +465,18 @@ function renderOrders() {
 
         // Compact Return/Exchange notification badge (for refund column)
         const rr = o.returnRequest;
+        const rrType = rr ? (rr.type === 'Exchange' ? 'Exch' : 'Ret') : '';
+        const rrSt = rr ? (rr.status || 'Pending') : '';
         const returnBadge = rr
-            ? `<span class="aob-flag aob-return ${(rr.status||'pending').toLowerCase()}" title="${_escHtmlCat(rr.type||'Return')}: ${_escHtmlCat(rr.status||'Pending')}"><i class="fas fa-rotate-left"></i> ${_escHtmlCat(rr.type || 'Return')} · ${_escHtmlCat(rr.status||'Pending')}</span>`
+            ? `<span class="aob-flag aob-return ${rrSt.toLowerCase()}" title="${_escHtmlCat(rr.type||'Return')}: ${_escHtmlCat(rrSt)}"><i class="fas fa-rotate-left"></i> ${_escHtmlCat(rrType)} · ${_escHtmlCat(rrSt)}</span>`
             : '';
 
         // Compact Cancellation notification badge (for refund column)
         const cr = o.cancellation;
+        const crSt = cr ? (cr.status || 'Pending') : '';
         const cancelBadge = cr
-            ? `<span class="aob-flag aob-cancel ${(cr.status||'pending').toLowerCase()}" title="Cancellation: ${_escHtmlCat(cr.status||'Pending')}"><i class="fas fa-times-circle"></i> Cancel · ${_escHtmlCat(cr.status||'Pending')}</span>`
-            : (o.status === 'Cancelled' ? `<span class="aob-flag aob-cancel cancelled"><i class="fas fa-ban"></i> Cancelled</span>` : '');
+            ? `<span class="aob-flag aob-cancel ${crSt.toLowerCase()}" title="Cancellation: ${_escHtmlCat(crSt)}"><i class="fas fa-times-circle"></i> Cancel · ${_escHtmlCat(crSt)}</span>`
+            : (o.status === 'Cancelled' ? `<span class="aob-flag aob-cancel cancelled" title="Order Cancelled"><i class="fas fa-ban"></i> Cancelled</span>` : '');
 
         const refundCell = (returnBadge || cancelBadge)
             ? `${returnBadge}${cancelBadge}`
@@ -487,7 +490,7 @@ function renderOrders() {
                 <div class="admin-order-cell">
                     <div class="admin-order-customer">
                         <div class="admin-order-avatar">${_escHtmlCat(initials)}</div>
-                        <div>
+                        <div style="min-width:0;overflow:hidden;">
                             <span class="admin-order-cust-name">${_escHtmlCat(o.customerName || 'Guest')}</span>
                             <span class="admin-order-cust-email">${_escHtmlCat(o.customerEmail || '')}</span>
                         </div>

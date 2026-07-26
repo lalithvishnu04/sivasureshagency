@@ -2024,18 +2024,18 @@ img{max-width:100%;display:block;}
 
 /* Modern Orders List (replaces simple table) */
 .admin-orders-grid { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border); border-top: none; border-radius: 0 0 12px 12px; overflow: hidden; }
-.admin-order-row { background: #fff; border: 1px solid var(--border); border-radius: 0; padding: 0; overflow: hidden; transition: all 0.2s ease; display: grid; grid-template-columns: 148px minmax(140px,1fr) 55px 90px 110px 110px 82px 100px; align-items: center; gap: 0; border-top: none; }
+.admin-order-row { background: #fff; border: 1px solid var(--border); border-radius: 0; padding: 0; overflow: hidden; transition: all 0.2s ease; display: grid; grid-template-columns: 148px minmax(0,1fr) 55px 88px 110px 108px 82px 96px; align-items: center; gap: 0; border-top: none; }
 .admin-order-row:first-child { border-radius: 0; }
 .admin-order-row:last-child { border-radius: 0 0 12px 12px; }
 .admin-order-row:hover { background: #f0fdf9; }
-.admin-order-cell { padding: 14px 14px; border-right: 1px solid var(--border); }
+.admin-order-cell { padding: 12px 12px; border-right: 1px solid var(--border); overflow: hidden; min-width: 0; }
 .admin-order-cell:last-child { border-right: none; }
 .admin-order-id { font-size: 0.85rem; font-weight: 800; color: var(--navy); display: block; }
 .admin-order-date-sm { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; display: block; }
-.admin-order-customer { display: flex; align-items: center; gap: 10px; }
-.admin-order-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #0d9488, #14b8a6); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 800; flex-shrink: 0; }
-.admin-order-cust-name { font-size: 0.82rem; font-weight: 700; color: var(--text); display: block; }
-.admin-order-cust-email { font-size: 0.7rem; color: var(--text-muted); display: block; }
+.admin-order-customer { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+.admin-order-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #0d9488, #14b8a6); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 800; flex-shrink: 0; }
+.admin-order-cust-name { font-size: 0.82rem; font-weight: 700; color: var(--text); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.admin-order-cust-email { font-size: 0.68rem; color: var(--text-muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .admin-order-items-count { font-size: 0.85rem; font-weight: 700; color: var(--text-mid); text-align: center; }
 .admin-order-total-val { font-size: 0.88rem; font-weight: 800; color: var(--navy); }
 .admin-order-status-badge { display: inline-block; font-size: 0.69rem; font-weight: 800; padding: 4px 11px; border-radius: 50px; letter-spacing: 0.03em; }
@@ -2052,7 +2052,7 @@ img{max-width:100%;display:block;}
 .admin-order-inv-btn { background: #f0fdf4; color: #059669; border: 1px solid #a7f3d0; border-radius: 8px; padding: 6px 10px; font-size: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s ease; }
 .admin-order-inv-btn:hover { background: #d1fae5; }
 @media (max-width: 1200px) {
-  .admin-order-row { grid-template-columns: 130px minmax(120px,1fr) 50px 80px 100px 100px 75px 90px; }
+  .admin-order-row { grid-template-columns: 130px minmax(0,1fr) 50px 78px 100px 98px 75px 88px; }
 }
 @media (max-width: 900px) {
   .admin-order-row { grid-template-columns: 1fr 1fr; gap: 0; }
@@ -2106,12 +2106,12 @@ img{max-width:100%;display:block;}
 .admin-od-edit-section select:focus, .admin-od-edit-section input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(13,148,136,0.1); }
 .admin-od-edit-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 /* Header orders summary for table area */
-.admin-orders-table-head { display: grid; grid-template-columns: 148px minmax(140px,1fr) 55px 90px 110px 110px 82px 100px; gap: 0; background: var(--bg); border: 1px solid var(--border); border-radius: 12px 12px 0 0; padding: 0; overflow: hidden; margin-bottom: -1px; }
+.admin-orders-table-head { display: grid; grid-template-columns: 148px minmax(0,1fr) 55px 88px 110px 108px 82px 96px; gap: 0; background: var(--bg); border: 1px solid var(--border); border-radius: 12px 12px 0 0; padding: 0; overflow: hidden; margin-bottom: -1px; }
 .admin-orders-th { padding: 10px 14px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); border-right: 1px solid var(--border); }
 .admin-orders-th:last-child { border-right: none; }
 @media (max-width: 1200px) {
-  .admin-orders-table-head { grid-template-columns: 130px minmax(120px,1fr) 50px 80px 100px 100px 75px 90px; }
-  .admin-order-row { grid-template-columns: 130px minmax(120px,1fr) 50px 80px 100px 100px 75px 90px; }
+  .admin-orders-table-head { grid-template-columns: 130px minmax(0,1fr) 50px 78px 100px 98px 75px 88px; }
+  .admin-order-row { grid-template-columns: 130px minmax(0,1fr) 50px 78px 100px 98px 75px 88px; }
 }
 @media (max-width: 900px) {
   .admin-orders-table-head { display: none; }
@@ -2127,7 +2127,7 @@ img{max-width:100%;display:block;}
 
 /* ===== Compact notification badges on order rows ===== */
 /* Return/Exchange alert badge */
-.aob-flag { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; padding: 2px 7px; border-radius: 20px; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.02em; white-space: nowrap; }
+.aob-flag { display: inline-flex; align-items: center; gap: 3px; margin-top: 4px; padding: 2px 6px; border-radius: 20px; font-size: 0.63rem; font-weight: 800; letter-spacing: 0.01em; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .aob-return { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
 .aob-return.approved  { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
 .aob-return.rejected  { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
