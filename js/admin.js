@@ -490,7 +490,7 @@ function renderOrders() {
                 <div class="admin-order-cell">
                     <div class="admin-order-customer" title="${_escHtmlCat(o.customerEmail || '')}">
                         <div class="admin-order-avatar">${_escHtmlCat(initials)}</div>
-                        <div style="min-width:0;overflow:hidden;">
+                        <div style="min-width:0;overflow:hidden;max-width:150px;">
                             <span class="admin-order-cust-name">${_escHtmlCat(o.customerName || 'Guest')}</span>
                             <span class="admin-order-cust-email">${_escHtmlCat(o.customerEmail || '')}</span>
                         </div>
