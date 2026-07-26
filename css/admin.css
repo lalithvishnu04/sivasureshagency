@@ -2023,9 +2023,11 @@ img{max-width:100%;display:block;}
 .orders-stat-card.stat-pending .orders-stat-num { color: #f59e0b; }
 
 /* Modern Orders List (replaces simple table) */
-.admin-orders-grid { display: flex; flex-direction: column; gap: 10px; }
-.admin-order-row { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 0; overflow: hidden; transition: all 0.2s ease; display: grid; grid-template-columns: 140px 1fr 90px 100px 130px 110px 120px; align-items: center; gap: 0; }
-.admin-order-row:hover { border-color: var(--primary); box-shadow: 0 4px 18px rgba(13,148,136,0.1); }
+.admin-orders-grid { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border); border-top: none; border-radius: 0 0 12px 12px; overflow: hidden; }
+.admin-order-row { background: #fff; border: 1px solid var(--border); border-radius: 0; padding: 0; overflow: hidden; transition: all 0.2s ease; display: grid; grid-template-columns: 175px 1fr 80px 105px 155px 105px 120px; align-items: center; gap: 0; border-top: none; }
+.admin-order-row:first-child { border-radius: 0; }
+.admin-order-row:last-child { border-radius: 0 0 12px 12px; }
+.admin-order-row:hover { background: #f0fdf9; }
 .admin-order-cell { padding: 14px 14px; border-right: 1px solid var(--border); }
 .admin-order-cell:last-child { border-right: none; }
 .admin-order-id { font-size: 0.85rem; font-weight: 800; color: var(--navy); display: block; }
@@ -2103,7 +2105,18 @@ img{max-width:100%;display:block;}
 .admin-od-edit-section select, .admin-od-edit-section input { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 9px; font-size: 0.85rem; font-family: inherit; outline: none; transition: all 0.2s; color: var(--text); background: #fff; }
 .admin-od-edit-section select:focus, .admin-od-edit-section input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(13,148,136,0.1); }
 .admin-od-edit-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-/* Header orders summary for table area — removed (card layout replaces grid) */
+/* Header orders summary for table area */
+.admin-orders-table-head { display: grid; grid-template-columns: 175px 1fr 80px 105px 155px 105px 120px; gap: 0; background: var(--bg); border: 1px solid var(--border); border-radius: 12px 12px 0 0; padding: 0; overflow: hidden; margin-bottom: -1px; }
+.admin-orders-th { padding: 10px 14px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); border-right: 1px solid var(--border); }
+.admin-orders-th:last-child { border-right: none; }
+@media (max-width: 1200px) {
+  .admin-orders-table-head { grid-template-columns: 150px 1fr 70px 95px 145px 95px 110px; }
+  .admin-order-row { grid-template-columns: 150px 1fr 70px 95px 145px 95px 110px; }
+}
+@media (max-width: 900px) {
+  .admin-orders-table-head { display: none; }
+  .admin-order-row { grid-template-columns: 1fr 1fr; }
+}
 /* Return request in admin detail */
 .admin-return-box { background: #fffbeb; border: 2px solid #fbbf24; border-radius: 12px; padding: 14px 16px; }
 .admin-return-box h4 { font-size: 0.88rem; font-weight: 800; color: #b45309; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
@@ -2112,41 +2125,18 @@ img{max-width:100%;display:block;}
 .admin-orders-empty i { font-size: 2.5rem; color: var(--text-faint); display: block; margin-bottom: 14px; }
 .admin-orders-empty p { color: var(--text-muted); font-size: 0.88rem; }
 
-/* ===== Admin Orders — Card List Layout ===== */
-.admin-orders-list { display: flex; flex-direction: column; gap: 10px; }
-.ao-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 0; overflow: hidden; transition: box-shadow 0.18s, transform 0.18s; }
-.ao-card:hover { box-shadow: 0 4px 18px rgba(13,148,136,0.10); transform: translateY(-1px); }
-.ao-card-main { display: flex; align-items: center; gap: 16px; padding: 14px 18px; }
-/* Avatar */
-.ao-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%); color: #fff; font-size: 1rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; letter-spacing: 0.03em; }
-/* Left info block */
-.ao-left { display: flex; align-items: flex-start; gap: 14px; flex: 1; min-width: 0; }
-.ao-info { flex: 1; min-width: 0; }
-.ao-id { font-size: 0.78rem; font-weight: 900; color: var(--primary); font-family: 'Courier New', monospace; letter-spacing: 0.04em; }
-.ao-customer { font-size: 0.9rem; font-weight: 800; color: var(--navy); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ao-email { font-size: 0.73rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ao-meta-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 5px; }
-.ao-meta-row span { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
-.ao-meta-row i { font-size: 0.65rem; color: var(--text-faint); }
-/* Return/Exchange tag */
-.ao-return-tag { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 3px 9px; border-radius: 20px; font-size: 0.67rem; font-weight: 800; letter-spacing: 0.03em; background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
-.ao-return-tag.approved { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
-.ao-return-tag.rejected { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
-.ao-return-tag.refunded { background: #e0e7ff; color: #3730a3; border-color: #a5b4fc; }
-/* Right block: amount, status, actions */
-.ao-right { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; flex-shrink: 0; }
-.ao-amount { font-size: 1.05rem; font-weight: 900; color: var(--navy); }
-.ao-actions { display: flex; gap: 7px; align-items: center; }
-.ao-view-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: background 0.18s; }
-.ao-view-btn:hover { background: #0f766e; }
-.ao-inv-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; color: var(--text-muted); font-size: 0.82rem; cursor: pointer; transition: all 0.18s; }
-.ao-inv-btn:hover { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
-/* Responsive adjustments */
-@media (max-width: 680px) {
-  .ao-card-main { flex-direction: column; align-items: stretch; gap: 12px; }
-  .ao-right { flex-direction: row; align-items: center; justify-content: space-between; }
-  .ao-amount { font-size: 1rem; }
-}
+/* ===== Compact notification badges on order rows ===== */
+/* Return/Exchange alert badge */
+.aob-flag { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; padding: 2px 7px; border-radius: 20px; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.02em; white-space: nowrap; }
+.aob-return { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.aob-return.approved  { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.aob-return.rejected  { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.aob-return.refunded  { background: #e0e7ff; color: #3730a3; border-color: #a5b4fc; }
+/* Cancellation alert badge */
+.aob-cancel { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.aob-cancel.approved  { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.aob-cancel.refunded  { background: #e0e7ff; color: #3730a3; border-color: #a5b4fc; }
+.aob-cancel.cancelled { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
 
 /* ===== Legacy Admin Return/Exchange Badge (kept for detail views) ===== */
 .admin-order-return-badge {

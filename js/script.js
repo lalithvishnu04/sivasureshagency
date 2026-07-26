@@ -1353,6 +1353,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 500); // wait for db-integration.js to load
     }
+    // Re-open account panel to Orders tab if user navigated back from order-detail
+    const reopenAcct = sessionStorage.getItem('ssa_reopenAccount');
+    if (reopenAcct) {
+        sessionStorage.removeItem('ssa_reopenAccount');
+        setTimeout(() => { if (typeof openAccountPanel === 'function') openAccountPanel(); }, 400);
+    }
 });
 
 // ===== Common Init (all pages) =====
@@ -3584,6 +3590,17 @@ async function initOrderDetailPage() {
         if (lo) order = _normalizeAccountOrder(lo);
     }
 
+    // If found in localStorage, show immediately then refresh status from Supabase in background
+    if (order) {
+        if (loading) loading.style.display = 'none';
+        content.style.display = 'block';
+        content.innerHTML = _buildOrderDetailPageHTML(order);
+        if (window.SSAAnims && window.SSAAnims.initRatingStars) setTimeout(() => window.SSAAnims.initRatingStars(content), 100);
+        // Background refresh — updates status if admin has changed it
+        _odpBackgroundRefresh(orderId, order, content);
+        return;
+    }
+
     // ---- Step 2: If not in localStorage, try Supabase (works when user has a Supabase JWT) ----
     if (!order) {
         try {
@@ -3663,6 +3680,47 @@ async function initOrderDetailPage() {
     }
 }
 
+// Background Supabase refresh — re-renders the order detail if status changed since last cache
+async function _odpBackgroundRefresh(orderId, cachedOrder, contentEl) {
+    if (!window.db || !currentUser?.email) return;
+    try {
+        const snap = await db.collection('orders').where('orderId', '==', orderId).get();
+        if (snap.empty) return;
+        const d = snap.docs[0].data();
+        const freshStatus = d.status || 'Processing';
+        // Only re-render if something changed
+        if (freshStatus === cachedOrder.status && !d.trackingId && !d.estimatedDelivery) return;
+        const freshOrder = _normalizeAccountOrder({
+            id: d.orderId || snap.docs[0].id, docId: snap.docs[0].id,
+            date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : (d.createdAt || cachedOrder.date),
+            items: d.items || cachedOrder.items, total: d.total || cachedOrder.total,
+            payment: d.payment || cachedOrder.payment, paymentStatus: d.paymentStatus || '',
+            status: freshStatus, trackingId: d.trackingId || '',
+            deliveredAt: d.deliveredAt || null, estimatedDelivery: d.estimatedDelivery || null,
+            updatedAt: d.updatedAt || null, addressLabel: d.addressLabel || '',
+            statusHistory: d.statusHistory || {}, returnRequest: d.returnRequest || null,
+            cancellation: d.cancellation || null, rating: d.rating || cachedOrder.rating,
+            ratingComment: d.ratingComment || cachedOrder.ratingComment, ratingImage: d.ratingImage || cachedOrder.ratingImage,
+            shipping: { name: d.customerName || currentUser.name, email: d.customerEmail || currentUser.email,
+                phone: d.customerPhone || currentUser.phone || '', address: d.address || '',
+                city: d.city || '', pincode: d.pincode || '' }
+        });
+        // Update localStorage cache with fresh data
+        try {
+            const lsKey = 'ssa_orders_' + currentUser.email;
+            const lsOrders = JSON.parse(localStorage.getItem(lsKey) || '[]');
+            const idx = lsOrders.findIndex(o => (o.id || o.orderId) === orderId);
+            if (idx !== -1) {
+                lsOrders[idx] = { ...freshOrder, _synced: true };
+                localStorage.setItem(lsKey, JSON.stringify(lsOrders));
+            }
+        } catch(_) {}
+        // Re-render the page with fresh data
+        contentEl.innerHTML = _buildOrderDetailPageHTML(freshOrder);
+        if (window.SSAAnims && window.SSAAnims.initRatingStars) setTimeout(() => window.SSAAnims.initRatingStars(contentEl), 100);
+    } catch(e) { /* Silently ignore — cached version already shown */ }
+}
+
 function _showOdpError(title, msg) {
     const loading = document.getElementById('odpLoading');
     const content = document.getElementById('odpContent');
@@ -3733,19 +3791,20 @@ function _buildOrderDetailPageHTML(order) {
         <button class="btn btn-outline-dark btn-sm" onclick="downloadInvoice('${escapeRichText(order.id)}')"><i class="fas fa-file-invoice"></i> Invoice</button>
         <button class="btn btn-primary btn-sm" onclick="reorderFromHistory('${escapeRichText(order.id)}')"><i class="fas fa-redo"></i> Reorder</button>
         <button class="btn btn-outline-dark btn-sm" style="border-color:#86efac;color:#15803d;background:#f0fdf4;" onclick="shareOrderResult('${escapeRichText(order.id)}')"><i class="fas fa-share-alt"></i> Share</button>
-        <button class="btn btn-outline-dark btn-sm" onclick="contactOrderSupport('${escapeRichText(order.id)}')"><i class="fab fa-whatsapp"></i> Support</button>
         ${actions.eligible ? `<button class="btn btn-outline-dark btn-sm" style="border-color:#fecdd3;color:#be123c;background:#fff1f2;" onclick="requestOrderReturn('${escapeRichText(order.id)}')"><i class="fas fa-rotate-left"></i> Return / Exchange</button>` : ''}
         ${actions.requested ? _buildReturnRequestStatusHTML(actions.request) : ''}
     </div>`;
 
-    // Rating HTML
-    const ratingHtml = window.buildRatingUI ? window.buildRatingUI(order.id, order.rating || null, order.ratingComment || null, order.ratingImage || null) : '';
+    // Rating — only shown when order is Delivered
+    const ratingHtml = (statusKey === 'delivered' && window.buildRatingUI)
+        ? window.buildRatingUI(order.id, order.rating || null, order.ratingComment || null, order.ratingImage || null)
+        : '';
 
     return `
         <div class="odp-hero">
             <div class="container">
                 <div class="odp-back-bar">
-                    <button class="odp-back-btn" onclick="history.back()"><i class="fas fa-arrow-left"></i> Back to Orders</button>
+                    <button class="odp-back-btn" onclick="sessionStorage.setItem('ssa_reopenAccount','orders');history.back();"><i class="fas fa-arrow-left"></i> Back to Orders</button>
                 </div>
                 <div class="odp-hero-inner">
                     <div>
