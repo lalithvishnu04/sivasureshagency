@@ -2447,7 +2447,7 @@ function openCheckout() {
     }
 }
 function nextStep(step) {
-    if (step === 2 && !validateShippingForm()) return;
+    if ((step === 2 || step === 3) && !validateShippingForm()) return;
     document.querySelectorAll('.checkout-step').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.checkout-steps .step').forEach(s => s.classList.remove('active'));
     document.getElementById(`step${step}`).classList.add('active');
@@ -2471,14 +2471,9 @@ function validateShippingForm() {
 function renderOrderSummary() {
     const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
     document.getElementById('orderSummary').innerHTML = `${cart.map(i => `<div class="os-item"><span>${i.name} x${i.qty}</span><span>₹${i.price*i.qty}</span></div>`).join('')}<div class="os-item"><span>Shipping</span><span>${total > 2000 ? 'FREE' : '₹150'}</span></div><div class="os-total"><span>Total</span><span>₹${(total > 2000 ? total : total + 150).toLocaleString()}</span></div>`;
-    // Update Place Order button text based on payment method
-    const pm = document.querySelector('[name="payment"]:checked');
+    // Always Pay Online via Razorpay
     const placeBtn = document.querySelector('#step3 button[type="submit"]');
-    if (placeBtn && pm && pm.value !== 'cod') {
-        placeBtn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Pay';
-    } else if (placeBtn) {
-        placeBtn.innerHTML = 'Place Order <i class="fas fa-check"></i>';
-    }
+    if (placeBtn) placeBtn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Pay';
 }
 function closeSuccessModal() { document.getElementById('successModal').classList.remove('active'); }
 
@@ -4214,10 +4209,9 @@ async function placeOrder() {
         pincode: document.querySelector('[name="pincode"]')?.value || '',
         state: 'Tamil Nadu'
     };
-    const pmVal = pm ? pm.value : 'pay-online';
-    // Normalise for DB storage: 'pay-online' → 'Razorpay', 'cod' → 'COD'
-    const paymentMethod = pmVal === 'cod' ? 'COD' : 'Razorpay';
-    const paymentStatus = pmVal === 'cod' ? 'Pay on delivery' : 'Awaiting payment';
+    const pmVal = 'pay-online'; // Only Razorpay — COD removed
+    const paymentMethod = 'Razorpay';
+    const paymentStatus = 'Awaiting payment';
     const addressSelect = document.getElementById('checkoutAddressSelect');
     const addressChoice = addressSelect ? addressSelect.value : 'new';
     const addressSave = upsertSavedAddressForCurrentUser(shipping);
@@ -4260,16 +4254,10 @@ async function placeOrder() {
         }
     };
 
-    // Online payment → Razorpay handles everything
-    if (pmVal !== 'cod') {
-        closeCheckoutModal();
-        _showPaymentOverlay();
-        _openRazorpayCheckout(order, shipping);
-        return;
-    }
-
-    // COD — save immediately
-    await _confirmOrderAfterPayment(order, shipping);
+    // Always online payment via Razorpay
+    closeCheckoutModal();
+    _showPaymentOverlay();
+    _openRazorpayCheckout(order, shipping);
 }
 
 // ── Payment processing overlay ──────────────────────────────────
