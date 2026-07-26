@@ -87,16 +87,19 @@
     <div class="cart-overlay" id="cartOverlay"></div>
     <div class="cart-drawer" id="cartDrawer"><div class="cart-header"><h3><i class="fas fa-shopping-cart"></i> Your Cart</h3><button class="cart-close" id="cartClose"><i class="fas fa-times"></i></button></div><div class="cart-items" id="cartItems"><div class="cart-empty"><i class="fas fa-shopping-bag"></i><p>Your cart is empty</p><a href="categories.html" class="btn btn-gradient btn-sm">Start Shopping</a></div></div><div class="cart-footer" id="cartFooter" style="display:none;"><div class="cart-total"><span>Total:</span><span id="cartTotal">&#8377;0</span></div><button class="btn btn-gradient btn-full" id="checkoutBtn">Proceed to Checkout <i class="fas fa-arrow-right"></i></button><button class="btn btn-outline-dark btn-full" onclick="closeCart()">Continue Shopping</button></div></div>
 
-    <!-- Page Hero (compact, dynamic per category) -->
-    <section class="page-hero page-hero--compact" id="catPageHero">
-        <div class="page-hero-bg categories-hero-bg"></div>
+    <!-- Page Hero -->
+    <section class="inner-hero inner-hero--categories" id="catPageHero">
+        <div class="inner-hero-bg categories-hero-bg"></div>
+        <div class="inner-hero-glow"></div>
         <div class="container">
-            <div class="page-hero-content">
-                <div class="breadcrumb" id="catBreadcrumb"><a href="index.html">Home</a> <i class="fas fa-chevron-right"></i> <span id="catCrumbLast">Categories</span></div>
+            <div class="inner-hero-text">
+                <nav class="inner-hero-crumb" id="catBreadcrumb"><a href="index.html">Home</a> <i class="fas fa-chevron-right"></i> <span id="catCrumbLast">Categories</span></nav>
+                <span class="inner-hero-badge"><i class="fas fa-th-large"></i> Shop by Category</span>
                 <h1 id="catHeroTitle">Our <span class="gradient-text">Categories</span></h1>
-                <p id="catHeroSub" class="ph-sub">Browse our complete range of hospital linen, uniforms &amp; textiles.</p>
+                <p id="catHeroSub" class="inner-hero-sub">Browse our complete range of hospital linen, uniforms &amp; textiles.</p>
                 <span class="ph-signature-badge" id="catHeroBadge" style="display:none;"><i class="fas fa-award"></i> Signature Collection</span>
             </div>
+            <div class="inner-hero-deco"><i class="fas fa-box-open" style="color:var(--ih-deco-color);"></i></div>
         </div>
     </section>
 
