@@ -782,7 +782,9 @@ function showAdminOrderDetail(docId) {
                     <div class="admin-od-card-head"><i class="fas fa-credit-card"></i><h4>Payment</h4></div>
                     <div class="admin-od-card-body">
                         <div class="admin-od-info-row"><span class="admin-od-info-label">Method</span><span class="admin-od-info-value">${_escHtmlCat(o.payment || 'COD')}</span></div>
+                        <div class="admin-od-info-row"><span class="admin-od-info-label">Status</span><span class="admin-od-info-value" style="color:${(o.paymentStatus||'').toLowerCase().includes('paid') ? '#16a34a' : '#b45309'};font-weight:600;">${_escHtmlCat(o.paymentStatus || '—')}</span></div>
                         <div class="admin-od-info-row"><span class="admin-od-info-label">Total</span><span class="admin-od-info-value" style="color:var(--primary);font-size:1rem;">₹${(o.total || 0).toLocaleString('en-IN')}</span></div>
+                        ${o.razorpay && o.razorpay.paymentId ? `<div class="admin-od-info-row"><span class="admin-od-info-label">Razorpay ID</span><span class="admin-od-info-value" style="font-size:0.76rem;word-break:break-all;"><a href="https://dashboard.razorpay.com/app/payments/${_escHtmlCat(o.razorpay.paymentId)}" target="_blank" rel="noopener" style="color:var(--primary);">${_escHtmlCat(o.razorpay.paymentId)}</a></span></div>` : ''}
                         ${o.trackingId ? `<div class="admin-od-info-row"><span class="admin-od-info-label">Tracking</span><span class="admin-od-info-value" style="font-size:0.78rem;">${_escHtmlCat(o.trackingId)}</span></div>` : ''}
                         ${o.estimatedDelivery ? `<div class="admin-od-info-row"><span class="admin-od-info-label">Est. Delivery</span><span class="admin-od-info-value">${_escHtmlCat(o.estimatedDelivery)}</span></div>` : ''}
                     </div>

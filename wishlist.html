@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=87">
+    <link rel="stylesheet" href="css/style.css?v=88">
     <link rel="stylesheet" href="css/animations.css?v=6">
     <link rel="icon" type="image/jpeg" href="images/Images/SSA Logo.png">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -235,9 +235,8 @@
                     <div class="checkout-step" id="step2">
                         <h4>Payment Method</h4>
                         <div class="payment-options">
-                            <label class="payment-option"><input type="radio" name="payment" value="cod" checked><div class="po-content"><i class="fas fa-money-bill-wave"></i><span>Cash on Delivery</span></div></label>
-                            <label class="payment-option"><input type="radio" name="payment" value="upi"><div class="po-content"><i class="fas fa-mobile-alt"></i><span>UPI Payment</span></div></label>
-                            <label class="payment-option"><input type="radio" name="payment" value="bank"><div class="po-content"><i class="fas fa-university"></i><span>Bank Transfer</span></div></label>
+                            <label class="payment-option payment-option--highlight"><input type="radio" name="payment" value="pay-online" checked><div class="po-content"><i class="fas fa-credit-card"></i><div><span>Pay Online</span><small class="po-sub">Cards &middot; UPI &middot; NetBanking &middot; Wallets</small></div></div></label>
+                            <label class="payment-option"><input type="radio" name="payment" value="cod"><div class="po-content"><i class="fas fa-hand-holding-usd"></i><span>Cash on Delivery</span></div></label>
                         </div>
                         <div class="checkout-btns"><button type="button" class="btn btn-outline-dark" onclick="nextStep(1)"><i class="fas fa-arrow-left"></i> Back</button><button type="button" class="btn btn-gradient" onclick="nextStep(3)">Review Order <i class="fas fa-arrow-right"></i></button></div>
                     </div>
@@ -352,14 +351,15 @@
         </div>
         <button class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-comments"></i><span class="chatbot-badge">1</span></button>
     </div>
+    <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
     <script src="js/product-helpers.js" defer></script>
-    <script src="js/script.js?v=100" defer></script>
+    <script src="js/script.js?v=102" defer></script>
     <script src="js/animations.js?v=5" defer></script>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <!-- Backend initialization -->
     <script src="js/api.js?v=80" defer></script>
-    <script src="js/backend-config.js?v=66" defer></script>
+    <script src="js/backend-config.js?v=67" defer></script>
     <script src="js/db-init.js?v=80" defer></script>
     <script defer src="js/db-integration.js?v=82"></script>
     <!-- Mobile Bottom Navigation --></body>

@@ -2471,6 +2471,14 @@ function validateShippingForm() {
 function renderOrderSummary() {
     const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
     document.getElementById('orderSummary').innerHTML = `${cart.map(i => `<div class="os-item"><span>${i.name} x${i.qty}</span><span>₹${i.price*i.qty}</span></div>`).join('')}<div class="os-item"><span>Shipping</span><span>${total > 2000 ? 'FREE' : '₹150'}</span></div><div class="os-total"><span>Total</span><span>₹${(total > 2000 ? total : total + 150).toLocaleString()}</span></div>`;
+    // Update Place Order button text based on payment method
+    const pm = document.querySelector('[name="payment"]:checked');
+    const placeBtn = document.querySelector('#step3 button[type="submit"]');
+    if (placeBtn && pm && pm.value !== 'cod') {
+        placeBtn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Pay';
+    } else if (placeBtn) {
+        placeBtn.innerHTML = 'Place Order <i class="fas fa-check"></i>';
+    }
 }
 function closeSuccessModal() { document.getElementById('successModal').classList.remove('active'); }
 
@@ -4206,8 +4214,10 @@ async function placeOrder() {
         pincode: document.querySelector('[name="pincode"]')?.value || '',
         state: 'Tamil Nadu'
     };
-    const paymentMethod = pm ? pm.value.toUpperCase() : 'COD';
-    const paymentStatus = paymentMethod === 'COD' ? 'Pay on delivery' : 'Awaiting payment confirmation';
+    const pmVal = pm ? pm.value : 'pay-online';
+    // Normalise for DB storage: 'pay-online' → 'Razorpay', 'cod' → 'COD'
+    const paymentMethod = pmVal === 'cod' ? 'COD' : 'Razorpay';
+    const paymentStatus = pmVal === 'cod' ? 'Pay on delivery' : 'Awaiting payment';
     const addressSelect = document.getElementById('checkoutAddressSelect');
     const addressChoice = addressSelect ? addressSelect.value : 'new';
     const addressSave = upsertSavedAddressForCurrentUser(shipping);
@@ -4249,7 +4259,94 @@ async function placeOrder() {
             state: shipping.state
         }
     };
-    // Save to Supabase (primary) and localStorage (fallback for order-detail lookup)
+
+    // Online payment → Razorpay handles everything
+    if (pmVal !== 'cod') {
+        closeCheckoutModal();
+        _showPaymentOverlay();
+        _openRazorpayCheckout(order, shipping);
+        return;
+    }
+
+    // COD — save immediately
+    await _confirmOrderAfterPayment(order, shipping);
+}
+
+// ── Payment processing overlay ──────────────────────────────────
+function _showPaymentOverlay() {
+    let el = document.getElementById('rzpPaymentOverlay');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'rzpPaymentOverlay';
+        el.innerHTML = `
+            <div class="rzp-overlay-inner">
+                <div class="rzp-spinner-wrap"><div class="rzp-spinner"></div></div>
+                <div class="rzp-overlay-text">Opening secure payment&hellip;</div>
+                <div class="rzp-overlay-sub">You&apos;ll be redirected to a secure Razorpay page</div>
+            </div>`;
+        document.body.appendChild(el);
+    }
+    el.classList.add('active');
+}
+function _hidePaymentOverlay() {
+    const el = document.getElementById('rzpPaymentOverlay');
+    if (el) el.classList.remove('active');
+}
+
+// Opens the Razorpay checkout modal. Called when payment method = online.
+function _openRazorpayCheckout(order, shipping) {
+    if (typeof Razorpay === 'undefined') {
+        _hidePaymentOverlay();
+        showToast('Payment gateway not loaded. Please refresh and try again.');
+        return;
+    }
+    const rzpCfg = window.SSA_RAZORPAY || {};
+    const options = {
+        key: rzpCfg.keyId || '',
+        amount: order.total * 100,   // Razorpay expects paise (1 INR = 100 paise)
+        currency: 'INR',
+        name: rzpCfg.businessName || 'Siva Suresh Agency',
+        description: rzpCfg.description || 'Hospital Linen & Medical Uniforms',
+        image: window.location.origin + '/sivasureshagency/' + (rzpCfg.logo || 'images/Images/SSA Logo.png'),
+        prefill: {
+            name: (shipping.firstname + ' ' + shipping.lastname).trim(),
+            email: shipping.email,
+            contact: shipping.phone
+        },
+        theme: { color: rzpCfg.themeColor || '#0d9488' },
+        handler: async function(response) {
+            _hidePaymentOverlay();
+            // Payment captured — attach Razorpay IDs and finalize order
+            order.paymentStatus = 'Paid';
+            order.razorpay = {
+                paymentId: response.razorpay_payment_id || '',
+                orderId:   response.razorpay_order_id   || '',
+                signature: response.razorpay_signature  || ''
+            };
+            await _confirmOrderAfterPayment(order, shipping);
+        },
+        modal: {
+            ondismiss: function() {
+                _hidePaymentOverlay();
+                showToast('Payment cancelled. Your order was not placed.');
+            }
+        }
+    };
+    const rzp = new Razorpay(options);
+    rzp.on('payment.failed', function(response) {
+        _hidePaymentOverlay();
+        const msg = (response.error && response.error.description)
+            ? response.error.description : 'Please try again.';
+        showToast('Payment failed: ' + msg);
+    });
+    // Overlay shows briefly while Razorpay modal loads, then Razorpay takes over
+    setTimeout(_hidePaymentOverlay, 1200);
+    rzp.open();
+}
+
+// Saves order to DB + localStorage and shows the success modal.
+// Called for COD directly; for Razorpay after payment.captured.
+async function _confirmOrderAfterPayment(order, shipping) {
     if (typeof saveOrderToDb === 'function') {
         try {
             await saveOrderToDb(order, shipping);
