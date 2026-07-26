@@ -463,17 +463,21 @@ function renderOrders() {
         const initials = (o.customerName || 'G').split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || 'G';
         const dateStr = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
 
-        // Compact Return/Exchange notification badge
+        // Compact Return/Exchange notification badge (for refund column)
         const rr = o.returnRequest;
         const returnBadge = rr
-            ? `<span class="aob-flag aob-return ${(rr.status||'pending').toLowerCase()}" title="${_escHtmlCat(rr.type||'Return')}: ${_escHtmlCat(rr.status||'Pending')}"><i class="fas fa-rotate-left"></i> ${_escHtmlCat(rr.status||'Pending')}</span>`
+            ? `<span class="aob-flag aob-return ${(rr.status||'pending').toLowerCase()}" title="${_escHtmlCat(rr.type||'Return')}: ${_escHtmlCat(rr.status||'Pending')}"><i class="fas fa-rotate-left"></i> ${_escHtmlCat(rr.type || 'Return')} · ${_escHtmlCat(rr.status||'Pending')}</span>`
             : '';
 
-        // Compact Cancellation notification badge
+        // Compact Cancellation notification badge (for refund column)
         const cr = o.cancellation;
         const cancelBadge = cr
-            ? `<span class="aob-flag aob-cancel ${(cr.status||'pending').toLowerCase()}" title="Cancellation: ${_escHtmlCat(cr.status||'Pending')}"><i class="fas fa-times-circle"></i> ${_escHtmlCat(cr.status||'Pending')}</span>`
+            ? `<span class="aob-flag aob-cancel ${(cr.status||'pending').toLowerCase()}" title="Cancellation: ${_escHtmlCat(cr.status||'Pending')}"><i class="fas fa-times-circle"></i> Cancel · ${_escHtmlCat(cr.status||'Pending')}</span>`
             : (o.status === 'Cancelled' ? `<span class="aob-flag aob-cancel cancelled"><i class="fas fa-ban"></i> Cancelled</span>` : '');
+
+        const refundCell = (returnBadge || cancelBadge)
+            ? `${returnBadge}${cancelBadge}`
+            : `<span style="font-size:0.75rem;color:var(--text-light);">—</span>`;
 
         return `
             <div class="admin-order-row">
@@ -498,8 +502,8 @@ function renderOrders() {
                 <div class="admin-order-cell">
                     <span class="admin-order-status-badge ${statusKey}">${_escHtmlCat(o.status || 'Processing')}</span>
                     <span class="admin-order-payment-sm">${_escHtmlCat(o.payment || 'COD')}</span>
-                    ${returnBadge}${cancelBadge}
                 </div>
+                <div class="admin-order-cell">${refundCell}</div>
                 <div class="admin-order-cell">
                     <span style="font-size:0.8rem;color:var(--text-mid);">${dateStr}</span>
                 </div>

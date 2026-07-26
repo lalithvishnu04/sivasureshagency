@@ -1353,11 +1353,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 500); // wait for db-integration.js to load
     }
-    // Re-open account panel to Orders tab if user navigated back from order-detail
-    const reopenAcct = sessionStorage.getItem('ssa_reopenAccount');
-    if (reopenAcct) {
-        sessionStorage.removeItem('ssa_reopenAccount');
-        setTimeout(() => { if (typeof openAccountPanel === 'function') openAccountPanel(); }, 400);
+    // URL-based account tab routing: ?account=profile|addresses|orders
+    const _acctParam = new URLSearchParams(window.location.search).get('account');
+    if (_acctParam && currentUser && ['profile', 'addresses', 'orders'].includes(_acctParam)) {
+        setTimeout(() => {
+            openAccountPanel().then(opened => {
+                if (opened && _acctParam !== 'profile') {
+                    setTimeout(() => showAccountTab(_acctParam), 150);
+                }
+            });
+        }, 400);
+    }
+});
+
+// Close account modal when browser back button is pressed away from ?account= URL
+window.addEventListener('popstate', () => {
+    const modal = document.getElementById('authModal');
+    if (modal && modal.classList.contains('active')) {
+        const hasAcct = new URLSearchParams(window.location.search).has('account');
+        if (!hasAcct) { modal.classList.remove('active'); document.body.style.overflow = 'auto'; }
     }
 });
 
@@ -2817,15 +2831,29 @@ async function handleRegister() {
     }
     closeAuthModal(); updateAuthUI(); showToast(`Welcome, ${firstName}!`);
 }
-function closeAuthModal() { 
-    document.getElementById('authModal').classList.remove('active'); 
+function closeAuthModal(cleanUrl = true) { 
+    document.getElementById('authModal')?.classList.remove('active'); 
     document.body.style.overflow = 'auto';
+    // Remove ?account= param from URL without adding a history entry
+    if (cleanUrl) {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('account')) {
+            url.searchParams.delete('account');
+            history.replaceState(null, '', url.toString() === window.location.origin + window.location.pathname ? window.location.pathname + (url.search === '?' ? '' : url.search) : url.toString());
+        }
+    }
 }
 async function openAccountPanel() {
     // Guard: check if user is logged in
     if (!currentUser || !currentUser.email) {
         openLoginModal();
-        return;
+        return false;
+    }
+    // Push URL state so each tab is bookmarkable and browser-back works
+    const _url = new URL(window.location.href);
+    if (!_url.searchParams.has('account')) {
+        _url.searchParams.set('account', 'profile');
+        history.pushState({ account: true }, '', _url.toString());
     }
     
     const modal = document.getElementById('authModal');
@@ -2940,6 +2968,7 @@ async function openAccountPanel() {
     if (window.SSAAnims && window.SSAAnims.initRatingStars) {
         setTimeout(() => window.SSAAnims.initRatingStars(document.getElementById('accountOrders')), 100);
     }
+    return true;
 }
 function _normalizeOrderDateValue(value) {
     if (!value) return null;
@@ -3161,7 +3190,7 @@ function _buildOrderCardsHTML(orders) {
                             <div class="acct-ov2-total">₹${order.total.toLocaleString('en-IN')}</div>
                             <div class="acct-ov2-pay">${escapeRichText(_getPaymentMethodLabel(order.payment))}</div>
                         </div>
-                        <a href="order-detail.html?id=${encodeURIComponent(order.id)}" class="acct-ov2-detail-link" onclick="closeAuthModal()">View Details <i class="fas fa-arrow-right"></i></a>
+                        <a href="order-detail.html?id=${encodeURIComponent(order.id)}" class="acct-ov2-detail-link" onclick="closeAuthModal(false)">View Details <i class="fas fa-arrow-right"></i></a>
                     </div>
                 </div>
             </div>
@@ -3176,6 +3205,11 @@ function showAccountTab(tab) {
     const tabBtns = document.querySelectorAll('.acct-tab-btn, .account-tab');
     const tabIdx = { profile:0, addresses:1, orders:2, security:0 };
     if (tabBtns[tabIdx[tab]]) tabBtns[tabIdx[tab]].classList.add('active');
+    // Update URL param so each tab has its own URL (replaceState = no new history entry)
+    const _tabUrl = new URL(window.location.href);
+    const _urlTab = tab === 'security' ? 'profile' : tab;
+    _tabUrl.searchParams.set('account', _urlTab);
+    history.replaceState({ account: true }, '', _tabUrl.toString());
     // Scroll to password section if security tab requested
     if (tab === 'security') {
         setTimeout(() => { const pwd = document.getElementById('pwdCurrent'); if (pwd) pwd.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
@@ -3740,6 +3774,13 @@ function _buildOrderDetailPageHTML(order) {
     const shipParts = [order.shipping?.address, order.shipping?.city, order.shipping?.pincode, order.shipping?.state].filter(Boolean);
     const actions = _getOrderReturnMeta(order);
 
+    // --- Payment breakdown ---
+    const _items = order.items || [];
+    const _embTotal = _items.reduce((s, i) => s + ((i.embroidery?.price || 0) * (i.qty || 1)), 0);
+    const _productSubtotal = _items.reduce((s, i) => s + ((i.price || 0) * (i.qty || 1)), 0) - _embTotal;
+    const _shippingCharge = Math.max(0, (order.total || 0) - (_productSubtotal + _embTotal));
+    const _discount = (order.discount || 0); // future-proof: stored as positive number
+
     // Timeline
     let timelineHTML = '';
     if (statusKey === 'cancelled') {
@@ -3804,7 +3845,7 @@ function _buildOrderDetailPageHTML(order) {
         <div class="odp-hero">
             <div class="container">
                 <div class="odp-back-bar">
-                    <button class="odp-back-btn" onclick="sessionStorage.setItem('ssa_reopenAccount','orders');history.back();"><i class="fas fa-arrow-left"></i> Back to Orders</button>
+                    <button class="odp-back-btn" onclick="history.back();"><i class="fas fa-arrow-left"></i> Back to Orders</button>
                 </div>
                 <div class="odp-hero-inner">
                     <div>
@@ -3861,8 +3902,12 @@ function _buildOrderDetailPageHTML(order) {
                             <div class="odp-card-body">
                                 <div class="odp-info-row"><span class="odp-info-label">Method</span><span class="odp-info-value">${escapeRichText(_getPaymentMethodLabel(order.payment))}</span></div>
                                 <div class="odp-info-row"><span class="odp-info-label">Status</span><span class="odp-info-value">${escapeRichText(paymentStatus)}</span></div>
-                                <div class="odp-info-row"><span class="odp-info-label">Order Total</span><span class="odp-info-value" style="color:var(--primary-dark);">₹${order.total.toLocaleString('en-IN')}</span></div>
-                                <div class="odp-info-row"><span class="odp-info-label">Shipping</span><span class="odp-info-value">${order.total > 2000 ? 'FREE' : '₹150'}</span></div>
+                                <hr style="border:none;border-top:1px dashed var(--border);margin:8px 0;">
+                                <div class="odp-info-row"><span class="odp-info-label">Product Subtotal</span><span class="odp-info-value">₹${_productSubtotal.toLocaleString('en-IN')}</span></div>
+                                ${_embTotal > 0 ? `<div class="odp-info-row"><span class="odp-info-label"><i class="fas fa-pen-nib" style="color:var(--primary);font-size:0.72rem;margin-right:3px;"></i> Embroidery</span><span class="odp-info-value">₹${_embTotal.toLocaleString('en-IN')}</span></div>` : ''}
+                                ${_discount > 0 ? `<div class="odp-info-row"><span class="odp-info-label" style="color:#16a34a;"><i class="fas fa-tag" style="font-size:0.72rem;margin-right:3px;"></i> Discount</span><span class="odp-info-value" style="color:#16a34a;">−₹${_discount.toLocaleString('en-IN')}</span></div>` : ''}
+                                <div class="odp-info-row"><span class="odp-info-label">Shipping</span><span class="odp-info-value">${_shippingCharge === 0 ? '<span style="color:#16a34a;font-weight:700;">FREE</span>' : '₹' + _shippingCharge.toLocaleString('en-IN')}</span></div>
+                                <div class="odp-info-row" style="padding-top:8px;border-top:1.5px solid var(--border);margin-top:4px;"><span class="odp-info-label" style="font-weight:800;color:var(--navy);font-size:0.88rem;">Order Total</span><span class="odp-info-value" style="color:var(--primary-dark);font-size:1.05rem;font-weight:900;">₹${(order.total || 0).toLocaleString('en-IN')}</span></div>
                             </div>
                         </div>
                         <!-- Shipping Address -->

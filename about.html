@@ -254,9 +254,39 @@
     <div class="chatbot-container" id="chatbotContainer"><div class="chatbot-window" id="chatbotWindow"><div class="chatbot-header"><div class="chatbot-header-info"><div class="chatbot-avatar"><i class="fas fa-robot"></i></div><div><h4>SSA Assistant</h4><span class="chatbot-status"><i class="fas fa-circle"></i> Online</span></div></div><button class="chatbot-minimize" id="chatbotMinimize"><i class="fas fa-minus"></i></button></div><div class="chatbot-messages" id="chatbotMessages"><div class="chat-message bot"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content"><p>Hello! ?? How can I help you today?</p><div class="quick-replies"><button class="quick-reply" data-msg="What products do you offer?">Products</button><button class="quick-reply" data-msg="Tell me about pricing">Pricing</button><button class="quick-reply" data-msg="How to place an order?">How to Order</button></div></div></div></div><div class="chatbot-input"><input type="text" id="chatInput" placeholder="Type your message..."><button id="chatSend"><i class="fas fa-paper-plane"></i></button></div></div><button class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-comments"></i><span class="chatbot-badge">1</span></button></div>
 
     <button id="backToTop" class="back-to-top"><i class="fas fa-chevron-up"></i></button>
-    <a href="https://wa.me/919366640050" class="whatsapp-float" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i></a>
+        <!-- AI Chatbot -->
+    <div class="chatbot-container" id="chatbotContainer">
+        <div class="chatbot-window" id="chatbotWindow">
+            <div class="chatbot-header">
+                <div class="chatbot-header-info">
+                    <div class="chatbot-avatar"><i class="fas fa-robot"></i></div>
+                    <div><h4>SSA Assistant</h4><span class="chatbot-status"><i class="fas fa-circle"></i> Online</span></div>
+                </div>
+                <button class="chatbot-minimize" id="chatbotMinimize"><i class="fas fa-minus"></i></button>
+            </div>
+            <div class="chatbot-messages" id="chatbotMessages">
+                <div class="chat-message bot">
+                    <div class="message-avatar"><i class="fas fa-robot"></i></div>
+                    <div class="message-content">
+                        <p>Hello! Welcome to Siva Suresh Agency. How can I help you today?</p>
+                        <div class="quick-replies">
+                            <button class="quick-reply" data-msg="What products do you offer?">Products</button>
+                            <button class="quick-reply" data-msg="Tell me about pricing">Pricing</button>
+                            <button class="quick-reply" data-msg="How to place an order?">How to Order</button>
+                            <button class="quick-reply" data-msg="Do you deliver all over India?">Delivery</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="chatbot-input">
+                <input type="text" id="chatInput" placeholder="Type your message...">
+                <button id="chatSend"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+        <button class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-comments"></i><span class="chatbot-badge">1</span></button>
+    </div>
     <script src="js/product-helpers.js" defer></script>
-    <script src="js/script.js?v=97" defer></script>
+    <script src="js/script.js?v=98" defer></script>
     <script src="js/animations.js?v=5" defer></script>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
