@@ -1,12 +1,12 @@
 ﻿/* ===================================================
-   SSA Admin Panel — v65 "Obsidian Pro" Design
+   SSA Admin Panel — v66 "Obsidian Pro" Design
    Dark sidebar + Gradient KPI cards + Clean tables
    =================================================== */
 :root {
   --primary:        #0d9488;
   --primary-dark:   #0f766e;
   --primary-light:  #f0fdfa;
-  --sidebar-w:      248px;
+  --sidebar-w:      220px;
   --bg:             #f4f6f9;
   --surface:        #ffffff;
   --surface-2:      #f9fafb;
@@ -33,13 +33,13 @@
   --sb-active-to:   #0f766e;
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-html{scroll-behavior:smooth;}
+html{scroll-behavior:smooth;font-size:87.5%;} /* 14px root — compact professional scale */
 body{
   font-family:"Inter",sans-serif;
   background:var(--bg);
   color:var(--text);
   min-height:100vh;
-  font-size:14px;
+  font-size:13.5px;
   line-height:1.55;
   -webkit-font-smoothing:antialiased;
 }

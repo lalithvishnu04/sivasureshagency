@@ -1,5 +1,5 @@
 /**
- * SIVA SURESH AGENCY  —  E-Commerce Frontend (v69)
+ * SIVA SURESH AGENCY  —  E-Commerce Frontend (v70)
  * Main client-side logic: product display, filtering, cart, orders
  */
 
