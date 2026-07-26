@@ -3371,7 +3371,7 @@ function saveWebhookSettings() {
 window.loadWebhookSettings = loadWebhookSettings;
 window.saveWebhookSettings = saveWebhookSettings;
 
-
+function applyTextFormat(fieldId, action) {
     const inp = document.getElementById(fieldId);
     if (!inp) return;
     inp.focus();
