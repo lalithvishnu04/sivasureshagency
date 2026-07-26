@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=80">
+    <link rel="stylesheet" href="css/admin.css?v=81">
     <link rel="stylesheet" href="css/animations.css?v=6">
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
@@ -195,18 +195,8 @@
                         <div class="orders-stat-card stat-revenue"><div class="orders-stat-num" id="statOrderRevenue">—</div><div class="orders-stat-label">Revenue</div></div>
                         <div class="orders-stat-card"><div class="orders-stat-num" id="statDeliveredCount">—</div><div class="orders-stat-label">Delivered</div></div>
                     </div>
-                    <!-- Header row -->
-                    <div class="admin-orders-table-head">
-                        <div class="admin-orders-th">Order ID</div>
-                        <div class="admin-orders-th">Customer</div>
-                        <div class="admin-orders-th" style="text-align:center;">Items</div>
-                        <div class="admin-orders-th">Total</div>
-                        <div class="admin-orders-th">Status</div>
-                        <div class="admin-orders-th">Date</div>
-                        <div class="admin-orders-th" style="text-align:center;">Actions</div>
-                    </div>
-                    <!-- Orders list -->
-                    <div class="admin-orders-grid" id="adminOrdersGrid">
+                    <!-- Orders list (card layout — no table header needed) -->
+                    <div class="admin-orders-list" id="adminOrdersGrid">
                         <div class="admin-orders-empty"><i class="fas fa-spinner fa-spin"></i><p>Loading orders&hellip;</p></div>
                     </div>
                 </div>
@@ -658,7 +648,7 @@
     <script src="js/backend-config.js?v=75" defer></script>
     <script src="js/db-init.js?v=80" defer></script>
     <script src="js/product-helpers.js" defer></script>
-    <script defer src="js/admin.js?v=91"></script>
+    <script defer src="js/admin.js?v=92"></script>
     <script defer src="js/animations.js?v=4"></script>
 </body>
 </html>

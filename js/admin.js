@@ -440,44 +440,38 @@ function renderOrders() {
         const statusKey = (o.status || 'processing').toLowerCase().replace(/\s+/g, '-');
         const initials = (o.customerName || 'G').split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || 'G';
         const dateStr = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
-        const returnBadge = o.returnRequest
-            ? `<span class="admin-order-return-badge ${(o.returnRequest.status||'pending').toLowerCase()}"><i class="fas fa-rotate-left"></i> ${_escHtmlCat(o.returnRequest.type || 'Return')} · ${_escHtmlCat(o.returnRequest.status || 'Pending')}</span>`
+        const itemCount = (o.items || []).length;
+        const returnReq = o.returnRequest;
+        const returnBadge = returnReq
+            ? `<span class="ao-return-tag ${(returnReq.status || 'pending').toLowerCase()}"><i class="fas fa-rotate-left"></i> ${_escHtmlCat(returnReq.type || 'Return')} · ${_escHtmlCat(returnReq.status || 'Pending')}</span>`
             : '';
         return `
-            <div class="admin-order-row">
-                <div class="admin-order-cell">
-                    <span class="admin-order-id">#${_escHtmlCat(o.orderId || o.docId.slice(0, 8))}</span>
-                    <span class="admin-order-date-sm">${dateStr}</span>
-                </div>
-                <div class="admin-order-cell">
-                    <div class="admin-order-customer">
-                        <div class="admin-order-avatar">${_escHtmlCat(initials)}</div>
-                        <div>
-                            <span class="admin-order-cust-name">${_escHtmlCat(o.customerName || 'Guest')}</span>
-                            <span class="admin-order-cust-email">${_escHtmlCat(o.customerEmail || '')}</span>
+        <div class="ao-card">
+            <div class="ao-card-main">
+                <div class="ao-left">
+                    <div class="ao-avatar">${_escHtmlCat(initials)}</div>
+                    <div class="ao-info">
+                        <div class="ao-id">#${_escHtmlCat(o.orderId || o.docId.slice(0,10))}</div>
+                        <div class="ao-customer">${_escHtmlCat(o.customerName || 'Guest')}</div>
+                        <div class="ao-email">${_escHtmlCat(o.customerEmail || '')}</div>
+                        <div class="ao-meta-row">
+                            <span class="ao-date"><i class="fas fa-calendar-alt"></i> ${dateStr}</span>
+                            <span class="ao-payment"><i class="fas fa-credit-card"></i> ${_escHtmlCat(o.payment || 'COD')}</span>
+                            <span class="ao-items"><i class="fas fa-box"></i> ${itemCount} item${itemCount !== 1 ? 's' : ''}</span>
                         </div>
+                        ${returnBadge}
                     </div>
                 </div>
-                <div class="admin-order-cell" style="text-align:center;">
-                    <span class="admin-order-items-count">${(o.items || []).length}</span>
-                </div>
-                <div class="admin-order-cell">
-                    <span class="admin-order-total-val">₹${(o.total || 0).toLocaleString('en-IN')}</span>
-                </div>
-                <div class="admin-order-cell">
+                <div class="ao-right">
+                    <div class="ao-amount">₹${(o.total || 0).toLocaleString('en-IN')}</div>
                     <span class="admin-order-status-badge ${statusKey}">${_escHtmlCat(o.status || 'Processing')}</span>
-                    <span class="admin-order-payment-sm">${_escHtmlCat(o.payment || 'COD')}</span>
-                    ${returnBadge}
-                </div>
-                <div class="admin-order-cell">
-                    <span style="font-size:0.8rem;color:var(--text-mid);">${dateStr}</span>
-                </div>
-                <div class="admin-order-cell admin-order-actions-cell">
-                    <button class="admin-order-view-btn" onclick="showAdminOrderDetail('${o.docId}')"><i class="fas fa-eye"></i> View</button>
-                    <button class="admin-order-inv-btn" onclick="printOrderInvoice('${o.docId}')" title="Invoice"><i class="fas fa-file-invoice"></i></button>
+                    <div class="ao-actions">
+                        <button class="ao-view-btn" onclick="showAdminOrderDetail('${o.docId}')"><i class="fas fa-eye"></i> View</button>
+                        <button class="ao-inv-btn" onclick="printOrderInvoice('${o.docId}')" title="Invoice"><i class="fas fa-file-invoice"></i></button>
+                    </div>
                 </div>
             </div>
-        `;
+        </div>`;
     }).join('');
 }
 
