@@ -18,7 +18,10 @@ async function saveOrderToDb(order, shippingDetails) {
             address: shippingDetails.address, city: shippingDetails.city, pincode: shippingDetails.pincode,
             items: order.items, total: order.total, payment: order.payment,
             paymentStatus: order.paymentStatus || '', trackingId: order.trackingId || '',
-            deliveredAt: order.deliveredAt || null, addressLabel: order.addressLabel || ''
+            deliveredAt: order.deliveredAt || null, addressLabel: order.addressLabel || '',
+            razorpayPaymentId: (order.razorpay && order.razorpay.paymentId) || '',
+            razorpayOrderId:   (order.razorpay && order.razorpay.orderId)   || '',
+            razorpaySignature: (order.razorpay && order.razorpay.signature)  || ''
         });
         await window.ssaApi.postCustomer({ email: shippingDetails.email, firstName: shippingDetails.firstname, lastName: shippingDetails.lastname, phone: shippingDetails.phone || '' }).catch(() => {});
         return;
@@ -33,6 +36,7 @@ async function saveOrderToDb(order, shippingDetails) {
         items: order.items, total: order.total, payment: order.payment,
         paymentStatus: order.paymentStatus || '', status: 'Processing', trackingId: order.trackingId || '',
         deliveredAt: order.deliveredAt || null, addressLabel: order.addressLabel || '', inventoryDeducted: false,
+        razorpay: order.razorpay || null,
         createdAt: fsServerTimestamp(), updatedAt: fsServerTimestamp()
     });
     const cid  = shippingDetails.email.replace(/[^a-zA-Z0-9]/g, '_');

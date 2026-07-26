@@ -4311,11 +4311,7 @@ function _openRazorpayCheckout(order, shipping) {
                     upi: {
                         name: 'Pay via UPI',
                         instruments: [
-                            {
-                                method: 'upi',
-                                flows: ['qr', 'collect', 'intent'],
-                                apps: ['google_pay', 'phonepe', 'paytm_android', 'bhim']
-                            }
+                            { method: 'upi' }
                         ]
                     },
                     cards: {
