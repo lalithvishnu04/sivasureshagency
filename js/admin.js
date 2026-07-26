@@ -488,7 +488,7 @@ function renderOrders() {
                     <span class="admin-order-id" title="#${_escHtmlCat(o.orderId || o.docId)}">#${_escHtmlCat(o.orderId || o.docId.slice(0, 14))}</span>
                 </div>
                 <div class="admin-order-cell">
-                    <div class="admin-order-customer">
+                    <div class="admin-order-customer" title="${_escHtmlCat(o.customerEmail || '')}">
                         <div class="admin-order-avatar">${_escHtmlCat(initials)}</div>
                         <div style="min-width:0;overflow:hidden;">
                             <span class="admin-order-cust-name">${_escHtmlCat(o.customerName || 'Guest')}</span>
