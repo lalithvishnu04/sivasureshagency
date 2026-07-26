@@ -1,5 +1,5 @@
 /**
- * SIVA SURESH AGENCY  —  E-Commerce Frontend (v68)
+ * SIVA SURESH AGENCY  —  E-Commerce Frontend (v69)
  * Main client-side logic: product display, filtering, cart, orders
  */
 
@@ -770,7 +770,7 @@ window.initCardHoverCycle = initCardHoverCycle;
 // sessionStorage cache (10 min TTL) prevents repeated reads.
 (function _initProductSync() {
     const CACHE_KEY = '_ssa_fs_products_v3'; // bumped to force cache bust after removing hardcoded fallback
-    const TTL = 10 * 60 * 1000; // 10 minutes
+    const TTL = 2 * 60 * 60 * 1000; // 2 hours (admin saves bust cache via _ssa_products_dirty flag)
     // Persist across sessions so returning visitors see the correct (admin-set)
     // images on first paint instead of the local defaults for a few seconds.
     const _store = window.localStorage;
