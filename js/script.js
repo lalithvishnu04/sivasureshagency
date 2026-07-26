@@ -815,7 +815,7 @@ window.initCardHoverCycle = initCardHoverCycle;
                     embroideryEnabled: (fp.embroideryEnabled !== undefined && fp.embroideryEnabled !== null) ? fp.embroideryEnabled : (fp.category === 'scrub-suits'),
                     embroideryPrices: fp.embroideryPrices || null,
                     embroideryPrice: (fp.embroideryPrice !== undefined && fp.embroideryPrice !== null) ? fp.embroideryPrice : null,
-                    rating: 4.5, reviews: 0,
+                    rating: fp.rating ?? 4.5, reviews: fp.reviews ?? 0,
                     _fromSupabase: true
                 };
                 if (!newP.image) newP.image = generateProductSVG(newP);
