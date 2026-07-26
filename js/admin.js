@@ -504,7 +504,6 @@ function renderOrders() {
                 </div>
                 <div class="admin-order-cell">
                     <span class="admin-order-status-badge ${statusKey}">${_escHtmlCat(o.status || 'Processing')}</span>
-                    <span class="admin-order-payment-sm">${_escHtmlCat(o.payment || 'COD')}</span>
                 </div>
                 <div class="admin-order-cell">${refundCell}</div>
                 <div class="admin-order-cell">
