@@ -3728,7 +3728,12 @@ async function _odpBackgroundRefresh(orderId, cachedOrder, contentEl) {
         const d = snap.docs[0].data();
         const freshStatus = d.status || 'Processing';
         // Only re-render if something changed
-        if (freshStatus === cachedOrder.status && !d.trackingId && !d.estimatedDelivery) return;
+        const freshCancelRefund = d.cancellation?.refundStatus || '';
+        const cachedCancelRefund = cachedOrder.cancellation?.refundStatus || '';
+        const freshReturnStatus = d.returnRequest?.status || '';
+        const cachedReturnStatus = cachedOrder.returnRequest?.status || '';
+        if (freshStatus === cachedOrder.status && !d.trackingId && !d.estimatedDelivery
+            && freshCancelRefund === cachedCancelRefund && freshReturnStatus === cachedReturnStatus) return;
         const freshOrder = _normalizeAccountOrder({
             id: d.orderId || snap.docs[0].id, docId: snap.docs[0].id,
             date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : (d.createdAt || cachedOrder.date),
