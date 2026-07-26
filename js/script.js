@@ -1,5 +1,5 @@
 /**
- * SIVA SURESH AGENCY  —  E-Commerce Frontend (v70)
+ * SIVA SURESH AGENCY  —  E-Commerce Frontend (v71)
  * Main client-side logic: product display, filtering, cart, orders
  */
 
@@ -350,7 +350,7 @@ function renderSubFilters(activeHeadingSlug) {
     const heading = (activeHeadingSlug && activeHeadingSlug !== 'all') ? tax.find(h => h.slug === activeHeadingSlug) : null;
     const cats = heading ? (heading.cats || []) : [];
     if (!cats.length) { if (row) row.remove(); return; }
-    if (!row) { row = document.createElement('div'); row.id = 'shopSubFilters'; row.className = 'shop-subfilters'; bar.insertAdjacentElement('afterend', row); }
+    if (!row) { row = document.createElement('div'); row.id = 'shopSubFilters'; row.className = 'shop-subfilters'; (bar.closest('.shop-toolbar') || bar).insertAdjacentElement('afterend', row); }
     const curCat = window._currentFilter || currentFilter || '';
     const curG = window._currentGender || '', curS = window._currentSleeve || '', curSub = window._currentSub || '';
     const isActive = (r) => curCat === r.cat && curG === (r.gender || '') && curS === (r.sleeve || '') && curSub === (r.sub || '');
