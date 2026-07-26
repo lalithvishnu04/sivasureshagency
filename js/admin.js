@@ -393,7 +393,7 @@ function _renderDashboard(totalOrders, pending, revenue, customers, unreadMsgs, 
 
 // ===== Orders =====
 async function loadOrders() {
-    const tbody = document.getElementById('ordersTableBody');
+    const grid = document.getElementById('adminOrdersGrid');
     try {
         const data = await _adminApiOr('adminOrders',
             () => _cachedGet('orders', () => db.collection('orders').get()).then(snap => {
@@ -402,14 +402,26 @@ async function loadOrders() {
                 return docs;
             })
         );
-        // data is either an array (from API) or needs extraction from snap
         allOrders = Array.isArray(data) ? data : data.docs.map(d => ({ docId: d.id, ...d.data() }));
         allOrders.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        _updateOrderStats();
         renderOrders();
     } catch (err) {
         console.error('Orders error:', err);
-        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty" style="color:red">Failed to load orders.<br><small>' + err.message + '</small></td></tr>';
+        if (grid) grid.innerHTML = '<div class="admin-orders-empty" style="color:red"><i class="fas fa-exclamation-triangle"></i><p>Failed to load orders.<br><small>' + err.message + '</small></p></div>';
     }
+}
+
+function _updateOrderStats() {
+    const total = allOrders.length;
+    const pending = allOrders.filter(o => ['processing','approved','packed'].includes((o.status||'').toLowerCase())).length;
+    const delivered = allOrders.filter(o => (o.status||'').toLowerCase() === 'delivered').length;
+    const revenue = allOrders.filter(o => (o.status||'').toLowerCase() !== 'cancelled').reduce((s, o) => s + (o.total || 0), 0);
+    const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    el('statTotalOrderCount', total);
+    el('statPendingCount', pending);
+    el('statDeliveredCount', delivered);
+    el('statOrderRevenue', '₹' + revenue.toLocaleString('en-IN'));
 }
 
 function renderOrders() {
@@ -417,24 +429,52 @@ function renderOrders() {
     const search = (document.getElementById('orderSearch')?.value || '').toLowerCase();
     if (search) filtered = filtered.filter(o => (o.orderId || '').toLowerCase().includes(search) || (o.customerName || '').toLowerCase().includes(search) || (o.customerEmail || '').toLowerCase().includes(search));
 
-    const tbody = document.getElementById('ordersTableBody');
-    if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No orders found</td></tr>'; return; }
+    const grid = document.getElementById('adminOrdersGrid');
+    if (!grid) return;
+    if (!filtered.length) {
+        grid.innerHTML = '<div class="admin-orders-empty"><i class="fas fa-box-open"></i><p>No orders found</p></div>';
+        return;
+    }
 
-    tbody.innerHTML = filtered.map(o => `
-        <tr>
-            <td><strong>#${o.orderId || o.docId.slice(0, 8)}</strong></td>
-            <td>${o.customerName || 'Guest'}<br><small>${o.customerEmail || ''}</small></td>
-            <td>${(o.items || []).length} item(s)</td>
-            <td><strong>\u20b9${(o.total || 0).toLocaleString()}</strong></td>
-            <td><span class="status-badge ${(o.status || '').toLowerCase()}">${o.status}</span></td>
-            <td>${o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('en-IN') : 'N/A'}</td>
-            <td>
-                <button class="btn-icon" onclick="viewOrder('${o.docId}')" title="View"><i class="fas fa-eye"></i></button>
-                <button class="btn-icon" onclick="editOrderModal('${o.docId}')" title="Edit Order"><i class="fas fa-edit"></i></button>
-                <button class="btn-icon" onclick="printOrderInvoice('${o.docId}')" title="Invoice"><i class="fas fa-file-invoice"></i></button>
-            </td>
-        </tr>
-    `).join('');
+    grid.innerHTML = filtered.map(o => {
+        const statusKey = (o.status || 'processing').toLowerCase().replace(/\s+/g, '-');
+        const initials = (o.customerName || 'G').split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || 'G';
+        const dateStr = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+        return `
+            <div class="admin-order-row">
+                <div class="admin-order-cell">
+                    <span class="admin-order-id">#${_escHtmlCat(o.orderId || o.docId.slice(0, 8))}</span>
+                    <span class="admin-order-date-sm">${dateStr}</span>
+                </div>
+                <div class="admin-order-cell">
+                    <div class="admin-order-customer">
+                        <div class="admin-order-avatar">${_escHtmlCat(initials)}</div>
+                        <div>
+                            <span class="admin-order-cust-name">${_escHtmlCat(o.customerName || 'Guest')}</span>
+                            <span class="admin-order-cust-email">${_escHtmlCat(o.customerEmail || '')}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="admin-order-cell" style="text-align:center;">
+                    <span class="admin-order-items-count">${(o.items || []).length}</span>
+                </div>
+                <div class="admin-order-cell">
+                    <span class="admin-order-total-val">₹${(o.total || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div class="admin-order-cell">
+                    <span class="admin-order-status-badge ${statusKey}">${_escHtmlCat(o.status || 'Processing')}</span>
+                    <span class="admin-order-payment-sm">${_escHtmlCat(o.payment || 'COD')}</span>
+                </div>
+                <div class="admin-order-cell">
+                    <span style="font-size:0.8rem;color:var(--text-mid);">${dateStr}</span>
+                </div>
+                <div class="admin-order-cell admin-order-actions-cell">
+                    <button class="admin-order-view-btn" onclick="showAdminOrderDetail('${o.docId}')"><i class="fas fa-eye"></i> View</button>
+                    <button class="admin-order-inv-btn" onclick="printOrderInvoice('${o.docId}')" title="Invoice"><i class="fas fa-file-invoice"></i></button>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 // Order filter buttons
@@ -449,162 +489,230 @@ document.querySelectorAll('#page-orders .filter-btn').forEach(btn => {
 
 document.getElementById('orderSearch')?.addEventListener('input', renderOrders);
 
-async function viewOrder(docId) {
+function backToOrdersList() {
+    document.getElementById('adminOrdersListView').style.display = '';
+    document.getElementById('adminOrdersDetailView').style.display = 'none';
+}
+window.backToOrdersList = backToOrdersList;
+
+function showAdminOrderDetail(docId) {
     const o = allOrders.find(x => x.docId === docId);
     if (!o) return;
-    const modal = document.getElementById('orderModalBody');
+
+    document.getElementById('adminOrdersListView').style.display = 'none';
+    const detailView = document.getElementById('adminOrdersDetailView');
+    detailView.style.display = 'block';
+
     const statuses = ['Processing','Approved','Packed','Shipped','Delivered'];
-    const curIdx = statuses.indexOf(o.status);
-    const timelineHTML = `
-        <div class="order-timeline">
-            ${statuses.map((s, i) => `
-                <div class="tl-step">
-                    <div class="tl-dot ${i < curIdx ? 'done' : i === curIdx && o.status !== 'Cancelled' ? 'active' : ''}">
-                        <i class="fas fa-${i===0?'clock':i===1?'check':i===2?'truck':'home'}"></i>
+    const statusKey = (o.status || 'processing').toLowerCase().replace(/\s+/g, '-');
+    const history = o.statusHistory || {};
+    const curIdx = statuses.findIndex(s => s.toLowerCase() === statusKey);
+
+    // Build timeline
+    let timelineHTML = '';
+    if (statusKey === 'cancelled') {
+        timelineHTML = `<div class="admin-od-timeline">
+            <div class="admin-tl-step done"><div class="admin-tl-dot"><i class="fas fa-check"></i></div><div class="admin-tl-label">Placed</div></div>
+            <div class="admin-tl-step cancelled"><div class="admin-tl-dot"><i class="fas fa-times"></i></div><div class="admin-tl-label">Cancelled</div></div>
+        </div>`;
+    } else {
+        const tSteps = [
+            { key:'processing', label:'Placed', icon:'fa-check' },
+            { key:'approved', label:'Approved', icon:'fa-thumbs-up' },
+            { key:'packed', label:'Packed', icon:'fa-box' },
+            { key:'shipped', label:'Shipped', icon:'fa-truck' },
+            { key:'delivered', label:'Delivered', icon:'fa-home' }
+        ];
+        timelineHTML = '<div class="admin-od-timeline">' + tSteps.map((s, i) => {
+            const cls = i < curIdx ? 'done' : i === curIdx ? 'active' : '';
+            const ts = history[s.key] ? '<div class="admin-tl-date">' + new Date(history[s.key]).toLocaleDateString('en-IN') + '</div>' : '';
+            return `<div class="admin-tl-step ${cls}"><div class="admin-tl-dot"><i class="fas ${s.icon}"></i></div><div class="admin-tl-label">${s.label}</div>${ts}</div>`;
+        }).join('') + '</div>';
+    }
+
+    // Build items table
+    const itemsHTML = (o.items || []).map(item => {
+        const embroidery = item.embroidery || null;
+        let embHtml = '';
+        if (embroidery) {
+            const lines = [];
+            if (embroidery.type) lines.push('<strong>' + _escHtmlCat(embroidery.type) + '</strong>');
+            if (embroidery.line1) lines.push('Line 1: ' + _escHtmlCat(embroidery.line1));
+            if (embroidery.line2) lines.push('Line 2: ' + _escHtmlCat(embroidery.line2));
+            if (embroidery.color) lines.push('Thread: ' + _escHtmlCat(embroidery.color));
+            if (embroidery.position) lines.push('Text pos: ' + _escHtmlCat(embroidery.position));
+            embHtml = `<div class="admin-od-emb-detail">${lines.join(' · ')}</div>`;
+            if (embroidery.logoImage) embHtml += `<div style="margin-top:6px;"><img src="${embroidery.logoImage}" style="max-width:90px;max-height:60px;border-radius:6px;border:1px solid #e2e8f0;"><a href="${embroidery.logoImage}" download="${_escHtmlCat(embroidery.logoFileName||'logo')}" style="display:block;font-size:0.72rem;color:var(--primary);margin-top:3px;">Download</a></div>`;
+        }
+        return `<tr>
+            <td><span class="admin-od-item-name">${_escHtmlCat(item.name || 'Item')}</span>${embHtml}</td>
+            <td>${_escHtmlCat(item.selectedSize || '—')}</td>
+            <td>${_escHtmlCat(item.selectedColor || '—')}</td>
+            <td style="text-align:center;">${item.qty || 1}</td>
+            <td style="font-weight:700;color:var(--primary);">₹${((item.price || 0) * (item.qty || 1)).toLocaleString('en-IN')}</td>
+        </tr>`;
+    }).join('');
+
+    // Return request HTML
+    const returnHTML = o.returnRequest ? `
+        <div class="admin-od-card">
+            <div class="admin-od-card-head"><i class="fas fa-rotate-left"></i><h4>Return/Exchange Request</h4></div>
+            <div class="admin-od-card-body">
+                <div class="admin-return-box">
+                    <h4><i class="fas fa-rotate-left"></i> ${_escHtmlCat(o.returnRequest.type || 'Return')} — <span style="text-transform:capitalize;">${_escHtmlCat(o.returnRequest.status || 'Pending')}</span></h4>
+                    <p style="font-size:0.85rem;margin-bottom:8px;"><strong>Reason:</strong> ${_escHtmlCat(o.returnRequest.reason || '—')}</p>
+                    ${o.returnRequest.note ? `<p style="font-size:0.82rem;color:#6b7280;margin-bottom:8px;">${_escHtmlCat(o.returnRequest.note)}</p>` : ''}
+                    <p style="font-size:0.77rem;color:#94a3b8;">Submitted: ${o.returnRequest.submittedAt ? new Date(o.returnRequest.submittedAt).toLocaleString('en-IN') : '—'}</p>
+                    <div class="admin-od-edit-section" style="margin-top:10px;">
+                        <label>Update Return Status</label>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                            <select id="returnStatusSelect" style="flex:1;">
+                                <option value="Pending" ${(o.returnRequest.status||'Pending')==='Pending'?'selected':''}>Pending</option>
+                                <option value="Processing" ${o.returnRequest.status==='Processing'?'selected':''}>Processing</option>
+                                <option value="Approved" ${o.returnRequest.status==='Approved'?'selected':''}>Approved</option>
+                                <option value="Rejected" ${o.returnRequest.status==='Rejected'?'selected':''}>Rejected</option>
+                                <option value="Refunded" ${o.returnRequest.status==='Refunded'?'selected':''}>Refunded</option>
+                            </select>
+                            <label style="font-size:0.82rem;font-weight:600;display:flex;align-items:center;gap:5px;">
+                                <input type="checkbox" id="refundCreditedCheck" ${o.returnRequest.refundCredited?'checked':''} style="accent-color:#0d9488;"> Refund Credited
+                            </label>
+                            <input type="date" id="expectedRefundDate" value="${o.returnRequest.expectedRefundDate||''}" style="flex:1;">
+                        </div>
+                        <div class="admin-od-edit-actions"><button class="btn-primary" onclick="saveReturnUpdate('${docId}')"><i class="fas fa-save"></i> Save</button></div>
                     </div>
-                    <span class="tl-label">${s}</span>
                 </div>
-            `).join('')}
-        </div>
-    `;
-    modal.innerHTML = `
-        <div class="order-detail">
-            <div class="od-header">
-                <div><h4>Order #${o.orderId || docId.slice(0, 8)}</h4><span class="status-badge ${(o.status || '').toLowerCase()}">${o.status}</span></div>
-                <span>${o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleString('en-IN') : ''}</span>
             </div>
-            ${o.status !== 'Cancelled' ? timelineHTML : ''}
-            <div class="od-section">
-                <h5><i class="fas fa-user"></i> Customer</h5>
-                <p>${o.customerName || 'N/A'}</p>
-                <p>${o.customerEmail || ''} | ${o.customerPhone || ''}</p>
-            </div>
-            <div class="od-section">
-                <h5><i class="fas fa-map-marker-alt"></i> Shipping Address</h5>
-                <p>${o.address || 'N/A'}</p>
-                <p>${o.city || ''} - ${o.pincode || ''}</p>
-            </div>
-            <div class="od-section">
-                <h5><i class="fas fa-box"></i> Items</h5>
-                <table class="od-items">
-                    <tr><th>Product</th><th>Size</th><th>Color</th><th>Qty</th><th>Price</th></tr>
-                    ${(o.items || []).map(i => {
-                        const embroidery = i.embroidery || null;
-                        const details = embroidery ? `
-                            <div style="margin-top:6px;font-size:.78rem;color:var(--primary);line-height:1.8;background:rgba(13,148,136,0.05);border-radius:6px;padding:6px 8px;">
-                                <strong>Embroidery (${embroidery.type || 'TEXT'})</strong><br>
-                                ${embroidery.line1 ? `Line 1: <strong>${embroidery.line1}</strong><br>` : ''}
-                                ${embroidery.line2 ? `Line 2: ${embroidery.line2}<br>` : ''}
-                                ${embroidery.line3 ? `Line 3: ${embroidery.line3}<br>` : ''}
-                                ${embroidery.position ? `Text Position: <strong>${embroidery.position}</strong><br>` : ''}
-                                ${embroidery.logoPosition ? `Logo Position: <strong>${embroidery.logoPosition}</strong><br>` : ''}
-                                ${embroidery.font ? `Font Style: <strong>${embroidery.font}</strong><br>` : ''}
-                                ${embroidery.color ? `Thread Color: <strong>${embroidery.color}</strong>` : ''}
-                                ${embroidery.logoFileName ? `${embroidery.color ? '<br>' : ''}Logo File: ${embroidery.logoFileName}` : ''}
-                            </div>
-                        ` : '';
-                        const preview = embroidery?.logoImage ? `
-                            <div style="margin-top:8px">
-                                <img src="${embroidery.logoImage}" alt="Embroidery preview" style="max-width:140px;max-height:90px;border-radius:8px;border:1px solid #e2e8f0;object-fit:contain">
-                                <div style="margin-top:6px">
-                                    <a href="${embroidery.logoImage}" download="${(embroidery.logoFileName || 'embroidery-logo').replace(/[^a-z0-9._-]/gi,'-')}" style="font-size:.78rem;color:var(--primary);font-weight:600">Download image</a>
-                                </div>
-                            </div>
-                        ` : '';
-                        return `<tr><td>${i.name}${details}${preview}</td><td>${i.selectedSize || '-'}</td><td>${i.selectedColor || '-'}</td><td>${i.qty}</td><td>\u20b9${i.price * i.qty}</td></tr>`;
-                    }).join('')}
-                </table>
-                <p style="text-align:right;font-weight:700;margin-top:10px;font-size:1rem;color:var(--primary)">Total: \u20b9${(o.total || 0).toLocaleString()}</p>
-            </div>
-            <div class="od-section">
-                <h5><i class="fas fa-credit-card"></i> Payment</h5>
-                <p>Method: <strong>${o.payment || 'COD'}</strong></p>
-            </div>
-            ${o.trackingId ? `<div class="od-section"><h5><i class="fas fa-truck"></i> Tracking</h5><p>${o.trackingId}</p></div>` : ''}
-            ${o.estimatedDelivery ? `<div class="od-section"><h5><i class="fas fa-calendar-check"></i> Estimated Delivery</h5><p>${new Date(o.estimatedDelivery + 'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})}</p></div>` : ''}
-            <div class="od-actions">
-                <select id="orderStatusSelect" class="status-select">
-                    <option value="Processing" ${o.status === 'Processing' ? 'selected' : ''}>Processing</option>
-                    <option value="Approved" ${o.status === 'Approved' ? 'selected' : ''}>Approved</option>
-                    <option value="Packed" ${o.status === 'Packed' ? 'selected' : ''}>Packed</option>
-                    <option value="Shipped" ${o.status === 'Shipped' ? 'selected' : ''}>Shipped</option>
-                    <option value="Delivered" ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
-                    <option value="Cancelled" ${o.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
-                </select>
-                <input type="text" id="orderTracking" placeholder="Tracking ID (optional)" value="${o.trackingId || ''}" class="tracking-input">
-                <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-                    <label style="font-size:0.82rem;font-weight:600;color:var(--text-muted);white-space:nowrap"><i class="fas fa-calendar-check"></i> Est. Delivery</label>
-                    <input type="date" id="orderEstDelivery" value="${o.estimatedDelivery || ''}" style="flex:1;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.85rem;font-family:inherit;outline:none;" min="${new Date().toISOString().split('T')[0]}">
-                </div>
-                <button class="btn-primary" onclick="saveOrderUpdate('${docId}')"><i class="fas fa-save"></i> Update</button>
-                <button class="btn-secondary" onclick="printOrderInvoice('${docId}')"><i class="fas fa-file-invoice"></i> Invoice</button>
-            </div>
-            ${o.returnRequest ? `
-            <div class="od-section" style="border:2px solid #fbbf24;border-radius:12px;padding:14px 16px;background:#fffbeb;">
-                <h5 style="color:#b45309;margin-bottom:10px;"><i class="fas fa-rotate-left"></i> ${o.returnRequest.type || 'Return'} Request &mdash; <span style="text-transform:capitalize;">${o.returnRequest.status || 'Pending'}</span></h5>
-                <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Reason:</strong> ${o.returnRequest.reason || '—'}</p>
-                ${o.returnRequest.note ? `<p style="font-size:0.83rem;color:#64748b;margin-bottom:8px;">${o.returnRequest.note}</p>` : ''}
-                <p style="font-size:0.78rem;color:#94a3b8;margin-bottom:10px;">Submitted: ${o.returnRequest.submittedAt ? new Date(o.returnRequest.submittedAt).toLocaleString('en-IN') : '—'}</p>
-                <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-                    <select id="returnStatusSelect" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.84rem;font-family:inherit;">
-                        <option value="Pending" ${(o.returnRequest.status||'Pending')==='Pending'?'selected':''}>Pending</option>
-                        <option value="Processing" ${o.returnRequest.status==='Processing'?'selected':''}>Processing</option>
-                        <option value="Approved" ${o.returnRequest.status==='Approved'?'selected':''}>Approved</option>
-                        <option value="Rejected" ${o.returnRequest.status==='Rejected'?'selected':''}>Rejected</option>
-                        <option value="Refunded" ${o.returnRequest.status==='Refunded'?'selected':''}>Refunded</option>
-                    </select>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:0.83rem;font-weight:600;">
-                        <input type="checkbox" id="refundCreditedCheck" ${o.returnRequest.refundCredited?'checked':''} style="accent-color:#0d9488;"> Refund Credited
-                    </label>
-                    <input type="date" id="expectedRefundDate" value="${o.returnRequest.expectedRefundDate||''}" placeholder="Expected refund date" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.84rem;font-family:inherit;">
-                    <button class="btn-primary" style="padding:7px 14px;font-size:0.84rem;" onclick="saveReturnUpdate('${docId}')"><i class="fas fa-save"></i> Save Return Update</button>
-                </div>
-            </div>` : ''}
-            ${o.status === 'Cancelled' ? `
-            <div class="od-section" style="border:2px solid #ef4444;border-radius:12px;padding:14px 16px;background:#fef2f2;margin-top:12px;">
-                <h5 style="color:#dc2626;margin-bottom:12px;"><i class="fas fa-ban"></i> Cancellation Details</h5>
-                <div style="margin-bottom:10px;">
-                    <label style="font-size:0.82rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;"><i class="fas fa-comment-alt"></i> Reason for Cancellation</label>
-                    <input type="text" id="cancelReason" placeholder="e.g. Customer requested, Out of stock, Wrong item..." value="${_escHtmlCat(o.cancellation?.reason || '')}" style="width:100%;padding:8px 10px;border:1.5px solid #fca5a5;border-radius:8px;font-size:0.85rem;font-family:inherit;outline:none;box-sizing:border-box;">
+        </div>` : '';
+
+    // Cancellation HTML
+    const cancelHTML = statusKey === 'cancelled' ? `
+        <div class="admin-od-card" style="border:2px solid #ef4444;">
+            <div class="admin-od-card-head" style="background:#fef2f2;"><i class="fas fa-ban" style="color:#ef4444;"></i><h4 style="color:#dc2626;">Cancellation Details</h4></div>
+            <div class="admin-od-card-body">
+                <div class="admin-od-edit-section">
+                    <label>Reason for Cancellation</label>
+                    <input type="text" id="cancelReason" value="${_escHtmlCat(o.cancellation?.reason || '')}" placeholder="Enter reason...">
                 </div>
                 ${(o.payment || '').toUpperCase() !== 'COD' ? `
-                <div style="background:#fff;border:1px solid #fca5a5;border-radius:8px;padding:12px;margin-bottom:10px;">
-                    <p style="font-size:0.82rem;font-weight:700;color:#dc2626;margin-bottom:10px;"><i class="fas fa-rupee-sign"></i> Refund Details (Online Payment)</p>
-                    <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                        <div style="flex:1;min-width:160px;">
-                            <label style="font-size:0.78rem;color:var(--text-muted);font-weight:600;display:block;margin-bottom:3px;">Refund Status</label>
-                            <select id="refundStatusSelect" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.84rem;font-family:inherit;">
-                                <option value="">— Select —</option>
-                                <option value="Not Initiated" ${(o.cancellation?.refundStatus||'')==='Not Initiated'?'selected':''}>Not Initiated</option>
-                                <option value="Initiated" ${(o.cancellation?.refundStatus||'')==='Initiated'?'selected':''}>Initiated</option>
-                                <option value="Processed" ${(o.cancellation?.refundStatus||'')==='Processed'?'selected':''}>Processed</option>
-                                <option value="Failed" ${(o.cancellation?.refundStatus||'')==='Failed'?'selected':''}>Failed</option>
-                            </select>
-                        </div>
-                        <div style="flex:1;min-width:130px;">
-                            <label style="font-size:0.78rem;color:var(--text-muted);font-weight:600;display:block;margin-bottom:3px;">Refund Amount (₹)</label>
-                            <input type="number" id="refundAmount" placeholder="0" value="${_escHtmlCat(o.cancellation?.refundAmount ?? '')}" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.84rem;font-family:inherit;box-sizing:border-box;">
-                        </div>
-                        <div style="flex:1;min-width:160px;">
-                            <label style="font-size:0.78rem;color:var(--text-muted);font-weight:600;display:block;margin-bottom:3px;">Transaction Ref ID</label>
-                            <input type="text" id="refundRef" placeholder="e.g. PAY123456" value="${_escHtmlCat(o.cancellation?.refundRef || '')}" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.84rem;font-family:inherit;box-sizing:border-box;">
-                        </div>
-                        <div style="flex:1;min-width:140px;">
-                            <label style="font-size:0.78rem;color:var(--text-muted);font-weight:600;display:block;margin-bottom:3px;">Refund Date</label>
-                            <input type="date" id="refundDate" value="${_escHtmlCat(o.cancellation?.refundDate || '')}" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.84rem;font-family:inherit;box-sizing:border-box;">
-                        </div>
+                <div class="admin-od-edit-section">
+                    <label>Refund Details</label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">
+                        <div><label>Status</label><select id="refundStatusSelect">
+                            <option value="">—</option>
+                            <option value="Not Initiated" ${(o.cancellation?.refundStatus||'')==='Not Initiated'?'selected':''}>Not Initiated</option>
+                            <option value="Initiated" ${(o.cancellation?.refundStatus||'')==='Initiated'?'selected':''}>Initiated</option>
+                            <option value="Processed" ${(o.cancellation?.refundStatus||'')==='Processed'?'selected':''}>Processed</option>
+                            <option value="Failed" ${(o.cancellation?.refundStatus||'')==='Failed'?'selected':''}>Failed</option>
+                        </select></div>
+                        <div><label>Amount (₹)</label><input type="number" id="refundAmount" value="${_escHtmlCat(o.cancellation?.refundAmount ?? '')}" placeholder="0"></div>
+                        <div><label>Ref ID</label><input type="text" id="refundRef" value="${_escHtmlCat(o.cancellation?.refundRef || '')}" placeholder="PAY123..."></div>
+                        <div><label>Refund Date</label><input type="date" id="refundDate" value="${_escHtmlCat(o.cancellation?.refundDate || '')}"></div>
                     </div>
                 </div>` : ''}
-                <div style="margin-bottom:10px;">
-                    <label style="font-size:0.78rem;color:var(--text-muted);font-weight:600;display:block;margin-bottom:3px;">Internal Note (optional)</label>
-                    <input type="text" id="cancelNote" placeholder="Optional internal note" value="${_escHtmlCat(o.cancellation?.note || '')}" style="width:100%;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.85rem;font-family:inherit;outline:none;box-sizing:border-box;">
+                <div class="admin-od-edit-section">
+                    <label>Internal Note</label>
+                    <input type="text" id="cancelNote" value="${_escHtmlCat(o.cancellation?.note || '')}" placeholder="Optional internal note">
                 </div>
-                <button class="btn-primary" style="background:#ef4444;border-color:#ef4444;border:none;" onclick="saveCancellationDetails('${docId}')"><i class="fas fa-save"></i> Save Cancellation Details</button>
-            </div>` : ''}
+                <div class="admin-od-edit-actions">
+                    <button class="btn-primary" style="background:#ef4444;border-color:#ef4444;" onclick="saveCancellationDetails('${docId}')"><i class="fas fa-save"></i> Save Cancellation</button>
+                </div>
+            </div>
+        </div>` : '';
+
+    detailView.innerHTML = `
+        <div class="admin-od-back-bar">
+            <button class="admin-od-back-btn" onclick="backToOrdersList()"><i class="fas fa-arrow-left"></i> Back to Orders</button>
+            <div>
+                <div class="admin-od-title">Order #${_escHtmlCat(o.orderId || docId.slice(0, 8))}</div>
+                <div class="admin-od-subtitle">${o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleString('en-IN') : ''} &bull; ${_escHtmlCat(o.customerName || 'Guest')}</div>
+            </div>
+            <span class="admin-order-status-badge ${statusKey}" style="margin-left:auto;">${_escHtmlCat(o.status || 'Processing')}</span>
+        </div>
+        <div class="admin-od-layout">
+            <div class="admin-od-main">
+                <!-- Timeline -->
+                <div class="admin-od-card">
+                    <div class="admin-od-card-head"><i class="fas fa-route"></i><h4>Order Timeline</h4></div>
+                    ${timelineHTML}
+                </div>
+                <!-- Items -->
+                <div class="admin-od-card">
+                    <div class="admin-od-card-head"><i class="fas fa-shopping-bag"></i><h4>Order Items</h4></div>
+                    <div class="admin-od-card-body">
+                        <table class="admin-od-items-table">
+                            <thead><tr><th>Product</th><th>Size</th><th>Color</th><th style="text-align:center;">Qty</th><th>Price</th></tr></thead>
+                            <tbody>${itemsHTML}</tbody>
+                        </table>
+                        <div style="text-align:right;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-weight:800;font-size:0.95rem;color:var(--primary);">Total: ₹${(o.total || 0).toLocaleString('en-IN')}</div>
+                    </div>
+                </div>
+                ${returnHTML}
+                ${cancelHTML}
+            </div>
+            <div class="admin-od-aside">
+                <!-- Update Order -->
+                <div class="admin-od-card">
+                    <div class="admin-od-card-head"><i class="fas fa-edit"></i><h4>Update Order</h4></div>
+                    <div class="admin-od-card-body">
+                        <div class="admin-od-edit-section">
+                            <label>Order Status</label>
+                            <select id="orderStatusSelect">
+                                <option value="Processing" ${o.status === 'Processing' ? 'selected' : ''}>Processing</option>
+                                <option value="Approved" ${o.status === 'Approved' ? 'selected' : ''}>Approved</option>
+                                <option value="Packed" ${o.status === 'Packed' ? 'selected' : ''}>Packed</option>
+                                <option value="Shipped" ${o.status === 'Shipped' ? 'selected' : ''}>Shipped</option>
+                                <option value="Delivered" ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                                <option value="Cancelled" ${o.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="admin-od-edit-section">
+                            <label>Tracking ID</label>
+                            <input type="text" id="orderTracking" value="${_escHtmlCat(o.trackingId || '')}" placeholder="Tracking ID (optional)">
+                        </div>
+                        <div class="admin-od-edit-section">
+                            <label>Estimated Delivery</label>
+                            <input type="date" id="orderEstDelivery" value="${_escHtmlCat(o.estimatedDelivery || '')}" min="${new Date().toISOString().split('T')[0]}">
+                        </div>
+                        <div class="admin-od-edit-actions">
+                            <button class="btn-primary" onclick="saveOrderUpdate('${docId}')"><i class="fas fa-save"></i> Update</button>
+                            <button class="btn-secondary" onclick="printOrderInvoice('${docId}')"><i class="fas fa-file-invoice"></i> Invoice</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Customer Info -->
+                <div class="admin-od-card">
+                    <div class="admin-od-card-head"><i class="fas fa-user"></i><h4>Customer</h4></div>
+                    <div class="admin-od-card-body">
+                        <div class="admin-od-info-row"><span class="admin-od-info-label">Name</span><span class="admin-od-info-value">${_escHtmlCat(o.customerName || 'N/A')}</span></div>
+                        <div class="admin-od-info-row"><span class="admin-od-info-label">Email</span><span class="admin-od-info-value" style="font-size:0.78rem;">${_escHtmlCat(o.customerEmail || '—')}</span></div>
+                        <div class="admin-od-info-row"><span class="admin-od-info-label">Phone</span><span class="admin-od-info-value">${_escHtmlCat(o.customerPhone || '—')}</span></div>
+                    </div>
+                </div>
+                <!-- Shipping -->
+                <div class="admin-od-card">
+                    <div class="admin-od-card-head"><i class="fas fa-map-marker-alt"></i><h4>Shipping Address</h4></div>
+                    <div class="admin-od-card-body">
+                        <div style="font-size:0.85rem;color:var(--text-mid);line-height:1.7;">${_escHtmlCat(o.address || 'N/A')}<br>${_escHtmlCat(o.city || '')}${o.pincode ? ' — ' + _escHtmlCat(o.pincode) : ''}</div>
+                    </div>
+                </div>
+                <!-- Payment -->
+                <div class="admin-od-card">
+                    <div class="admin-od-card-head"><i class="fas fa-credit-card"></i><h4>Payment</h4></div>
+                    <div class="admin-od-card-body">
+                        <div class="admin-od-info-row"><span class="admin-od-info-label">Method</span><span class="admin-od-info-value">${_escHtmlCat(o.payment || 'COD')}</span></div>
+                        <div class="admin-od-info-row"><span class="admin-od-info-label">Total</span><span class="admin-od-info-value" style="color:var(--primary);font-size:1rem;">₹${(o.total || 0).toLocaleString('en-IN')}</span></div>
+                        ${o.trackingId ? `<div class="admin-od-info-row"><span class="admin-od-info-label">Tracking</span><span class="admin-od-info-value" style="font-size:0.78rem;">${_escHtmlCat(o.trackingId)}</span></div>` : ''}
+                        ${o.estimatedDelivery ? `<div class="admin-od-info-row"><span class="admin-od-info-label">Est. Delivery</span><span class="admin-od-info-value">${_escHtmlCat(o.estimatedDelivery)}</span></div>` : ''}
+                    </div>
+                </div>
+            </div>
         </div>
     `;
-    openModal('orderModal');
 }
+window.showAdminOrderDetail = showAdminOrderDetail;
+
+// Keep viewOrder as an alias for backward compatibility
+function viewOrder(docId) { showAdminOrderDetail(docId); }
 
 async function saveOrderUpdate(docId) {
     const status    = document.getElementById('orderStatusSelect').value;
@@ -646,7 +754,8 @@ async function saveOrderUpdate(docId) {
             if (updatePayload.statusHistory) allOrders[idx].statusHistory = updatePayload.statusHistory;
         }
         showAdminToast('Order updated successfully');
-        closeModal('orderModal');
+        // Go back to list and reload
+        backToOrdersList();
         loadOrders();
         loadDashboard();
     } catch (err) {
@@ -670,7 +779,7 @@ async function saveReturnUpdate(docId) {
         const idx = allOrders.findIndex(x => x.docId === docId);
         if (idx !== -1) allOrders[idx].returnRequest = updatedRequest;
         showAdminToast('Return/Exchange status updated');
-        closeModal('orderModal');
+        backToOrdersList();
         loadOrders();
     } catch (err) {
         showAdminToast('Error: ' + err.message, 'error');
@@ -703,7 +812,7 @@ async function saveCancellationDetails(docId) {
         const idx = allOrders.findIndex(x => x.docId === docId);
         if (idx !== -1) allOrders[idx].cancellation = cancellation;
         showAdminToast('Cancellation details saved');
-        closeModal('orderModal');
+        backToOrdersList();
         loadOrders();
     } catch (err) {
         showAdminToast('Error: ' + err.message, 'error');

@@ -1338,6 +1338,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Render signature quick links on all pages
     if (typeof renderSignatureQuickLinks === 'function') renderSignatureQuickLinks();
     if (page === 'contact') initContactPage();
+    if (page === 'order-detail') initOrderDetailPage();
     // Password recovery handler — fires when user clicks the reset link in their email
     window.addEventListener('ssa:passwordRecovery', showPasswordRecoveryModal);
     // Auto-sync any localStorage orders that failed to save during a previous session
@@ -2885,21 +2886,26 @@ async function openAccountPanel() {
             <button class="acct-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button>
         </div>
         <div class="acct-tabs-bar">
-            <button class="acct-tab-btn active" onclick="showAccountTab('orders')"><i class="fas fa-box-open"></i> Orders</button>
-            <button class="acct-tab-btn" onclick="showAccountTab('profile')"><i class="fas fa-user-edit"></i> Profile</button>
+            <button class="acct-tab-btn active" onclick="showAccountTab('profile')"><i class="fas fa-user-edit"></i> Profile Details</button>
             <button class="acct-tab-btn" onclick="showAccountTab('addresses')"><i class="fas fa-map-marker-alt"></i> Address</button>
-            <button class="acct-tab-btn" onclick="showAccountTab('security')"><i class="fas fa-lock"></i> Password</button>
+            <button class="acct-tab-btn" onclick="showAccountTab('orders')"><i class="fas fa-box-open"></i> Orders</button>
         </div>
         <div class="acct-body">
-            <div class="acct-section active" id="accountOrders">
-                ${orders.length === 0 ? '<div class="empty-orders"><i class="fas fa-box-open"></i><p>No orders yet. Start shopping!</p><a href="categories.html" class="btn btn-gradient btn-sm" onclick="closeAuthModal()">Browse Products</a></div>' : _buildOrderCardsHTML(orders)}
-            </div>
-            <div class="acct-section" id="accountProfile" style="display:none;">
+            <div class="acct-section active" id="accountProfile">
                 <div class="profile-edit-form">
                     <div class="form-group"><span class="acct-field-label">Full Name</span><input type="text" id="editName" value="${currentUser.name}" placeholder="Your full name"></div>
                     <div class="form-group"><span class="acct-field-label">Mobile Phone</span><input type="tel" id="editPhone" value="${currentUser.phone||''}" placeholder="Phone number"></div>
                     <div class="form-group"><span class="acct-field-label">Email <small style="color:#94a3b8;font-size:0.7rem;">(cannot change)</small></span><input type="email" value="${currentUser.email}" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed;"></div>
-                    <button class="btn btn-gradient btn-full" onclick="saveProfileChanges()"><i class="fas fa-save"></i> Save Changes</button>
+                    <button class="btn btn-gradient btn-full" onclick="saveProfileChanges()"><i class="fas fa-save"></i> Save Profile</button>
+                </div>
+                <hr class="acct-pwd-divider">
+                <div class="acct-pwd-section-title"><i class="fas fa-lock"></i> Change Password</div>
+                <div class="profile-edit-form">
+                    <div class="form-group"><label>Current Password</label><input type="password" id="pwdCurrent" placeholder="Current password"></div>
+                    <div class="form-group"><label>New Password</label><input type="password" id="pwdNew" placeholder="New password (min 6 chars)"></div>
+                    <div class="form-group"><label>Confirm New Password</label><input type="password" id="pwdConfirm" placeholder="Confirm new password"></div>
+                    <p id="pwdMsg" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
+                    <button class="btn btn-outline-dark btn-full" onclick="changePassword()"><i class="fas fa-key"></i> Update Password</button>
                 </div>
             </div>
             <div class="acct-section" id="accountAddresses" style="display:none;">
@@ -2912,14 +2918,8 @@ async function openAccountPanel() {
                     <div class="form-row"><button class="btn btn-gradient" onclick="saveNewAddress()"><i class="fas fa-save"></i> Save</button><button class="btn btn-outline-dark" onclick="document.getElementById('addAddressForm').style.display=\'none\'">Cancel</button></div>
                 </div>
             </div>
-            <div class="acct-section" id="accountSecurity" style="display:none;">
-                <div class="profile-edit-form">
-                    <div class="form-group"><label>Current Password</label><input type="password" id="pwdCurrent" placeholder="Current password"></div>
-                    <div class="form-group"><label>New Password</label><input type="password" id="pwdNew" placeholder="New password (min 6 chars)"></div>
-                    <div class="form-group"><label>Confirm New Password</label><input type="password" id="pwdConfirm" placeholder="Confirm new password"></div>
-                    <p id="pwdMsg" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
-                    <button class="btn btn-gradient btn-full" onclick="changePassword()"><i class="fas fa-key"></i> Update Password</button>
-                </div>
+            <div class="acct-section" id="accountOrders" style="display:none;">
+                ${orders.length === 0 ? '<div class="acct-orders-empty"><i class="fas fa-box-open"></i><p>No orders yet. Start shopping!</p><a href="categories.html" class="btn btn-gradient btn-sm" onclick="closeAuthModal()">Browse Products</a></div>' : _buildOrderCardsHTML(orders)}
             </div>
         </div>
         <div class="acct-footer">
@@ -3132,104 +3132,46 @@ function _buildOrderItemDetailHTML(item) {
 }
 
 function _buildOrderCardsHTML(orders) {
-    return '<div class="acct-orders-hub">' + orders.map(function(order) {
+    if (!orders.length) return '<div class="acct-orders-empty"><i class="fas fa-box-open"></i><p>No orders yet. Start shopping!</p><a href="categories.html" class="btn btn-gradient btn-sm" onclick="closeAuthModal()">Browse Products</a></div>';
+    return '<div class="acct-orders-v2">' + orders.map(function(order) {
         const statusKey = _orderStatusKey(order.status);
-        const paymentStatus = _getPaymentStatus(order);
-        const tracking = order.trackingId ? escapeRichText(order.trackingId) : 'Tracking will be shared once dispatched';
-        const shipParts = [order.shipping?.address, order.shipping?.city, order.shipping?.pincode, order.shipping?.state].filter(Boolean);
-        const itemSummary = order.items.slice(0, 2).map(item => item.name).join(', ') + (order.items.length > 2 ? ' +' + (order.items.length - 2) + ' more' : '');
-        const actions = _getOrderReturnMeta(order);
-        const detailRows = order.items.map(_buildOrderItemDetailHTML).join('');
-        const estimatedDelivery = order.estimatedDelivery ? _formatOrderDate(order.estimatedDelivery) : 'Will be updated by our team';
-        const ratingHtml = window.buildRatingUI ? window.buildRatingUI(order.id, order.rating || null, order.ratingComment || null, order.ratingImage || null) : '';
+        const itemSummary = order.items.slice(0, 2).map(item => escapeRichText(item.name)).join(', ') + (order.items.length > 2 ? ' +' + (order.items.length - 2) + ' more' : '');
+        const itemCount = order.items.length;
         return `
-            <section class="acct-order-card acct-order-card-modern status-${statusKey}">
-                <div class="acct-order-head acct-order-head-modern">
-                    <div>
-                        <p class="acct-order-label">Order No.</p>
-                        <span class="acct-order-id">#${escapeRichText(order.id)}</span>
-                        <span class="acct-order-date">Placed on ${_formatOrderDate(order.date)}</span>
+            <div class="acct-order-v2 status-${statusKey}">
+                <div class="acct-order-v2-head">
+                    <div class="acct-ov2-left">
+                        <div class="acct-ov2-num">#${escapeRichText(order.id)}</div>
+                        <div class="acct-ov2-date"><i class="fas fa-calendar-alt" style="font-size:0.63rem;margin-right:3px;opacity:0.6"></i>${_formatOrderDate(order.date)}</div>
                     </div>
-                    <div class="acct-order-badges">
-                        <span class="acct-order-status ${statusKey}">${escapeRichText(order.status)}</span>
-                        <span class="acct-order-pill">${escapeRichText(paymentStatus)}</span>
+                    <span class="acct-ov2-badge ${statusKey}">${escapeRichText(order.status)}</span>
+                </div>
+                <div class="acct-order-v2-body">
+                    <div class="acct-ov2-summary"><i class="fas fa-shopping-bag" style="color:var(--primary);margin-right:5px;font-size:0.76rem;"></i>${itemSummary} &bull; ${itemCount} item${itemCount !== 1 ? 's' : ''}</div>
+                    <div class="acct-ov2-footer">
+                        <div>
+                            <div class="acct-ov2-total">₹${order.total.toLocaleString('en-IN')}</div>
+                            <div class="acct-ov2-pay">${escapeRichText(_getPaymentMethodLabel(order.payment))}</div>
+                        </div>
+                        <a href="order-detail.html?id=${encodeURIComponent(order.id)}" class="acct-ov2-detail-link" onclick="closeAuthModal()">View Details <i class="fas fa-arrow-right"></i></a>
                     </div>
                 </div>
-                <div class="acct-order-summary" onclick="toggleOrderDetails('${order.id}')">
-                    <span class="acct-order-summary-text"><i class="fas fa-shopping-bag"></i> ${escapeRichText(itemSummary)}</span>
-                    <button class="acct-view-details-btn" id="viewBtn-${order.id}"><i class="fas fa-chevron-down"></i> View full order</button>
-                </div>
-                <div class="acct-order-details" id="orderDetails-${order.id}" style="display:none">
-                    <div class="acct-order-hero">
-                        <div class="acct-order-hero-card">
-                            <span class="hero-micro-label">Payment Method</span>
-                            <strong>${escapeRichText(_getPaymentMethodLabel(order.payment))}</strong>
-                            <p>${escapeRichText(paymentStatus)}</p>
-                        </div>
-                        <div class="acct-order-hero-card">
-                            <span class="hero-micro-label">Order Status</span>
-                            <strong>${escapeRichText(order.status)}</strong>
-                            <p>${escapeRichText(tracking)}</p>
-                        </div>
-                        <div class="acct-order-hero-card">
-                            <span class="hero-micro-label">Expected Delivery</span>
-                            <strong>${escapeRichText(estimatedDelivery)}</strong>
-                            <p>${order.deliveredAt ? 'Delivered on ' + escapeRichText(_formatOrderDate(order.deliveredAt)) : 'Updates appear here as your order moves.'}</p>
-                        </div>
-                    </div>
-                    ${_buildOrderTimeline(order)}
-                    ${statusKey === 'cancelled' ? _buildCancellationSection(order) : ''}
-                    <div class="acct-order-grid">
-                        <div class="acct-order-main">
-                            <div class="od-items-list">${detailRows}</div>
-                        </div>
-                        <aside class="acct-order-side">
-                            <div class="acct-side-card">
-                                <h5><i class="fas fa-location-dot"></i> Shipping Address</h5>
-                                <p>${escapeRichText(order.shipping?.name || currentUser?.name || 'Customer')}</p>
-                                <p>${escapeRichText(shipParts.join(', ') || 'Address not available')}</p>
-                                <p>${escapeRichText(order.shipping?.phone || currentUser?.phone || '')}</p>
-                            </div>
-                            <div class="acct-side-card">
-                                <h5><i class="fas fa-receipt"></i> Billing Snapshot</h5>
-                                <div class="acct-side-meta"><span>Total</span><strong>₹${order.total.toLocaleString('en-IN')}</strong></div>
-                                <div class="acct-side-meta"><span>Payment</span><strong>${escapeRichText(_getPaymentMethodLabel(order.payment))}</strong></div>
-                                <div class="acct-side-meta"><span>Payment Status</span><strong>${escapeRichText(paymentStatus)}</strong></div>
-                            </div>
-                            <div class="acct-side-card acct-support-card">
-                                <h5><i class="fas fa-headset"></i> Customer Care</h5>
-                                <p>Questions on delivery, invoice, exchange, or embroidery changes? Reach support directly with your order number.</p>
-                                <div class="acct-support-actions">
-                                    <button class="btn btn-outline-dark btn-sm" onclick="contactOrderSupport('${order.id}')"><i class="fab fa-whatsapp"></i> Customer Care</button>
-                                    <a class="btn btn-outline-dark btn-sm" href="tel:${ORDER_SUPPORT_PHONE.replace(/\s+/g, '')}"><i class="fas fa-phone"></i> Call</a>
-                                </div>
-                            </div>
-                        </aside>
-                    </div>
-                    <div class="acct-order-foot acct-order-foot-modern">
-                        <span class="acct-order-total">Total: ₹${order.total.toLocaleString('en-IN')}</span>
-                        <span class="acct-order-pay"><i class="fas fa-credit-card"></i> ${escapeRichText(_getPaymentMethodLabel(order.payment))}</span>
-                    </div>
-                    <div class="acct-order-actions-row">
-                        <button class="btn btn-outline-dark btn-sm" onclick="downloadInvoice('${order.id}')"><i class="fas fa-file-invoice"></i> Invoice</button>
-                        <button class="btn btn-primary btn-sm" onclick="reorderFromHistory('${order.id}')"><i class="fas fa-redo"></i> Reorder</button>
-                        <button class="btn btn-outline-dark btn-sm acct-share-btn" onclick="shareOrderResult('${order.id}')"><i class="fas fa-share-alt"></i> Share</button>
-                        ${actions.requested ? _buildReturnRequestStatusHTML(actions.request) : actions.eligible ? `<button class="btn btn-outline-dark btn-sm acct-return-btn" onclick="requestOrderReturn('${order.id}')"><i class="fas fa-rotate-left"></i> Return / Exchange</button>` : actions.note ? `<span class="acct-action-note">${escapeRichText(actions.note)}</span>` : ''}
-                    </div>
-                    ${ratingHtml}
-                </div>
-            </section>
+            </div>
         `;
     }).join('') + '</div>';
 }
 function showAccountTab(tab) {
     document.querySelectorAll('.acct-tab-btn, .account-tab').forEach(t => t.classList.remove('active'));
-    ['accountOrders','accountProfile','accountAddresses','accountSecurity'].forEach(id => { const el = document.getElementById(id); if (el) { el.style.display = 'none'; el.classList.remove('active'); } });
-    const map = { orders:'accountOrders', profile:'accountProfile', addresses:'accountAddresses', security:'accountSecurity' };
-    const el = document.getElementById(map[tab]); if (el) el.style.display = 'block';
+    ['accountProfile','accountAddresses','accountOrders'].forEach(id => { const el = document.getElementById(id); if (el) { el.style.display = 'none'; el.classList.remove('active'); } });
+    const map = { profile:'accountProfile', addresses:'accountAddresses', orders:'accountOrders', security:'accountProfile' };
+    const el = document.getElementById(map[tab]); if (el) { el.style.display = 'block'; el.classList.add('active'); }
     const tabBtns = document.querySelectorAll('.acct-tab-btn, .account-tab');
-    const tabIdx = { orders:0, profile:1, addresses:2, security:3 };
+    const tabIdx = { profile:0, addresses:1, orders:2, security:0 };
     if (tabBtns[tabIdx[tab]]) tabBtns[tabIdx[tab]].classList.add('active');
+    // Scroll to password section if security tab requested
+    if (tab === 'security') {
+        setTimeout(() => { const pwd = document.getElementById('pwdCurrent'); if (pwd) pwd.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
+    }
 }
 function toggleOrderDetails(orderId) {
     const panel = document.getElementById('orderDetails-' + orderId);
@@ -3470,6 +3412,340 @@ async function changePassword() {
 }
 function handleLogout() { currentUser = null; localStorage.removeItem('ssa_user'); closeAuthModal(); updateAuthUI(); showToast('Logged out'); }
 
+// ===== Track Order Feature =====
+function openTrackOrder() {
+    if (!currentUser) {
+        showToast('Please sign in to track your orders', 'info');
+        setTimeout(() => openLoginModal(), 300);
+        return;
+    }
+    const modal = document.getElementById('trackOrderModal');
+    if (!modal) return;
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => { document.getElementById('trackOrderInput')?.focus(); }, 200);
+}
+window.openTrackOrder = openTrackOrder;
+
+function closeTrackOrder() {
+    const modal = document.getElementById('trackOrderModal');
+    if (!modal) return;
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+    const res = document.getElementById('trackResult');
+    if (res) { res.classList.remove('visible'); res.innerHTML = ''; }
+    const inp = document.getElementById('trackOrderInput');
+    if (inp) inp.value = '';
+}
+window.closeTrackOrder = closeTrackOrder;
+
+async function trackOrderSearch() {
+    const input = document.getElementById('trackOrderInput');
+    const resultEl = document.getElementById('trackResult');
+    if (!input || !resultEl) return;
+    const query = input.value.trim().toUpperCase();
+    if (!query) { showToast('Please enter an Order ID', 'error'); return; }
+    if (!currentUser) { showToast('Please sign in first', 'error'); return; }
+
+    resultEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:0.84rem;"><i class="fas fa-spinner fa-spin" style="margin-right:6px"></i> Searching&hellip;</div>';
+    resultEl.classList.add('visible');
+
+    let found = null;
+    // Check Firestore first
+    if (window.db) {
+        try {
+            const snap = await db.collection('orders').where('orderId', '==', query).get();
+            if (!snap.empty) {
+                const d = snap.docs[0].data();
+                found = { id: d.orderId || snap.docs[0].id, status: d.status || 'Processing', date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : new Date().toISOString(), total: d.total || 0, tracking: d.trackingId || '', estimated: d.estimatedDelivery || '', items: d.items || [] };
+            }
+        } catch(e) { console.warn('[track]', e.message); }
+    }
+    // Fallback: check localStorage
+    if (!found && currentUser?.email) {
+        const localOrders = JSON.parse(localStorage.getItem('ssa_orders_' + currentUser.email) || '[]');
+        const lo = localOrders.find(o => (o.id || o.orderId || '').toUpperCase() === query);
+        if (lo) found = { id: lo.id || lo.orderId, status: lo.status || 'Processing', date: lo.date || new Date().toISOString(), total: lo.total || 0, tracking: lo.trackingId || '', estimated: lo.estimatedDelivery || '', items: lo.items || [] };
+    }
+
+    if (!found) {
+        resultEl.innerHTML = '<div class="track-not-found"><i class="fas fa-search"></i>No order found with ID <strong>' + escapeRichText(query) + '</strong>.<br>Double-check the Order ID and try again.</div>';
+        return;
+    }
+
+    const statusKey = _orderStatusKey(found.status);
+    const statusColors = { processing:'#f59e0b', approved:'#6366f1', packed:'#a855f7', shipped:'#3b82f6', delivered:'#10b981', cancelled:'#ef4444' };
+    const color = statusColors[statusKey] || '#6b7280';
+    resultEl.innerHTML = `
+        <div class="track-result-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div class="track-result-id">#${escapeRichText(found.id)}</div>
+                <span style="font-size:0.72rem;font-weight:800;padding:3px 10px;border-radius:20px;background:${color}22;color:${color};border:1px solid ${color}44;">${escapeRichText(found.status)}</span>
+            </div>
+            <div class="track-result-meta">
+                <span><i class="fas fa-calendar-alt" style="color:var(--primary);width:14px;"></i> Placed: ${_formatOrderDate(found.date)}</span>
+                <span><i class="fas fa-rupee-sign" style="color:var(--primary);width:14px;"></i> Total: ₹${Number(found.total).toLocaleString('en-IN')}</span>
+                <span><i class="fas fa-box" style="color:var(--primary);width:14px;"></i> Items: ${found.items.length}</span>
+                ${found.tracking ? `<span><i class="fas fa-truck" style="color:var(--primary);width:14px;"></i> Tracking: ${escapeRichText(found.tracking)}</span>` : ''}
+                ${found.estimated ? `<span><i class="fas fa-calendar-check" style="color:var(--primary);width:14px;"></i> Est. Delivery: ${escapeRichText(found.estimated)}</span>` : ''}
+            </div>
+            <a href="order-detail.html?id=${encodeURIComponent(found.id)}" class="btn btn-gradient btn-full btn-sm" style="margin-top:14px;" onclick="closeTrackOrder()">
+                <i class="fas fa-external-link-alt"></i> View Full Details
+            </a>
+        </div>
+    `;
+}
+window.trackOrderSearch = trackOrderSearch;
+
+// Close track order modal on outside click
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('trackOrderModal');
+    if (modal && e.target === modal) closeTrackOrder();
+});
+
+// ===== Order Detail Page Init =====
+async function initOrderDetailPage() {
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('id');
+    const loading = document.getElementById('odpLoading');
+    const content = document.getElementById('odpContent');
+    if (!content) return;
+
+    if (!orderId) {
+        _showOdpError('No Order ID provided', 'Please navigate from your Account → Orders page.');
+        return;
+    }
+
+    // Wait for DB to be ready (up to 3 seconds)
+    let waited = 0;
+    while (!window.db && waited < 30) { await new Promise(r => setTimeout(r, 100)); waited++; }
+
+    // Require login
+    if (!currentUser) {
+        if (loading) loading.style.display = 'none';
+        content.style.display = 'block';
+        content.innerHTML = `
+            <div class="container">
+                <div class="odp-back-bar">
+                    <a href="index.html" class="odp-back-btn"><i class="fas fa-arrow-left"></i> Back to Home</a>
+                </div>
+                <div style="text-align:center;padding:80px 20px;">
+                    <i class="fas fa-lock" style="font-size:3rem;color:var(--text-faint);display:block;margin-bottom:16px;"></i>
+                    <h3 style="font-size:1.2rem;color:var(--text-mid);margin-bottom:8px;">Sign in to view order</h3>
+                    <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:20px;">Please sign in to access order details for #${escapeRichText(orderId)}</p>
+                    <button class="btn btn-gradient" onclick="openLoginModal()"><i class="fas fa-user"></i> Sign In</button>
+                </div>
+            </div>`;
+        return;
+    }
+
+    // Load order
+    let order = null;
+    if (window.db) {
+        try {
+            const snap = await db.collection('orders').where('orderId', '==', orderId).get();
+            if (!snap.empty) {
+                const d = snap.docs[0].data();
+                order = _normalizeAccountOrder({ id: d.orderId || snap.docs[0].id, docId: snap.docs[0].id, date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : new Date().toISOString(), items: d.items || [], total: d.total || 0, payment: d.payment || 'COD', paymentStatus: d.paymentStatus || '', status: d.status || 'Processing', trackingId: d.trackingId || '', deliveredAt: d.deliveredAt || null, estimatedDelivery: d.estimatedDelivery || null, updatedAt: d.updatedAt || null, addressLabel: d.addressLabel || '', statusHistory: d.statusHistory || {}, returnRequest: d.returnRequest || null, cancellation: d.cancellation || null, rating: d.rating || null, ratingComment: d.ratingComment || null, ratingImage: d.ratingImage || null, shipping: { name: d.customerName || currentUser.name, email: d.customerEmail || currentUser.email, phone: d.customerPhone || currentUser.phone || '', address: d.address || '', city: d.city || '', pincode: d.pincode || '' } });
+            }
+        } catch(e) { console.warn('[odp]', e.message); }
+    }
+    // Fallback to localStorage
+    if (!order && currentUser?.email) {
+        const localOrders = JSON.parse(localStorage.getItem('ssa_orders_' + currentUser.email) || '[]');
+        const lo = localOrders.find(o => (o.id || o.orderId || '') === orderId);
+        if (lo) order = _normalizeAccountOrder(lo);
+    }
+
+    if (loading) loading.style.display = 'none';
+
+    if (!order) {
+        _showOdpError('Order Not Found', `We couldn't find order #${escapeRichText(orderId)} for your account.`);
+        return;
+    }
+
+    content.style.display = 'block';
+    content.innerHTML = _buildOrderDetailPageHTML(order);
+    // Init rating stars if available
+    if (window.SSAAnims && window.SSAAnims.initRatingStars) {
+        setTimeout(() => window.SSAAnims.initRatingStars(content), 100);
+    }
+}
+
+function _showOdpError(title, msg) {
+    const loading = document.getElementById('odpLoading');
+    const content = document.getElementById('odpContent');
+    if (loading) loading.style.display = 'none';
+    if (content) {
+        content.style.display = 'block';
+        content.innerHTML = `<div class="container"><div class="odp-back-bar"><a href="index.html" class="odp-back-btn" onclick="history.length>1?history.back():window.location='index.html';return false;"><i class="fas fa-arrow-left"></i> Go Back</a></div><div class="odp-error-wrap"><i class="fas fa-exclamation-circle"></i><h3>${escapeRichText(title)}</h3><p>${escapeRichText(msg)}</p><a href="index.html" class="btn btn-gradient" style="margin-top:16px;">Back to Home</a></div></div>`;
+    }
+}
+
+function _buildOrderDetailPageHTML(order) {
+    const statusKey = _orderStatusKey(order.status);
+    const history = order.statusHistory || {};
+    const paymentStatus = _getPaymentStatus(order);
+    const tracking = order.trackingId ? escapeRichText(order.trackingId) : null;
+    const estimated = order.estimatedDelivery ? _formatOrderDate(order.estimatedDelivery) : null;
+    const shipParts = [order.shipping?.address, order.shipping?.city, order.shipping?.pincode, order.shipping?.state].filter(Boolean);
+    const actions = _getOrderReturnMeta(order);
+
+    // Timeline
+    let timelineHTML = '';
+    if (statusKey === 'cancelled') {
+        timelineHTML = `<div class="odp-timeline">
+            <div class="odp-tl-step done"><div class="odp-tl-dot"><i class="fas fa-check"></i></div><div class="odp-tl-label">Placed</div><div class="odp-tl-date">${history['processing'] ? _formatOrderDate(history['processing']) : ''}</div></div>
+            <div class="odp-tl-step cancelled"><div class="odp-tl-dot"><i class="fas fa-times"></i></div><div class="odp-tl-label">Cancelled</div><div class="odp-tl-date">${history['cancelled'] ? _formatOrderDate(history['cancelled']) : ''}</div></div>
+        </div>`;
+    } else {
+        const steps = [
+            { key: 'processing', label: 'Placed', icon: 'fa-check' },
+            { key: 'approved', label: 'Approved', icon: 'fa-thumbs-up' },
+            { key: 'packed', label: 'Packed', icon: 'fa-box' },
+            { key: 'shipped', label: 'Shipped', icon: 'fa-truck' },
+            { key: 'delivered', label: 'Delivered', icon: 'fa-home' }
+        ];
+        const curIdx = steps.findIndex(s => s.key === statusKey);
+        timelineHTML = '<div class="odp-timeline">' + steps.map((s, i) => {
+            const cls = i < curIdx ? 'done' : i === curIdx ? 'active' : '';
+            return `<div class="odp-tl-step ${cls}"><div class="odp-tl-dot"><i class="fas ${s.icon}"></i></div><div class="odp-tl-label">${s.label}</div><div class="odp-tl-date">${history[s.key] ? _formatOrderDate(history[s.key]) : ''}</div></div>`;
+        }).join('') + '</div>';
+    }
+
+    // Items
+    const itemsHTML = order.items.map(item => {
+        const meta = _resolveOrderItemMeta(item);
+        const imgEl = meta.image ? `<img src="${meta.image}" alt="${escapeRichText(item.name || 'Item')}" class="odp-item-img" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : '';
+        const placeholderEl = `<div class="odp-item-placeholder" ${meta.image ? 'style="display:none"' : ''}><i class="fas fa-box-open"></i></div>`;
+        const tags = [];
+        if (item.selectedSize) tags.push(`<span class="odp-item-tag">Size: ${escapeRichText(item.selectedSize)}</span>`);
+        if (item.selectedColor) tags.push(`<span class="odp-item-tag color">${escapeRichText(item.selectedColor)}</span>`);
+        if (meta.gender) tags.push(`<span class="odp-item-tag gender">${escapeRichText(meta.gender)}</span>`);
+        const emb = item.embroidery;
+        let embHtml = '';
+        if (emb) {
+            const lines = [];
+            if (emb.type) lines.push(escapeRichText(emb.type));
+            if (emb.line1) lines.push('&ldquo;' + escapeRichText(emb.line1) + '&rdquo;');
+            if (emb.color) lines.push('Thread: ' + escapeRichText(emb.color));
+            embHtml = `<div class="odp-emb-info"><i class="fas fa-pen-nib"></i> ${lines.join(' · ')}</div>`;
+        }
+        return `<div class="odp-item">${imgEl}${placeholderEl}<div class="odp-item-info"><div class="odp-item-name">${escapeRichText(item.name || 'Item')}</div><div class="odp-item-cat">${escapeRichText(meta.categoryLabel || '')}</div>${tags.length ? '<div class="odp-item-tags">' + tags.join('') + '</div>' : ''}${embHtml}<div class="odp-item-footer"><span class="odp-item-price">₹${((item.price || 0) * (item.qty || 1)).toLocaleString('en-IN')}</span><span class="odp-item-qty-badge">Qty ${item.qty || 1}</span></div></div></div>`;
+    }).join('');
+
+    // Cancellation box
+    const cancelHTML = statusKey === 'cancelled' ? _buildCancellationSection(order) : '';
+
+    // Action buttons
+    const actionsHTML = `<div class="odp-actions-row">
+        <button class="btn btn-outline-dark btn-sm" onclick="downloadInvoice('${escapeRichText(order.id)}')"><i class="fas fa-file-invoice"></i> Invoice</button>
+        <button class="btn btn-primary btn-sm" onclick="reorderFromHistory('${escapeRichText(order.id)}')"><i class="fas fa-redo"></i> Reorder</button>
+        <button class="btn btn-outline-dark btn-sm" style="border-color:#86efac;color:#15803d;background:#f0fdf4;" onclick="shareOrderResult('${escapeRichText(order.id)}')"><i class="fas fa-share-alt"></i> Share</button>
+        <button class="btn btn-outline-dark btn-sm" onclick="contactOrderSupport('${escapeRichText(order.id)}')"><i class="fab fa-whatsapp"></i> Support</button>
+        ${actions.eligible ? `<button class="btn btn-outline-dark btn-sm" style="border-color:#fecdd3;color:#be123c;background:#fff1f2;" onclick="requestOrderReturn('${escapeRichText(order.id)}')"><i class="fas fa-rotate-left"></i> Return / Exchange</button>` : ''}
+        ${actions.requested ? _buildReturnRequestStatusHTML(actions.request) : ''}
+    </div>`;
+
+    // Rating HTML
+    const ratingHtml = window.buildRatingUI ? window.buildRatingUI(order.id, order.rating || null, order.ratingComment || null, order.ratingImage || null) : '';
+
+    return `
+        <div class="odp-hero">
+            <div class="container">
+                <div class="odp-back-bar">
+                    <button class="odp-back-btn" onclick="history.back()"><i class="fas fa-arrow-left"></i> Back to Orders</button>
+                </div>
+                <div class="odp-hero-inner">
+                    <div>
+                        <div class="odp-order-eyebrow"><i class="fas fa-receipt"></i> Order Details</div>
+                        <div class="odp-order-number">#${escapeRichText(order.id)}</div>
+                        <div class="odp-order-metas">
+                            <span class="odp-meta-chip"><i class="fas fa-calendar-alt"></i> ${_formatOrderDate(order.date)}</span>
+                            <span class="odp-meta-chip"><i class="fas fa-credit-card"></i> ${escapeRichText(_getPaymentMethodLabel(order.payment))}</span>
+                            <span class="odp-meta-chip"><i class="fas fa-box"></i> ${order.items.length} item${order.items.length !== 1 ? 's' : ''}</span>
+                        </div>
+                    </div>
+                    <div class="odp-hero-right">
+                        <span class="odp-status-pill ${statusKey}"><i class="fas fa-circle" style="font-size:0.5rem;"></i> ${escapeRichText(order.status)}</span>
+                        <div style="text-align:right;">
+                            <div class="odp-total-label">Order Total</div>
+                            <div class="odp-total-display">₹${order.total.toLocaleString('en-IN')}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="odp-body">
+            <div class="container">
+                <div class="odp-grid">
+                    <div class="odp-main">
+                        <!-- Timeline -->
+                        <div class="odp-card">
+                            <div class="odp-card-head"><i class="fas fa-route"></i><h3>Order Timeline</h3></div>
+                            ${timelineHTML}
+                            ${tracking ? `<div style="padding:0 20px 16px;font-size:0.82rem;color:var(--text-mid);"><i class="fas fa-truck" style="color:var(--primary);margin-right:5px;"></i><strong>Tracking:</strong> ${tracking}</div>` : ''}
+                            ${estimated ? `<div style="padding:0 20px 16px;font-size:0.82rem;color:var(--text-mid);"><i class="fas fa-calendar-check" style="color:var(--primary);margin-right:5px;"></i><strong>Estimated Delivery:</strong> ${estimated}</div>` : ''}
+                        </div>
+                        <!-- Cancellation box -->
+                        ${cancelHTML ? `<div style="padding:0 4px;">${cancelHTML}</div>` : ''}
+                        <!-- Items -->
+                        <div class="odp-card">
+                            <div class="odp-card-head"><i class="fas fa-shopping-bag"></i><h3>Items Ordered</h3></div>
+                            <div class="odp-item-list">${itemsHTML}</div>
+                            <div style="padding:14px 20px;border-top:1px solid var(--border);background:var(--bg-off);display:flex;justify-content:space-between;align-items:center;">
+                                <span style="font-size:0.82rem;color:var(--text-muted);">Order Total</span>
+                                <strong style="font-size:1.05rem;color:var(--primary-dark);">₹${order.total.toLocaleString('en-IN')}</strong>
+                            </div>
+                        </div>
+                        <!-- Actions -->
+                        <div class="odp-card">
+                            <div class="odp-card-head"><i class="fas fa-bolt"></i><h3>Order Actions</h3></div>
+                            <div class="odp-card-body">${actionsHTML}${ratingHtml ? '<div style="margin-top:16px;">' + ratingHtml + '</div>' : ''}</div>
+                        </div>
+                    </div>
+                    <div class="odp-aside">
+                        <!-- Payment -->
+                        <div class="odp-card">
+                            <div class="odp-card-head"><i class="fas fa-receipt"></i><h4 style="font-size:0.9rem;font-weight:800;color:var(--navy);margin:0;">Payment & Billing</h4></div>
+                            <div class="odp-card-body">
+                                <div class="odp-info-row"><span class="odp-info-label">Method</span><span class="odp-info-value">${escapeRichText(_getPaymentMethodLabel(order.payment))}</span></div>
+                                <div class="odp-info-row"><span class="odp-info-label">Status</span><span class="odp-info-value">${escapeRichText(paymentStatus)}</span></div>
+                                <div class="odp-info-row"><span class="odp-info-label">Order Total</span><span class="odp-info-value" style="color:var(--primary-dark);">₹${order.total.toLocaleString('en-IN')}</span></div>
+                                <div class="odp-info-row"><span class="odp-info-label">Shipping</span><span class="odp-info-value">${order.total > 2000 ? 'FREE' : '₹150'}</span></div>
+                            </div>
+                        </div>
+                        <!-- Shipping Address -->
+                        <div class="odp-card">
+                            <div class="odp-card-head"><i class="fas fa-map-marker-alt"></i><h4 style="font-size:0.9rem;font-weight:800;color:var(--navy);margin:0;">Delivery Address</h4></div>
+                            <div class="odp-card-body">
+                                <div class="odp-address-block">
+                                    <div class="odp-address-name">${escapeRichText(order.shipping?.name || currentUser?.name || 'Customer')}</div>
+                                    ${escapeRichText(shipParts.join(', ') || 'Address not available')}
+                                    ${order.shipping?.phone ? '<div style="margin-top:6px;color:var(--text-muted);font-size:0.8rem;"><i class="fas fa-phone-alt" style="color:var(--primary);margin-right:4px;"></i>' + escapeRichText(order.shipping.phone) + '</div>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Customer Support -->
+                        <div class="odp-card" style="background:linear-gradient(160deg,#f0fdfa,#fff);">
+                            <div class="odp-card-head"><i class="fas fa-headset"></i><h4 style="font-size:0.9rem;font-weight:800;color:var(--navy);margin:0;">Need Help?</h4></div>
+                            <div class="odp-card-body">
+                                <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:14px;line-height:1.65;">Questions about delivery, returns, or embroidery? Our support team is here to help.</p>
+                                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                                    <button class="btn btn-gradient btn-sm" onclick="contactOrderSupport('${escapeRichText(order.id)}')"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                                    <a class="btn btn-outline-dark btn-sm" href="tel:+919366640050"><i class="fas fa-phone"></i> Call Us</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+window.initOrderDetailPage = initOrderDetailPage;
+
+// ===== Ensure Success Modal has invoice action button =====
 function ensureSuccessModalActions() {
         const modal = document.getElementById('successModal');
         if (!modal) return;

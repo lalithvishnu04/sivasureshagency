@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=84">
+    <link rel="stylesheet" href="css/style.css?v=86">
     <link rel="stylesheet" href="css/animations.css?v=6">
     <link rel="icon" type="image/jpeg" href="images/Images/SSA Logo.png">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -19,7 +19,7 @@
 
     <!-- Header (identical nav) -->
     <header id="header">
-        <div class="top-bar"><div class="container"><div class="top-bar-content"><div class="top-info"><span><i class="fas fa-phone-alt"></i> Siva: +91 93666 40060 | Suresh: +91 93666 40050</span><span><i class="fas fa-envelope"></i> sivasureshagency@gmail.com</span></div><div class="top-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-twitter"></i></a><a href="#"><i class="fab fa-linkedin-in"></i></a></div></div></div></div>
+        <div class="top-bar"><div class="container"><div class="top-bar-content"><div class="top-info"><span><i class="fas fa-phone-alt"></i> Siva: +91 93666 40060 | Suresh: +91 93666 40050</span><span><i class="fas fa-envelope"></i> sivasureshagency@gmail.com</span></div><div class="top-social"><button class="track-order-btn" onclick="openTrackOrder()" aria-label="Track Order" title="Track any order"><i class="fas fa-location-arrow"></i> Track Order</button><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-twitter"></i></a><a href="#"><i class="fab fa-linkedin-in"></i></a></div></div></div></div>
         <nav class="navbar">
             <div class="container">
                 <a href="index.html" class="logo"><div class="logo-icon"><img src="images/Images/SSA Logo.png" alt="SSA Logo" width="44" height="48"></div><div class="logo-text-wrap"><span class="logo-text">Siva Suresh</span><span class="logo-sub">Agency</span></div></a>
@@ -223,6 +223,24 @@
     <div class="modal-overlay" id="successModal"><div class="modal modal-success"><div class="success-content"><div class="success-icon"><i class="fas fa-check-circle"></i></div><h3>Order Placed Successfully!</h3><p>Thank you for your order.</p><p class="order-id">Order ID: <strong id="orderId"></strong></p><button class="btn btn-gradient" onclick="closeSuccessModal()">Continue Shopping</button></div></div></div>
     <div class="modal-overlay" id="authModal"></div>
     <div class="modal-overlay" id="productDetailModal"></div>
+    <!-- Track Order Modal -->
+    <div class="track-modal-overlay" id="trackOrderModal">
+        <div class="track-modal">
+            <div class="track-modal-head">
+                <button class="track-modal-close" onclick="closeTrackOrder()"><i class="fas fa-times"></i></button>
+                <h3><i class="fas fa-location-arrow" style="color:#5eead4"></i> Track Your Order</h3>
+                <p>Enter your Order ID to see live status updates</p>
+            </div>
+            <div class="track-modal-body">
+                <div class="track-input-wrap">
+                    <i class="fas fa-hashtag track-input-icon"></i>
+                    <input type="text" class="track-input" id="trackOrderInput" placeholder="e.g. SSA-1234ABCD" autocomplete="off" onkeydown="if(event.key==='Enter')trackOrderSearch()">
+                </div>
+                <button class="btn btn-gradient btn-full" onclick="trackOrderSearch()"><i class="fas fa-search"></i> Search Order</button>
+                <div class="track-result" id="trackResult"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- Chatbot -->
     <div class="chatbot-container" id="chatbotContainer"><div class="chatbot-window" id="chatbotWindow"><div class="chatbot-header"><div class="chatbot-header-info"><div class="chatbot-avatar"><i class="fas fa-robot"></i></div><div><h4>SSA Assistant</h4><span class="chatbot-status"><i class="fas fa-circle"></i> Online</span></div></div><button class="chatbot-minimize" id="chatbotMinimize"><i class="fas fa-minus"></i></button></div><div class="chatbot-messages" id="chatbotMessages"><div class="chat-message bot"><div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content"><p>Hello! ?? How can I help you?</p><div class="quick-replies"><button class="quick-reply" data-msg="What products do you offer?">Products</button><button class="quick-reply" data-msg="Tell me about pricing">Pricing</button></div></div></div></div><div class="chatbot-input"><input type="text" id="chatInput" placeholder="Type your message..."><button id="chatSend"><i class="fas fa-paper-plane"></i></button></div></div><button class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-comments"></i><span class="chatbot-badge">1</span></button></div>
@@ -230,7 +248,7 @@
     <button id="backToTop" class="back-to-top"><i class="fas fa-chevron-up"></i></button>
     <a href="https://wa.me/919366640050" class="whatsapp-float" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp"></i></a>
     <script src="js/product-helpers.js" defer></script>
-    <script src="js/script.js?v=89" defer></script>
+    <script src="js/script.js?v=93" defer></script>
     <script src="js/animations.js?v=5" defer></script>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
