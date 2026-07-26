@@ -3656,6 +3656,7 @@ async function initOrderDetailPage() {
                         addressLabel: d.addressLabel || '', statusHistory: d.statusHistory || {},
                         returnRequest: d.returnRequest || null, cancellation: d.cancellation || null,
                         rating: d.rating || null, ratingComment: d.ratingComment || null, ratingImage: d.ratingImage || null,
+                        razorpay: d.razorpay || null,
                         shipping: { name: d.customerName || currentUser.name, email: d.customerEmail || currentUser.email,
                             phone: d.customerPhone || currentUser.phone || '', address: d.address || '',
                             city: d.city || '', pincode: d.pincode || '' }
@@ -3680,6 +3681,7 @@ async function initOrderDetailPage() {
                             addressLabel: d.addressLabel || '', statusHistory: d.statusHistory || {},
                             returnRequest: d.returnRequest || null, cancellation: d.cancellation || null,
                             rating: d.rating || null, ratingComment: d.ratingComment || null, ratingImage: d.ratingImage || null,
+                            razorpay: d.razorpay || null,
                             shipping: { name: d.customerName || currentUser.name, email: d.customerEmail || currentUser.email,
                                 phone: d.customerPhone || currentUser.phone || '', address: d.address || '',
                                 city: d.city || '', pincode: d.pincode || '' }
@@ -3738,6 +3740,7 @@ async function _odpBackgroundRefresh(orderId, cachedOrder, contentEl) {
             statusHistory: d.statusHistory || {}, returnRequest: d.returnRequest || null,
             cancellation: d.cancellation || null, rating: d.rating || cachedOrder.rating,
             ratingComment: d.ratingComment || cachedOrder.ratingComment, ratingImage: d.ratingImage || cachedOrder.ratingImage,
+            razorpay: d.razorpay || cachedOrder.razorpay || null,
             shipping: { name: d.customerName || currentUser.name, email: d.customerEmail || currentUser.email,
                 phone: d.customerPhone || currentUser.phone || '', address: d.address || '',
                 city: d.city || '', pincode: d.pincode || '' }
@@ -3904,7 +3907,8 @@ function _buildOrderDetailPageHTML(order) {
                             <div class="odp-card-head"><i class="fas fa-receipt"></i><h4 style="font-size:0.9rem;font-weight:800;color:var(--navy);margin:0;">Payment & Billing</h4></div>
                             <div class="odp-card-body">
                                 <div class="odp-info-row"><span class="odp-info-label">Method</span><span class="odp-info-value">${escapeRichText(_getPaymentMethodLabel(order.payment))}</span></div>
-                                <div class="odp-info-row"><span class="odp-info-label">Status</span><span class="odp-info-value">${escapeRichText(paymentStatus)}</span></div>
+                                <div class="odp-info-row"><span class="odp-info-label">Payment Status</span><span class="odp-info-value" style="font-weight:700;color:${paymentStatus==='Paid'?'#16a34a':paymentStatus==='Refund Processed'?'#2563eb':'var(--text-mid)'}">${escapeRichText(paymentStatus)}</span></div>
+                                ${order.razorpay && order.razorpay.paymentId ? `<div class="odp-info-row"><span class="odp-info-label">Payment ID</span><span class="odp-info-value" style="font-size:0.75rem;color:var(--text-muted);word-break:break-all;font-family:monospace;">${escapeRichText(order.razorpay.paymentId)}</span></div>` : ''}
                                 <hr style="border:none;border-top:1px dashed var(--border);margin:8px 0;">
                                 <div class="odp-info-row"><span class="odp-info-label">Product Subtotal</span><span class="odp-info-value">₹${_productSubtotal.toLocaleString('en-IN')}</span></div>
                                 ${_embTotal > 0 ? `<div class="odp-info-row"><span class="odp-info-label"><i class="fas fa-pen-nib" style="color:var(--primary);font-size:0.72rem;margin-right:3px;"></i> Embroidery</span><span class="odp-info-value">₹${_embTotal.toLocaleString('en-IN')}</span></div>` : ''}
