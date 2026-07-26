@@ -40,12 +40,16 @@ window.SSA_COMM = (function () {
     }
 
     // ── Generic Webhook POST ─────────────────────────────────
+    // Uses no-cors mode so the POST always reaches Power Automate
+    // even when the trigger URL doesn't return CORS headers.
+    // Power Automate flow: use json(triggerBody()) to parse the payload.
     async function postWebhook(url, payload) {
         if (!url) {
             console.warn('[SSA-COMM] Webhook URL not configured for:', payload.type || 'unknown');
             return false;
         }
         try {
+            // Try normal fetch first (works when PA returns CORS headers)
             await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -53,8 +57,18 @@ window.SSA_COMM = (function () {
             });
             return true;
         } catch (e) {
-            console.warn('[SSA-COMM] Webhook failed:', e.message);
-            return false;
+            // CORS blocked — retry with no-cors so the request still reaches Power Automate
+            try {
+                await fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(payload)
+                });
+                return true;
+            } catch (e2) {
+                console.warn('[SSA-COMM] Webhook failed:', e2.message);
+                return false;
+            }
         }
     }
 

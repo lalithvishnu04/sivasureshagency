@@ -5095,14 +5095,41 @@ async function _activateLiveAgent(user) {
     _chatLiveAgentMode = true;
     _chatSessionId = _chatSessionId || ('SESS-' + Date.now().toString(36).toUpperCase());
 
+    // Collect recent chat history
+    const chatHistory = [];
+    document.querySelectorAll('#chatbotMessages .chat-message').forEach(el => {
+        const type = el.classList.contains('user') ? 'customer' : 'agent';
+        const text = el.querySelector('.message-content p')?.textContent || '';
+        if (text) chatHistory.push(type + ': ' + text);
+    });
+
+    // Save ticket to Firestore → appears in Admin → Messages
+    if (window.db) {
+        try {
+            const ticketId = (window.SSA_COMM && window.SSA_COMM.generateTicketId)
+                ? window.SSA_COMM.generateTicketId()
+                : ('TKT-' + Date.now().toString(36).toUpperCase());
+            await window.db.collection('messages').add({
+                ticketId,
+                type: 'Live Agent Request',
+                name: user.name || 'Customer',
+                email: user.email || '',
+                customerId: user.customerId || '',
+                subject: '🔴 Live Agent Request',
+                message: 'Customer requested a live agent via chatbot.\n\nChat history:\n' + chatHistory.slice(-10).join('\n'),
+                sessionId: _chatSessionId,
+                status: 'Open',
+                read: false,
+                attachmentUrls: [],
+                createdAt: new Date().toISOString()
+            });
+        } catch (e) {
+            console.warn('[chatbot] Failed to save live agent ticket:', e.message);
+        }
+    }
+
     // Notify admin via Power Automate
     if (window.SSA_COMM && window.SSA_COMM.requestLiveAgent) {
-        const chatHistory = [];
-        document.querySelectorAll('#chatbotMessages .chat-message').forEach(el => {
-            const type = el.classList.contains('user') ? 'customer' : 'agent';
-            const text = el.querySelector('.message-content p')?.textContent || '';
-            if (text) chatHistory.push(type + ': ' + text);
-        });
         await window.SSA_COMM.requestLiveAgent({
             customerName: user.name,
             customerEmail: user.email,
