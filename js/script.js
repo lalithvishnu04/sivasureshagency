@@ -4726,6 +4726,9 @@ function initStatsCounter() {
 // ===== AI Chatbot =====
 let _chatLiveAgentMode = false;
 let _chatSessionId = null;
+let _chatSessionDocId = null;   // Supabase doc ID for live-agent session
+let _chatPollInterval = null;    // Polling timer for admin replies
+let _chatShownAdminMsgs = 0;     // Admin messages already rendered
 let _chatPendingFile = null;
 let _chatMsgCount = 0;
 
@@ -4850,8 +4853,8 @@ async function sendChatMessage(msg) {
     setTimeout(async () => {
         typing.remove();
         if (_chatLiveAgentMode) {
-            // In live agent mode, just notify admin; user message already shown
-            appendMsg('bot', '<i class="fas fa-headset" style="color:var(--primary);margin-right:6px"></i> Your message has been forwarded to our agent. Please wait...');
+            if (_chatSessionDocId && window.db && msg) _appendUserMsgToSession(_chatSessionDocId, msg);
+            appendMsg('bot', '<i class="fas fa-check-circle" style="color:#10b981;margin-right:6px"></i> Message sent to agent. You\'ll see their reply here and receive an email notification.');
         } else {
             const response = await getAIResponse(msg || '');
             if (typeof response === 'string') {
@@ -5116,7 +5119,7 @@ async function _activateLiveAgent(user) {
     // ticket (Chat Requests tab → "Create Ticket" in Admin → Messages).
     if (window.db) {
         try {
-            await window.db.collection('messages').add({
+            const docRef = await window.db.collection('messages').add({
                 ticketId: null,
                 type: 'Live Agent Request',
                 name: user.name || 'Customer',
@@ -5131,8 +5134,11 @@ async function _activateLiveAgent(user) {
                 read: false,
                 attachmentUrls: [],
                 comments: [],
+                chatMessages: [],
                 createdAt: new Date().toISOString()
             });
+            _chatSessionDocId = docRef.id;
+            _startLiveChatPolling(_chatSessionDocId);
         } catch (e) {
             console.warn('[chatbot] Failed to log live agent request:', e.message);
         }
@@ -5154,6 +5160,49 @@ async function _activateLiveAgent(user) {
     if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle" style="color:#10b981"></i> Live Agent';
     const headerEl = document.querySelector('#chatbotWindow h4');
     if (headerEl) headerEl.textContent = 'Live Support';
+}
+
+// Poll Supabase every 3 s for admin replies on the live chat session
+function _startLiveChatPolling(docId) {
+    if (_chatPollInterval) clearInterval(_chatPollInterval);
+    _chatShownAdminMsgs = 0;
+    _chatPollInterval = setInterval(async () => {
+        if (!window.db || !docId) return;
+        try {
+            const snap = await window.db.collection('messages').doc(docId).get();
+            if (!snap.exists) return;
+            const msgs = (snap.data().chatMessages || []).filter(m => m.role === 'admin');
+            if (msgs.length > _chatShownAdminMsgs) {
+                msgs.slice(_chatShownAdminMsgs).forEach(m => {
+                    const el = document.getElementById('chatbotMessages');
+                    if (!el) return;
+                    const div = document.createElement('div');
+                    div.className = 'chat-message bot';
+                    div.innerHTML = `<div class="message-avatar"><i class="fas fa-headset"></i></div><div class="message-content"><p><strong style="color:var(--primary);">Support Agent:</strong> ${(m.text||'').replace(/</g,'&lt;')}</p><span style="font-size:0.7rem;color:var(--text-muted);">${new Date(m.ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span></div>`;
+                    el.appendChild(div);
+                    el.scrollTop = el.scrollHeight;
+                    // Flash chatbot badge if window is closed
+                    const badge = document.querySelector('.chatbot-badge');
+                    const win = document.getElementById('chatbotWindow');
+                    if (badge && win && !win.classList.contains('open')) { badge.style.display = 'inline-flex'; badge.textContent = '!'; }
+                });
+                _chatShownAdminMsgs = msgs.length;
+            }
+        } catch (e) { /* silent poll error */ }
+    }, 3000);
+}
+
+// Append a user message to the Supabase live chat session
+async function _appendUserMsgToSession(docId, text) {
+    if (!window.db || !docId || !text) return;
+    try {
+        const snap = await window.db.collection('messages').doc(docId).get();
+        const existing = snap.exists ? (snap.data().chatMessages || []) : [];
+        await window.db.collection('messages').doc(docId).update({
+            chatMessages: [...existing, { role: 'user', text, ts: new Date().toISOString() }],
+            updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString()
+        });
+    } catch (e) { console.warn('[chat] append user msg failed:', e.message); }
 }
 
 

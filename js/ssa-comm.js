@@ -245,7 +245,7 @@ View in Admin: https://lalithvishnu04.github.io/sivasureshagency/admin.html
             context: data.context || 'Customer requested live support via chatbot',
             sessionId: data.sessionId || generateTicketId(),
             timestamp: new Date().toISOString(),
-            teamsMessage: `🚨 Live Agent Request!\nCustomer: ${data.customerName} (${data.customerEmail})\nContext: ${data.context || 'General support'}\nRespond via Admin chatbot or email.`,
+            teamsMessage: `🚨 Live Agent Request!\nCustomer: ${data.customerName} (${data.customerEmail})\nCustomer ID: ${data.customerId || 'Guest'}\nSession: ${data.sessionId || ''}\nContext: ${data.context || 'General support'}\n\n👉 Reply via Admin UI: https://lalithvishnu04.github.io/sivasureshagency/admin.html\n(Open Messages → Chat Requests → find this session → Send Reply & Email)`,
             emailSubject: `Live Agent Request from ${data.customerName}`,
             emailBody: `
 A customer is requesting live support via the chatbot.

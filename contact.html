@@ -373,9 +373,20 @@
                 });
             }
 
-            // Send via Power Automate webhook (Outlook email)
+            // Send via Power Automate webhook — email to Admin
             if (window.SSA_COMM && window.SSA_COMM.sendContactFormEmail) {
                 await window.SSA_COMM.sendContactFormEmail({ ticketId, name, email, phone, subject, message, attachmentUrls, customerId });
+            }
+
+            // Send confirmation email to the customer via PA ticket-status webhook
+            if (window.SSA_COMM && window.SSA_COMM.sendTicketStatusUpdate) {
+                await window.SSA_COMM.sendTicketStatusUpdate({
+                    ticketId,
+                    customerEmail: email,
+                    customerName: name,
+                    newStatus: 'Received',
+                    adminNote: 'Thank you for contacting us! We have received your message and will respond within 24 hours. Use your Ticket ID to track the status on our Tickets page.'
+                }).catch(() => {});
             }
 
             // Show success

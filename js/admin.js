@@ -3894,7 +3894,22 @@ function _buildChatRequestCardHTML(m) {
             <div class="msg-full" id="msg-full-${m.docId}">
                 <div style="padding:12px 0;border-top:1px solid var(--border);margin-top:10px;">
                     <p style="margin-bottom:10px;color:var(--text-dark);line-height:1.7;white-space:pre-wrap;">${(m.message||'').replace(/</g,'&lt;')}</p>
-                    <button class="btn btn-sm" style="background:var(--primary-teal);color:#fff;padding:7px 18px;font-size:0.8rem;" onclick="openCreateTicketModal('${m.docId}')"><i class="fas fa-ticket-alt"></i> Create Ticket for this Customer</button>
+                    ${(m.chatMessages||[]).length ? `
+                    <div style="background:var(--bg-off);border-radius:10px;padding:10px 14px;margin-bottom:12px;max-height:220px;overflow-y:auto;">
+                        <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:8px;"><i class="fas fa-comments"></i> Chat Thread</div>
+                        ${(m.chatMessages||[]).map(cm => `<div style="margin-bottom:8px;padding:8px 12px;border-radius:8px;background:${cm.role==='admin'?'rgba(13,148,136,0.08)':'#fff'};border-left:3px solid ${cm.role==='admin'?'var(--primary-teal)':'#94a3b8'};">
+                            <div style="font-size:0.71rem;font-weight:700;color:${cm.role==='admin'?'var(--primary-teal)':'#6366f1'};margin-bottom:3px;">${cm.role==='admin'?'<i class="fas fa-headset"></i> Support Agent':'<i class="fas fa-user"></i> '+_escHtmlCat(m.name||'Customer')}</div>
+                            <div style="font-size:0.82rem;color:var(--text-dark);white-space:pre-wrap;">${_escHtmlCat(cm.text||'')}</div>
+                            <div style="font-size:0.68rem;color:var(--text-faint);margin-top:3px;">${new Date(cm.ts).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                        </div>`).join('')}
+                    </div>` : ''}
+                    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+                        <textarea id="admin-chat-reply-${m.docId}" placeholder="Reply to ${_escHtmlCat(m.name||'customer')}... (sends in-chat + email)" rows="2" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.82rem;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn btn-sm" style="background:var(--primary-teal);color:#fff;padding:7px 18px;font-size:0.8rem;" onclick="sendAdminChatReply('${m.docId}','${_escHtmlCat(m.email||'')}','${_escHtmlCat(m.name||'Customer')}','${m.sessionId||''}')"><i class="fas fa-paper-plane"></i> Send Reply &amp; Email</button>
+                            <button class="btn btn-sm" style="background:var(--bg-primary);border:1.5px solid var(--border);padding:7px 18px;font-size:0.8rem;" onclick="openCreateTicketModal('${m.docId}')"><i class="fas fa-ticket-alt"></i> Create Ticket</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>`;
@@ -4132,6 +4147,42 @@ function replyToCustomer(email, ticketId) {
     window.open(`mailto:${email}?subject=${subject}`, '_blank');
 }
 window.replyToCustomer = replyToCustomer;
+
+// ── Admin reply to a live-chat session (Chat Requests tab) ──────────────
+async function sendAdminChatReply(docId, customerEmail, customerName, sessionId) {
+    const replyEl = document.getElementById('admin-chat-reply-' + docId);
+    const text = replyEl?.value?.trim();
+    if (!text) { showAdminToast('Reply cannot be empty', 'error'); return; }
+    const sendBtn = replyEl?.closest('div')?.nextElementSibling?.querySelector('button');
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...'; }
+    try {
+        const snap = await db.collection('messages').doc(docId).get();
+        const existing = snap.exists ? (snap.data().chatMessages || []) : [];
+        await db.collection('messages').doc(docId).update({
+            chatMessages: [...existing, { role: 'admin', text, ts: new Date().toISOString() }],
+            read: true,
+            status: 'In Progress',
+            updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString()
+        });
+        // Email the customer via Power Automate
+        if (window.SSA_COMM && window.SSA_COMM.sendTicketStatusUpdate && customerEmail) {
+            await window.SSA_COMM.sendTicketStatusUpdate({
+                ticketId: sessionId || docId.slice(0, 12).toUpperCase(),
+                customerEmail,
+                customerName,
+                newStatus: 'Agent Reply',
+                adminNote: text
+            }).catch(() => {});
+        }
+        if (replyEl) replyEl.value = '';
+        showAdminToast(`Reply sent to ${customerName}`);
+        await loadMessages();
+    } catch (err) {
+        showAdminToast('Error sending reply: ' + err.message, 'error');
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reply & Email'; }
+    }
+}
+window.sendAdminChatReply = sendAdminChatReply;
 
 async function markAllRead() {
     const unread = allMessages.filter(m => !m.read);
