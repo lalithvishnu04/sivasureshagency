@@ -2583,6 +2583,8 @@ function updateAuthUI() {
     const btn = document.getElementById('authBtn'); if (!btn) return;
     if (currentUser) { btn.innerHTML = '<i class="fas fa-user-circle"></i>'; btn.title = currentUser.name; btn.onclick = openAccountPanel; }
     else { btn.innerHTML = '<i class="fas fa-user"></i>'; btn.title = 'Login'; btn.onclick = openLoginModal; }
+    // Refresh contact form login notice if on contact page
+    if (window.prefillContactFromLogin) window.prefillContactFromLogin();
 }
 function openLoginModal() {
     const modal = document.getElementById('authModal');
@@ -3050,27 +3052,16 @@ async function openAccountPanel() {
         </div>
         <div class="acct-body">
             <div class="acct-section active" id="accountProfile">
-                <!-- ── Membership Card ───────────────────── -->
-                <div style="background:linear-gradient(135deg,#0d9488 0%,#0f766e 55%,#134e4a 100%);border-radius:16px;padding:20px 20px 18px;margin-bottom:20px;color:#fff;position:relative;overflow:hidden;">
-                    <div style="position:absolute;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,0.06);top:-50px;right:-30px;pointer-events:none;"></div>
-                    <div style="position:absolute;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,0.06);bottom:-30px;left:30px;pointer-events:none;"></div>
-                    <div style="position:relative;z-index:1;">
-                        <div style="font-size:0.62rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;opacity:0.7;margin-bottom:4px;">Siva Suresh Agency</div>
-                        <div style="font-size:0.72rem;opacity:0.75;margin-bottom:12px;">Member Account</div>
-                        ${currentUser.customerId ? `<div style="font-size:1.3rem;font-weight:900;letter-spacing:0.12em;margin-bottom:10px;">${currentUser.customerId}</div>` : ''}
-                        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:6px;">
-                            <div>
-                                <div style="font-size:0.62rem;opacity:0.65;text-transform:uppercase;letter-spacing:0.08em;">Account Holder</div>
-                                <div style="font-size:0.88rem;font-weight:700;">${currentUser.name}</div>
-                            </div>
-                            <div style="font-size:0.62rem;opacity:0.55;">Use ID to reference in support tickets</div>
-                        </div>
-                    </div>
-                </div>
+                <!-- ── Customer ID chip ─────────────────── -->
+                ${currentUser.customerId ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,rgba(13,148,136,0.08),rgba(20,184,166,0.05));border:1px solid rgba(13,148,136,0.18);border-radius:10px;margin-bottom:16px;">
+                    <i class="fas fa-id-badge" style="color:#0d9488;font-size:1rem;"></i>
+                    <span style="font-size:0.71rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Customer ID</span>
+                    <span style="font-size:0.82rem;font-weight:900;letter-spacing:0.1em;color:#0d9488;margin-left:auto;">${currentUser.customerId}</span>
+                </div>` : ''}
 
                 <!-- ── Personal Information ─────────────── -->
-                <div style="margin-bottom:20px;">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                <div style="margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
                         <div style="width:28px;height:28px;border-radius:8px;background:rgba(13,148,136,0.1);display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="color:var(--primary);font-size:0.78rem;"></i></div>
                         <span style="font-size:0.8rem;font-weight:800;color:var(--navy);">Personal Information</span>
                     </div>
@@ -3084,7 +3075,7 @@ async function openAccountPanel() {
                             <input type="tel" id="editPhone" value="${currentUser.phone||''}" placeholder="Phone number" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#0d9488'" onblur="this.style.borderColor=''">
                         </div>
                     </div>
-                    <div style="margin-bottom:14px;">
+                    <div style="margin-bottom:12px;">
                         <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Email <span style="font-size:0.65rem;background:#f1f5f9;color:#94a3b8;padding:2px 7px;border-radius:5px;margin-left:4px;font-weight:600;text-transform:none;">cannot change</span></label>
                         <input type="email" value="${currentUser.email}" readonly style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;background:#f8fafc;color:#64748b;cursor:not-allowed;box-sizing:border-box;">
                     </div>
@@ -3092,8 +3083,8 @@ async function openAccountPanel() {
                 </div>
 
                 <!-- ── Security ─────────────────────────── -->
-                <div style="border-top:1.5px dashed var(--border);padding-top:18px;margin-bottom:20px;">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                <div style="border-top:1.5px solid var(--border);padding-top:16px;margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
                         <div style="width:28px;height:28px;border-radius:8px;background:rgba(99,102,241,0.1);display:flex;align-items:center;justify-content:center;"><i class="fas fa-lock" style="color:#6366f1;font-size:0.78rem;"></i></div>
                         <span style="font-size:0.8rem;font-weight:800;color:var(--navy);">Change Password</span>
                     </div>

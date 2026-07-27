@@ -240,7 +240,7 @@
                 <div class="track-result" id="trackResult"></div>
             </div>
         </div>
-    </div></div><div class="chatbot-input"><input type="text" id="chatInput" placeholder="Type your message..."><button id="chatSend"><i class="fas fa-paper-plane"></i></button></div></div><button class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-comments"></i><span class="chatbot-badge">1</span></button></div>
+    </div>
     <!-- AI Chatbot -->
     <div class="chatbot-container" id="chatbotContainer">
         <div class="chatbot-window" id="chatbotWindow">
@@ -363,14 +363,16 @@
 
             // Save to Supabase (messages collection)
             if (window.db) {
-                await window.db.collection('messages').add({
+                const msgDoc = {
                     ticketId, name, email, phone, subject, message,
-                    attachmentUrls, customerId,
+                    customerId,
                     status: 'Open',
                     createdAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date(),
                     updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date(),
                     read: false, source: 'contact-form'
-                });
+                };
+                if (attachmentUrls.length) msgDoc.attachmentUrls = attachmentUrls;
+                await window.db.collection('messages').add(msgDoc);
             }
 
             // Send via Power Automate webhook — email to Admin

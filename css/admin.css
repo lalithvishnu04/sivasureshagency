@@ -993,17 +993,16 @@ img{max-width:100%;display:block;}
 .ticket-hero{
   background:linear-gradient(135deg,#0d9488 0%,#0f766e 45%,#134e4a 100%);
   border-radius:var(--radius);
-  padding:22px 26px;
+  padding:16px 24px;
   margin-bottom:18px;
   color:#fff;
   position:relative;
   overflow:hidden;
 }
-.ticket-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 85% 20%,rgba(255,255,255,0.14),transparent 55%);pointer-events:none;}
-.ticket-hero-inner{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;position:relative;z-index:1;}
-.ticket-hero-text h3{margin:0 0 6px;font-size:1.15rem;font-weight:800;display:flex;align-items:center;gap:8px;}
-.ticket-hero-text p{margin:0;font-size:0.82rem;color:rgba(255,255,255,0.85);max-width:560px;line-height:1.6;}
-.ticket-hero-stats{display:flex;gap:14px;flex-wrap:wrap;}
+.ticket-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 85% 50%,rgba(255,255,255,0.12),transparent 55%);pointer-events:none;}
+.ticket-hero-inner{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;position:relative;z-index:1;}
+.ticket-hero-text h3{margin:0;font-size:1.05rem;font-weight:800;display:flex;align-items:center;gap:8px;}
+.ticket-hero-stats{display:flex;gap:10px;flex-wrap:wrap;}
 .ticket-stat{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.22);border-radius:12px;padding:10px 18px;text-align:center;min-width:84px;backdrop-filter:blur(4px);}
 .ticket-stat-num{display:block;font-size:1.3rem;font-weight:800;line-height:1.1;}
 .ticket-stat-label{display:block;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;color:rgba(255,255,255,0.8);margin-top:2px;}
