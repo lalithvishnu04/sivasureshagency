@@ -3911,6 +3911,7 @@ function _buildChatRequestCardHTML(m) {
 
 function _buildTicketCardHTML(m) {
     const status = m.status || 'Open';
+    const isClosed = status === 'Closed';
     const statusColor = TICKET_STATUS_COLORS[status] || '#6366f1';
     const ts = m.createdAt ? new Date(m.createdAt.seconds ? m.createdAt.seconds * 1000 : m.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
     const attachments = m.attachmentUrls && m.attachmentUrls.length ? m.attachmentUrls.map(url => `<a href="${url}" target="_blank" style="color:var(--primary-teal);font-size:0.75rem;"><i class="fas fa-paperclip"></i> Attachment</a>`).join(' ') : '';
@@ -3948,25 +3949,25 @@ function _buildTicketCardHTML(m) {
                     ${attachments ? `<div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;">${attachments}</div>` : ''}
                     ${commentsHtml}
                     <!-- Admin Reply / Status Update -->
-                    <div style="background:var(--bg-secondary);border-radius:10px;padding:14px;margin-top:10px;">
-                        <div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);margin-bottom:10px;">Update Ticket</div>
+                    <div style="background:${isClosed ? '#f8fafc' : 'var(--bg-secondary)'};border-radius:10px;padding:14px;margin-top:10px;border:${isClosed ? '1.5px solid #e2e8f0' : 'none'};">
+                        ${isClosed ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><i class="fas fa-lock" style="color:#94a3b8;font-size:0.9rem;"></i><span style="font-size:0.8rem;font-weight:700;color:#94a3b8;">Ticket Closed — editing disabled</span></div>` : `<div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);margin-bottom:10px;">Update Ticket</div>`}
                         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
                             <label style="font-size:0.78rem;font-weight:600;color:var(--text-muted);">Status:</label>
-                            <select id="ticketStatus-${m.docId}" style="padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:0.82rem;background:#fff;cursor:pointer;">
+                            <select id="ticketStatus-${m.docId}" ${isClosed ? 'disabled' : ''} style="padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:0.82rem;background:${isClosed ? '#f1f5f9' : '#fff'};color:${isClosed ? '#94a3b8' : 'inherit'};cursor:${isClosed ? 'not-allowed' : 'pointer'};">
                                 ${TICKET_STATUSES.map(s => `<option value="${s}" ${(m.status||'Open')===s?'selected':''}>${s}</option>`).join('')}
                             </select>
                         </div>
-                        <textarea id="ticketNote-${m.docId}" placeholder="Add a comment for the customer (optional)..." rows="3" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.82rem;resize:vertical;outline:none;"></textarea>
+                        <textarea id="ticketNote-${m.docId}" placeholder="${isClosed ? 'Ticket is closed — comments disabled' : 'Add a comment for the customer (optional)...'}" rows="3" ${isClosed ? 'disabled' : ''} style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.82rem;resize:vertical;outline:none;${isClosed ? 'background:#f1f5f9;color:#94a3b8;cursor:not-allowed;' : ''}"></textarea>
                         <div style="margin-top:8px;">
-                            <label class="btn btn-sm" style="background:var(--bg-primary);border:1.5px solid var(--border);padding:6px 14px;font-size:0.78rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                            <label class="btn btn-sm" style="background:${isClosed ? '#f1f5f9' : 'var(--bg-primary)'};border:1.5px solid var(--border);padding:6px 14px;font-size:0.78rem;cursor:${isClosed ? 'not-allowed' : 'pointer'};display:inline-flex;align-items:center;gap:6px;color:${isClosed ? '#94a3b8' : 'inherit'};pointer-events:${isClosed ? 'none' : 'auto'};">
                                 <i class="fas fa-paperclip"></i> Attach file
-                                <input type="file" id="ticketFile-${m.docId}" style="display:none" onchange="_previewTicketFile('${m.docId}')">
+                                <input type="file" id="ticketFile-${m.docId}" ${isClosed ? 'disabled' : ''} style="display:none" onchange="_previewTicketFile('${m.docId}')">
                             </label>
                             <span id="ticketFileName-${m.docId}" style="font-size:0.76rem;color:var(--text-muted);margin-left:6px;"></span>
                         </div>
                         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-                            <button class="btn btn-sm" style="background:var(--primary-teal);color:#fff;padding:7px 18px;font-size:0.8rem;" onclick="updateTicketStatus('${m.docId}')"><i class="fas fa-save"></i> Save &amp; Notify Customer</button>
-                            <button class="btn btn-sm" style="background:var(--bg-primary);border:1.5px solid var(--border);padding:7px 18px;font-size:0.8rem;" onclick="replyToCustomer('${m.email||''}','${m.ticketId||''}')"><i class="fas fa-envelope"></i> Email Customer</button>
+                            <button class="btn btn-sm" ${isClosed ? 'disabled' : ''} style="background:${isClosed ? '#e2e8f0' : 'var(--primary-teal)'};color:${isClosed ? '#94a3b8' : '#fff'};padding:7px 18px;font-size:0.8rem;cursor:${isClosed ? 'not-allowed' : 'pointer'};" onclick="updateTicketStatus('${m.docId}')"><i class="fas fa-save"></i> Save &amp; Notify Customer</button>
+                            <button class="btn btn-sm" ${isClosed ? 'disabled' : ''} style="background:${isClosed ? '#f1f5f9' : 'var(--bg-primary)'};border:1.5px solid var(--border);padding:7px 18px;font-size:0.8rem;color:${isClosed ? '#94a3b8' : 'inherit'};cursor:${isClosed ? 'not-allowed' : 'pointer'};" onclick="replyToCustomer('${m.email||''}','${m.ticketId||''}')"><i class="fas fa-envelope"></i> Email Customer</button>
                         </div>
                     </div>
                 </div>
@@ -4077,6 +4078,7 @@ async function updateTicketStatus(docId) {
     const noteEl = document.getElementById('ticketNote-' + docId);
     const fileEl = document.getElementById('ticketFile-' + docId);
     if (!statusEl) return;
+    if (statusEl.disabled) { showAdminToast('This ticket is closed — editing disabled', 'error'); return; }
     const newStatus = statusEl.value;
     const noteText = noteEl?.value?.trim() || '';
     const file = fileEl?.files?.[0] || null;
