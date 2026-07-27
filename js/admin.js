@@ -238,7 +238,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         if (page === 'categories') { loadTaxonomy(); }
         if (page === 'inventory') loadInventory();
         if (page === 'customers') loadCustomers();
-        if (page === 'messages') { loadMessages(); _startAdminMsgsPolling(); } else { _stopAdminMsgsPolling(); }
+        if (page === 'messages') { loadMessages(); _startAdminMsgsRealtime(); } else { _stopAdminMsgsRealtime(); }
         if (page === 'dashboard') loadDashboard();
         if (page === 'settings') { if (typeof loadWebhookSettings === 'function') loadWebhookSettings(); }
         // Update subtitle
@@ -4166,8 +4166,9 @@ async function sendAdminChatReply(docId, customerEmail, customerName, sessionId)
             updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString()
         });
         if (replyEl) replyEl.value = '';
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reply & Email'; }
         showAdminToast(`Reply sent to ${customerName}`);
-        await loadMessages();
+        // Realtime subscription will update the card automatically
     } catch (err) {
         showAdminToast('Error sending reply: ' + err.message, 'error');
         if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reply & Email'; }
@@ -4186,7 +4187,7 @@ async function endLiveChat(docId, customerName) {
             updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString()
         });
         showAdminToast(`Chat with ${customerName} ended — bot re-activated for customer`);
-        await loadMessages();
+        // Realtime will update the card automatically
     } catch (err) {
         // Graceful fallback: agentEnded column may not yet exist — update status only
         try {
@@ -4195,7 +4196,7 @@ async function endLiveChat(docId, customerName) {
                 updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString()
             });
             showAdminToast(`Chat marked Ended. Run migration_tickets.sql in Supabase to enable full end-chat signal.`, 'warning');
-            await loadMessages();
+            // Realtime will update the card automatically
         } catch (err2) {
             showAdminToast('Error ending chat: ' + err2.message, 'error');
         }
@@ -4203,16 +4204,117 @@ async function endLiveChat(docId, customerName) {
 }
 window.endLiveChat = endLiveChat;
 
-// ── Real-time polling for admin Messages section ─────────────
-let _adminMsgsPollingTimer = null;
-function _startAdminMsgsPolling() {
-    _stopAdminMsgsPolling();
+// ── Supabase Realtime for admin Messages section ────────────
+// Instant push updates via WebSocket — no polling, no page refresh
+let _adminMsgsChannel = null;
+let _adminMsgsPollingTimer = null; // fallback only
+
+function _startAdminMsgsRealtime() {
+    _stopAdminMsgsRealtime();
+    const sb = window._supabase;
+    if (!sb?.channel) { _fallbackToPolling(); return; }
+
+    _adminMsgsChannel = sb.channel('admin-msgs-rt-' + Date.now())
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => _onMsgInsert(p.new))
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, p => _onMsgUpdate(p.new))
+        .subscribe(status => {
+            if (status === 'SUBSCRIBED') {
+                console.log('[Admin] Realtime messages: connected');
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.warn('[Admin] Realtime failed, falling back to polling');
+                _stopAdminMsgsRealtime();
+                _fallbackToPolling();
+            }
+        });
+}
+
+function _stopAdminMsgsRealtime() {
+    if (_adminMsgsChannel) {
+        try { window._supabase?.removeChannel(_adminMsgsChannel); } catch(e) {}
+        _adminMsgsChannel = null;
+    }
+    if (_adminMsgsPollingTimer) { clearInterval(_adminMsgsPollingTimer); _adminMsgsPollingTimer = null; }
+}
+
+function _fallbackToPolling() {
     _adminMsgsPollingTimer = setInterval(async () => {
-        try { await loadMessages(); } catch (e) { /* silent */ }
+        try { await loadMessages(); } catch(e) {}
     }, 6000);
 }
-function _stopAdminMsgsPolling() {
-    if (_adminMsgsPollingTimer) { clearInterval(_adminMsgsPollingTimer); _adminMsgsPollingTimer = null; }
+
+// Normalize a raw Supabase Realtime row into the shape card-builders expect
+function _rtNormMsg(row) {
+    const msg = { docId: row.id, ...row };
+    if (msg.createdAt && typeof msg.createdAt === 'string') {
+        const d = new Date(msg.createdAt);
+        msg.createdAt = { seconds: Math.floor(d.getTime() / 1000) };
+    }
+    if (typeof msg.chatMessages === 'string') {
+        try { msg.chatMessages = JSON.parse(msg.chatMessages); } catch(e) { msg.chatMessages = []; }
+    }
+    msg.chatMessages = msg.chatMessages || [];
+    return msg;
+}
+
+function _onMsgInsert(row) {
+    const msg = _rtNormMsg(row);
+    if (allMessages.find(m => m.docId === msg.docId)) { _onMsgUpdate(row); return; }
+    allMessages.unshift(msg);
+    _renderTicketHeroStats();
+
+    // Only inject card if we are on the matching view tab
+    const isChat = !msg.ticketId;
+    if ((_ticketView === 'chats') !== isChat) return;
+
+    const container = document.getElementById('messagesList');
+    if (!container) return;
+    const emptyEl = container.querySelector('.empty');
+    if (emptyEl) emptyEl.remove();
+
+    const html = msg.ticketId ? _buildTicketCardHTML(msg) : _buildChatRequestCardHTML(msg);
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html.trim();
+    const card = tmp.firstElementChild;
+    if (card) {
+        card.style.animation = 'msgSlideIn 0.4s ease';
+        container.insertBefore(card, container.firstChild);
+    }
+    showAdminToast(`💬 New ${msg.ticketId ? 'ticket' : 'chat'} from ${msg.name || 'visitor'}`, 'info');
+}
+
+function _onMsgUpdate(row) {
+    const msg = _rtNormMsg(row);
+    const docId = msg.docId;
+
+    const idx = allMessages.findIndex(m => m.docId === docId);
+    if (idx !== -1) allMessages[idx] = msg; else allMessages.unshift(msg);
+    _renderTicketHeroStats();
+
+    const card = document.getElementById('ticket-card-' + docId);
+    if (!card) return;
+
+    // Save open/draft state before rebuilding this card
+    const wasOpen = document.getElementById('msg-full-' + docId)?.classList.contains('open');
+    const savedDraft = document.getElementById('admin-chat-reply-' + docId)?.value || '';
+
+    // Rebuild only this card (not the entire list)
+    const html = msg.ticketId ? _buildTicketCardHTML(msg) : _buildChatRequestCardHTML(msg);
+    card.outerHTML = html;
+
+    // Restore state in the freshly rendered card
+    const newCard = document.getElementById('ticket-card-' + docId);
+    if (newCard && wasOpen) {
+        const newFull = document.getElementById('msg-full-' + docId);
+        if (newFull) {
+            newFull.classList.add('open');
+            // Auto-scroll the chat thread to the latest message
+            const thread = newFull.querySelector('[style*="overflow-y"]');
+            if (thread) setTimeout(() => { thread.scrollTop = thread.scrollHeight; }, 60);
+        }
+        const newReply = document.getElementById('admin-chat-reply-' + docId);
+        if (newReply && savedDraft) { newReply.value = savedDraft; newReply.focus(); }
+        newCard.style.animation = 'msgPulse 0.5s ease';
+    }
 }
 
 // ── Enter key to send chat reply ─────────────────────────────

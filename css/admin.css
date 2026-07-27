@@ -987,6 +987,10 @@ img{max-width:100%;display:block;}
 .msg-full{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:0.86rem;line-height:1.7;}
 .msg-full.open{display:block;}
 
+/* Realtime animations */
+@keyframes msgSlideIn{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0);}}
+@keyframes msgPulse{0%,100%{background:var(--surface);}50%{background:rgba(13,148,136,0.09);}}
+
 /* ── Ticket Tracking (hero, tabs, thread) ─────────────────── */
 .ticket-hero{
   background:linear-gradient(135deg,#0d9488 0%,#0f766e 45%,#134e4a 100%);
