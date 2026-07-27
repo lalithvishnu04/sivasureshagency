@@ -2875,6 +2875,7 @@ async function handleLogin() {
             updateAuthUI();
             showToast(`Welcome back, ${firstName || 'User'}!`);
             if (typeof syncPendingOrders === 'function') syncPendingOrders(currentUser.email, currentUser.name, currentUser.phone);
+            setTimeout(() => location.reload(), 1200);
             return;
         } catch (e) {
             console.warn('[login] Backend auth failed, trying local fallback:', e.message);
@@ -2891,6 +2892,7 @@ async function handleLogin() {
         localStorage.setItem('ssa_user', JSON.stringify(currentUser));
         closeAuthModal(); updateAuthUI();
         showToast(`Welcome back, ${user.firstName}!`);
+        setTimeout(() => location.reload(), 1200);
         // Sync customerId to Supabase so Admin UI can see it
         if (typeof saveCustomerToDb === 'function') {
             saveCustomerToDb({ firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone, customerId: cid }).catch(() => {});
@@ -2940,6 +2942,7 @@ async function handleRegister() {
     }
     closeAuthModal(); updateAuthUI();
     showToast(`Welcome, ${firstName}! Your Customer ID: ${customerId}`);
+    setTimeout(() => location.reload(), 1200);
 }
 
 function _generateCustomerId(email) {
