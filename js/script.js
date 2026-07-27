@@ -2852,10 +2852,18 @@ async function handleLogin() {
             const firstName = md.firstName || (md.name ? String(md.name).split(' ')[0] : 'User');
             const lastName = md.lastName || '';
             const phone = md.phone || '';
-            // Restore or generate customer ID
+            // Restore or generate customer ID — priority: localStorage → Supabase → deterministic hash
             const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
             const localRec = users.find(ur => ur.email === (u?.email || email));
-            const customerId = localRec?.customerId || _generateCustomerId(u?.email || email);
+            let customerId = localRec?.customerId;
+            if (!customerId && window.db) {
+                try {
+                    const docId = (u?.email || email).replace(/[^a-zA-Z0-9]/g, '_');
+                    const snap = await window.db.collection('customers').doc(docId).get();
+                    if (snap.exists && snap.data().customerId) customerId = snap.data().customerId;
+                } catch (_) {}
+            }
+            customerId = customerId || _generateCustomerId(u?.email || email);
 
             currentUser = { name: [firstName, lastName].filter(Boolean).join(' ') || 'User', email: u?.email || email, phone, customerId };
             localStorage.setItem('ssa_user', JSON.stringify(currentUser));
@@ -2933,11 +2941,18 @@ async function handleRegister() {
 }
 
 function _generateCustomerId(email) {
-    // Create a deterministic but opaque customer ID from email hash + timestamp
-    const ts = Date.now().toString(36).toUpperCase().slice(-4);
-    const hash = Array.from(email).reduce((acc, c) => ((acc << 5) - acc + c.charCodeAt(0)) | 0, 0);
-    const hashStr = Math.abs(hash).toString(36).toUpperCase().slice(0, 4).padStart(4, '0');
-    return 'SSA-' + hashStr + ts;
+    // Purely deterministic from email — same email ALWAYS produces the same ID.
+    // Two independent hash passes give 8 alphanumeric chars after SSA-.
+    const e = (email || '').toLowerCase().trim();
+    let h1 = 0, h2 = 0;
+    for (let i = 0; i < e.length; i++) {
+        const c = e.charCodeAt(i);
+        h1 = (Math.imul(h1, 31) + c) | 0;
+        h2 = (Math.imul(h2, 37) ^ c) | 0;
+    }
+    const p1 = Math.abs(h1).toString(36).toUpperCase().slice(0, 4).padStart(4, '0');
+    const p2 = Math.abs(h2).toString(36).toUpperCase().slice(0, 4).padStart(4, '0');
+    return 'SSA-' + p1 + p2;
 }
 window._generateCustomerId = _generateCustomerId;
 function closeAuthModal(cleanUrl = true) { 
@@ -3021,7 +3036,7 @@ async function openAccountPanel() {
                     <input type="file" id="avatarUpload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
                 </div>
                 <div class="acct-user-info">
-                    <h4>${currentUser.name}</h4>
+                    <h4>${currentUser.name}${currentUser.customerId ? `<span style="display:inline-flex;align-items:center;margin-left:8px;font-size:0.65rem;font-weight:800;letter-spacing:0.08em;background:linear-gradient(135deg,#0d9488,#14b8a6);color:#fff;padding:3px 9px;border-radius:20px;vertical-align:middle;">${currentUser.customerId}</span>` : ''}</h4>
                     <p>${currentUser.email}</p>
                     ${currentUser.phone ? `<span class="acct-phone"><i class="fas fa-phone-alt"></i> ${currentUser.phone}</span>` : ''}
                 </div>
@@ -3035,26 +3050,77 @@ async function openAccountPanel() {
         </div>
         <div class="acct-body">
             <div class="acct-section active" id="accountProfile">
-                <div class="profile-edit-form">
-                    ${currentUser.customerId ? `<div style="background:linear-gradient(135deg,#f0fdfa,#e0f9f5);border:1.5px solid var(--primary);border-radius:10px;padding:12px 16px;margin-bottom:16px;"><div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Your Customer ID</div><div style="font-size:1.1rem;font-weight:800;color:var(--primary);letter-spacing:2px;">${currentUser.customerId}</div><div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">Use this ID to login or reference in support tickets</div></div>` : ''}
-                    <div class="form-group"><span class="acct-field-label">Full Name</span><input type="text" id="editName" value="${currentUser.name}" placeholder="Your full name"></div>
-                    <div class="form-group"><span class="acct-field-label">Mobile Phone</span><input type="tel" id="editPhone" value="${currentUser.phone||''}" placeholder="Phone number"></div>
-                    <div class="form-group"><span class="acct-field-label">Email <small style="color:#94a3b8;font-size:0.7rem;">(cannot change)</small></span><input type="email" value="${currentUser.email}" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed;"></div>
-                    <button class="btn btn-gradient btn-full" onclick="saveProfileChanges()"><i class="fas fa-save"></i> Save Profile</button>
+                <!-- ── Membership Card ───────────────────── -->
+                <div style="background:linear-gradient(135deg,#0d9488 0%,#0f766e 55%,#134e4a 100%);border-radius:16px;padding:20px 20px 18px;margin-bottom:20px;color:#fff;position:relative;overflow:hidden;">
+                    <div style="position:absolute;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,0.06);top:-50px;right:-30px;pointer-events:none;"></div>
+                    <div style="position:absolute;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,0.06);bottom:-30px;left:30px;pointer-events:none;"></div>
+                    <div style="position:relative;z-index:1;">
+                        <div style="font-size:0.62rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;opacity:0.7;margin-bottom:4px;">Siva Suresh Agency</div>
+                        <div style="font-size:0.72rem;opacity:0.75;margin-bottom:12px;">Member Account</div>
+                        ${currentUser.customerId ? `<div style="font-size:1.3rem;font-weight:900;letter-spacing:0.12em;margin-bottom:10px;">${currentUser.customerId}</div>` : ''}
+                        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:6px;">
+                            <div>
+                                <div style="font-size:0.62rem;opacity:0.65;text-transform:uppercase;letter-spacing:0.08em;">Account Holder</div>
+                                <div style="font-size:0.88rem;font-weight:700;">${currentUser.name}</div>
+                            </div>
+                            <div style="font-size:0.62rem;opacity:0.55;">Use ID to reference in support tickets</div>
+                        </div>
+                    </div>
                 </div>
-                <hr class="acct-pwd-divider">
-                <div class="acct-pwd-section-title"><i class="fas fa-lock"></i> Change Password</div>
-                <div class="profile-edit-form">
-                    <div class="form-group"><label>Current Password</label><input type="password" id="pwdCurrent" placeholder="Current password"></div>
-                    <div class="form-group"><label>New Password</label><input type="password" id="pwdNew" placeholder="New password (min 6 chars)"></div>
-                    <div class="form-group"><label>Confirm New Password</label><input type="password" id="pwdConfirm" placeholder="Confirm new password"></div>
-                    <p id="pwdMsg" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
-                    <button class="btn btn-outline-dark btn-full" onclick="changePassword()"><i class="fas fa-key"></i> Update Password</button>
+
+                <!-- ── Personal Information ─────────────── -->
+                <div style="margin-bottom:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                        <div style="width:28px;height:28px;border-radius:8px;background:rgba(13,148,136,0.1);display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="color:var(--primary);font-size:0.78rem;"></i></div>
+                        <span style="font-size:0.8rem;font-weight:800;color:var(--navy);">Personal Information</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                        <div>
+                            <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Full Name</label>
+                            <input type="text" id="editName" value="${currentUser.name}" placeholder="Your full name" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#0d9488'" onblur="this.style.borderColor=''">
+                        </div>
+                        <div>
+                            <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Mobile</label>
+                            <input type="tel" id="editPhone" value="${currentUser.phone||''}" placeholder="Phone number" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#0d9488'" onblur="this.style.borderColor=''">
+                        </div>
+                    </div>
+                    <div style="margin-bottom:14px;">
+                        <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Email <span style="font-size:0.65rem;background:#f1f5f9;color:#94a3b8;padding:2px 7px;border-radius:5px;margin-left:4px;font-weight:600;text-transform:none;">cannot change</span></label>
+                        <input type="email" value="${currentUser.email}" readonly style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;background:#f8fafc;color:#64748b;cursor:not-allowed;box-sizing:border-box;">
+                    </div>
+                    <button class="btn btn-gradient btn-full" onclick="saveProfileChanges()" style="border-radius:10px;padding:11px;font-size:0.88rem;"><i class="fas fa-save" style="margin-right:7px;"></i>Save Changes</button>
                 </div>
-                <hr class="acct-pwd-divider">
-                <div class="acct-profile-quicklinks">
-                    <a href="wishlist.html" class="acct-quicklink-btn wishlist-link" onclick="closeAuthModal()"><i class="fas fa-heart"></i> My Wishlist</a>
-                    <button class="acct-quicklink-btn signout-link" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+
+                <!-- ── Security ─────────────────────────── -->
+                <div style="border-top:1.5px dashed var(--border);padding-top:18px;margin-bottom:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                        <div style="width:28px;height:28px;border-radius:8px;background:rgba(99,102,241,0.1);display:flex;align-items:center;justify-content:center;"><i class="fas fa-lock" style="color:#6366f1;font-size:0.78rem;"></i></div>
+                        <span style="font-size:0.8rem;font-weight:800;color:var(--navy);">Change Password</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
+                        <div>
+                            <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Current Password</label>
+                            <input type="password" id="pwdCurrent" placeholder="Current password" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor=''">
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div>
+                                <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">New Password</label>
+                                <input type="password" id="pwdNew" placeholder="Min 6 chars" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor=''">
+                            </div>
+                            <div>
+                                <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Confirm</label>
+                                <input type="password" id="pwdConfirm" placeholder="Confirm new" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor=''">
+                            </div>
+                        </div>
+                    </div>
+                    <p id="pwdMsg" style="display:none;font-size:0.82rem;margin-bottom:10px;padding:8px 12px;border-radius:8px;background:#f0fdf4;color:#166534;"></p>
+                    <button class="btn btn-outline-dark btn-full" onclick="changePassword()" style="border-radius:10px;padding:11px;font-size:0.88rem;"><i class="fas fa-key" style="margin-right:7px;"></i>Update Password</button>
+                </div>
+
+                <!-- ── Quick Actions ─────────────────────── -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <a href="wishlist.html" class="acct-quicklink-btn wishlist-link" onclick="closeAuthModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;font-size:0.82rem;font-weight:700;text-decoration:none;"><i class="fas fa-heart"></i> My Wishlist</a>
+                    <button class="acct-quicklink-btn signout-link" onclick="handleLogout()" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;font-size:0.82rem;font-weight:700;"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
                 </div>
             </div>
             <div class="acct-section" id="accountAddresses" style="display:none;">
