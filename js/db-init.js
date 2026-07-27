@@ -368,5 +368,8 @@ console.log('[backend-init] Starting Supabase initialization...');
     window._supaClient = client;   // raw Supabase client for direct queries
     window._supabase = client;     // alias used by some modules
 
+    // Signal any waiting listeners (e.g. tickets page init)
+    window.dispatchEvent(new CustomEvent('ssa:dbReady'));
+
     console.log('[backend-init] Supabase ready');
 })();

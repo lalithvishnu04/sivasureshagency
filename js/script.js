@@ -1338,6 +1338,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Render signature quick links on all pages
     if (typeof renderSignatureQuickLinks === 'function') renderSignatureQuickLinks();
     if (page === 'contact') initContactPage();
+    if (page === 'tickets') initTicketsPage();
     if (page === 'order-detail') initOrderDetailPage();
     // Password recovery handler — fires when user clicks the reset link in their email
     window.addEventListener('ssa:passwordRecovery', showPasswordRecoveryModal);
@@ -1861,8 +1862,10 @@ function initCategoriesPage() {
 
 // ===== Contact Page =====
 function initContactPage() {
+    // contact.html has its own inline submitContactForm handler — skip adding a duplicate listener
+    // that would interfere with the success-message display.
     const form = document.getElementById('contactForm');
-    if (form) {
+    if (form && !window.submitContactForm) {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             const btn = form.querySelector('button[type="submit"]');
@@ -2738,7 +2741,7 @@ async function handleForgotSendOtp() {
 
     // Fallback: send OTP via Power Automate webhook (if configured)
     if (!sent && window.SSA_COMM) {
-        const cfg = window.SSA_COMM.getConfig ? window.SSA_COMM.getConfig() : {};
+        const cfg = window.SSA_COMM.getConfig ? await window.SSA_COMM.getConfig() : {};
         if (cfg.ticketStatusWebhook) {
             await fetch(cfg.ticketStatusWebhook, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
                 type: 'otp_email', toEmail: email, otp,
@@ -5103,28 +5106,31 @@ async function _activateLiveAgent(user) {
         if (text) chatHistory.push(type + ': ' + text);
     });
 
-    // Save ticket to Firestore → appears in Admin → Messages
+    // Log the chat/live-agent request for Admin review — WITHOUT creating a
+    // formal ticket. Per policy, tickets should not be auto-created for every
+    // chatbot interaction; the Admin decides whether an issue needs a tracked
+    // ticket (Chat Requests tab → "Create Ticket" in Admin → Messages).
     if (window.db) {
         try {
-            const ticketId = (window.SSA_COMM && window.SSA_COMM.generateTicketId)
-                ? window.SSA_COMM.generateTicketId()
-                : ('TKT-' + Date.now().toString(36).toUpperCase());
             await window.db.collection('messages').add({
-                ticketId,
+                ticketId: null,
                 type: 'Live Agent Request',
                 name: user.name || 'Customer',
                 email: user.email || '',
                 customerId: user.customerId || '',
-                subject: '🔴 Live Agent Request',
+                phone: user.phone || '',
+                subject: '🔴 Live Agent Request (chat)',
                 message: 'Customer requested a live agent via chatbot.\n\nChat history:\n' + chatHistory.slice(-10).join('\n'),
                 sessionId: _chatSessionId,
-                status: 'Open',
+                status: 'Unassigned',
+                source: 'chatbot',
                 read: false,
                 attachmentUrls: [],
+                comments: [],
                 createdAt: new Date().toISOString()
             });
         } catch (e) {
-            console.warn('[chatbot] Failed to save live agent ticket:', e.message);
+            console.warn('[chatbot] Failed to log live agent request:', e.message);
         }
     }
 
@@ -5760,3 +5766,133 @@ window.toggleWishlist = toggleWishlist;
 window.isWishlisted = isWishlisted;
 window.downloadInvoice = downloadInvoice;
 window.reorderFromHistory = reorderFromHistory;
+
+// ===== Tickets Page =====
+const _TKT_STATUS_COLOR = {
+    'Open':        { bg: '#e0f2fe', text: '#0369a1' },
+    'In Progress': { bg: '#fef3c7', text: '#92400e' },
+    'Resolved':    { bg: '#d1fae5', text: '#065f46' },
+    'Closed':      { bg: '#f1f5f9', text: '#475569' }
+};
+
+function _tktStatusBadge(status) {
+    const c = _TKT_STATUS_COLOR[status] || { bg: '#e0f2fe', text: '#0369a1' };
+    return `<span class="tkt-card-status" style="background:${c.bg};color:${c.text}">${status || 'Open'}</span>`;
+}
+
+function _renderTicketCard(tkt) {
+    const statusColor = (_TKT_STATUS_COLOR[tkt.status] || { text: '#0369a1' }).text;
+    const comments = Array.isArray(tkt.comments) ? tkt.comments : [];
+    const attachments = Array.isArray(tkt.attachmentUrls) ? tkt.attachmentUrls.filter(Boolean) : [];
+    const date = tkt.createdAt
+        ? (tkt.createdAt.toDate ? tkt.createdAt.toDate() : new Date(tkt.createdAt)).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+        : '';
+    const attachHtml = attachments.length
+        ? `<div class="tkt-attach-row">${attachments.map(u => `<a href="${u}" target="_blank" class="tkt-attach-chip"><i class="fas fa-paperclip"></i> Attachment</a>`).join('')}</div>` : '';
+    const threadHtml = comments.length
+        ? `<div class="tkt-thread">${comments.map(c => {
+            const cDate = c.createdAt ? new Date(c.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+            const attachChip = c.attachmentUrl ? `<a href="${c.attachmentUrl}" target="_blank" class="tkt-attach-chip" style="margin-top:6px"><i class="fas fa-paperclip"></i> ${c.attachmentName || 'Attachment'}</a>` : '';
+            return `<div class="tkt-thread-item ${c.role === 'admin' ? 'is-admin' : 'is-system'}">
+                <div class="tkt-thread-meta"><strong>${c.author || (c.role === 'admin' ? 'Support Team' : 'System')}</strong><span>${cDate}</span></div>
+                <div class="tkt-thread-text">${(c.text||'').replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+                ${attachChip}
+            </div>`;
+        }).join('')}</div>` : '';
+    const cardId = 'tkt-card-' + (tkt.docId || tkt.ticketId || Math.random().toString(36).slice(2));
+    return `<div class="tkt-card" id="${cardId}">
+        <div class="tkt-card-head" onclick="_tktToggle('${cardId}')">
+            <span class="tkt-card-id" style="background:${(_TKT_STATUS_COLOR[tkt.status]||{bg:'#e0f2fe'}).bg};color:${statusColor}">${tkt.ticketId || '—'}</span>
+            ${_tktStatusBadge(tkt.status)}
+            <i class="fas fa-chevron-down tkt-chevron"></i>
+        </div>
+        <div class="tkt-card-subject">${(tkt.subject || 'Support Request').replace(/</g,'&lt;')}</div>
+        <div class="tkt-card-meta">
+            <span><i class="fas fa-calendar-alt"></i> ${date}</span>
+            <span><i class="fas fa-tag"></i> ${tkt.source === 'admin-created' ? 'Admin Created' : tkt.source === 'chatbot' ? 'Chat Request' : 'Contact Form'}</span>
+            ${tkt.priority ? `<span><i class="fas fa-flag"></i> ${tkt.priority}</span>` : ''}
+        </div>
+        <div class="tkt-card-body" id="${cardId}-body">
+            <div class="tkt-card-message">${(tkt.message || '').replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+            ${attachHtml}
+            ${threadHtml}
+        </div>
+    </div>`;
+}
+
+window._tktToggle = function(cardId) {
+    const head = document.querySelector('#' + cardId + ' .tkt-card-head');
+    const body = document.getElementById(cardId + '-body');
+    if (!body) return;
+    const open = body.classList.toggle('open');
+    if (head) head.classList.toggle('expanded', open);
+};
+
+async function loadMyTickets() {
+    const listEl = document.getElementById('tktMyTicketsList');
+    if (!listEl) return;
+    const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
+    if (!user || !user.email) {
+        listEl.innerHTML = `<div class="tkt-signin-prompt"><i class="fas fa-lock"></i><p>Sign in to view your tickets</p><button class="btn btn-gradient" onclick="openLoginModal && openLoginModal()">Sign In</button></div>`;
+        return;
+    }
+    listEl.innerHTML = '<div class="tkt-loading"><div class="loader-ring" style="width:34px;height:34px"></div><p>Loading your tickets&hellip;</p></div>';
+    try {
+        if (!window.db) {
+            await new Promise(res => { const t = setTimeout(res, 3000); window.addEventListener('ssa:dbReady', () => { clearTimeout(t); res(); }, { once: true }); });
+        }
+        if (!window.db) throw new Error('Database not ready');
+        const snap = await window.db.collection('messages')
+            .where('email', '==', user.email)
+            .orderBy('createdAt', 'desc').get();
+        // Filter only real tickets (have ticketId) — exclude raw live-agent chat logs
+        const tickets = snap.docs
+            .map(d => ({ docId: d.id, ...d.data() }))
+            .filter(t => !!t.ticketId);
+        if (!tickets.length) {
+            listEl.innerHTML = `<div class="tkt-empty"><i class="fas fa-ticket-alt"></i><p>No tickets yet. Use the contact form to raise a query.</p><a href="contact.html" class="btn btn-gradient btn-sm">Send Us a Message</a></div>`;
+            return;
+        }
+        listEl.innerHTML = `<div class="tkt-list">${tickets.map(_renderTicketCard).join('')}</div>`;
+    } catch (err) {
+        listEl.innerHTML = `<div class="tkt-empty"><i class="fas fa-exclamation-circle" style="color:#ef4444"></i><p style="color:#ef4444">Error loading tickets: ${err.message}</p><button class="btn btn-outline-dark btn-sm" onclick="loadMyTickets()">Retry</button></div>`;
+    }
+}
+window.loadMyTickets = loadMyTickets;
+
+async function trackTicketSearch() {
+    const input = document.getElementById('tktSearchInput');
+    const resultEl = document.getElementById('tktGuestResult');
+    if (!input || !resultEl) return;
+    const tid = input.value.trim().toUpperCase();
+    if (!tid) { resultEl.innerHTML = ''; return; }
+    resultEl.innerHTML = '<div class="tkt-loading"><div class="loader-ring" style="width:28px;height:28px"></div><p>Searching&hellip;</p></div>';
+    try {
+        if (!window.db) {
+            await new Promise(res => { const t = setTimeout(res, 3000); window.addEventListener('ssa:dbReady', () => { clearTimeout(t); res(); }, { once: true }); });
+        }
+        if (!window.db) throw new Error('Database not ready');
+        const snap = await window.db.collection('messages').where('ticketId', '==', tid).get();
+        if (snap.empty) {
+            resultEl.innerHTML = `<div class="tkt-empty"><i class="fas fa-search"></i><p>No ticket found with ID <strong>${tid}</strong>.</p></div>`;
+            return;
+        }
+        const tkt = { docId: snap.docs[0].id, ...snap.docs[0].data() };
+        resultEl.innerHTML = `<div class="tkt-section-head" style="margin-top:24px"><h2><i class="fas fa-search"></i> Search Result</h2></div><div class="tkt-list">${_renderTicketCard(tkt)}</div>`;
+    } catch (err) {
+        resultEl.innerHTML = `<div class="tkt-empty"><i class="fas fa-exclamation-circle" style="color:#ef4444"></i><p>Error: ${err.message}</p></div>`;
+    }
+}
+window.trackTicketSearch = trackTicketSearch;
+
+function initTicketsPage() {
+    // Auto-load tickets when db becomes ready (slight delay for Supabase init)
+    if (window.db) {
+        loadMyTickets();
+    } else {
+        // Dispatch ssa:dbReady from db-init when Supabase is ready;
+        // fall back to a timer so the page never stays blank.
+        window.addEventListener('ssa:dbReady', loadMyTickets, { once: true });
+        setTimeout(() => { if (!window._dbReady) loadMyTickets(); }, 2500);
+    }
+}

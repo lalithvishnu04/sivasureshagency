@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track My Tickets | Siva Suresh Agency</title>
+    <meta name="description" content="Track the status of your support tickets with Siva Suresh Agency.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css?v=89">
+    <link rel="stylesheet" href="css/animations.css?v=6">
+    <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
+<script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
+<body data-page="tickets">
+    <!-- Preloader -->
+    <div id="preloader"><div class="loader"><div class="loader-ring"></div><span class="loader-text">SSA</span></div></div>
+
+    <!-- Header -->
+    <header id="header">
+        <div class="top-bar">
+            <div class="container">
+                <div class="top-bar-content">
+                    <div class="top-info">
+                        <span><i class="fas fa-phone-alt"></i> Siva: +91 93666 40060 | Suresh: +91 93666 40050</span>
+                        <span><i class="fas fa-envelope"></i> info@sivasureshagency.onmicrosoft.com</span>
+                    </div>
+                    <div class="top-social">
+                        <button class="track-order-btn" onclick="openTrackOrder()" aria-label="Track Order" title="Track any order"><i class="fas fa-location-arrow"></i> Track Order</button>
+                        <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <nav class="navbar">
+            <div class="container">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon"><img src="images/Images/SSA Logo.png" alt="SSA Logo" width="44" height="48"></div>
+                    <div class="logo-text-wrap">
+                        <span class="logo-text">Siva Suresh</span>
+                        <span class="logo-sub">Agency</span>
+                    </div>
+                </a>
+                <ul class="nav-links" id="navLinks">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="categories.html">Categories</a></li>
+                    <li><a href="services.html">Services</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+                <div class="nav-actions">
+                    <a href="index.html" class="nav-icon-btn nav-icon-mobile" aria-label="Home"><i class="fas fa-home"></i></a>
+                    <a href="categories.html" class="nav-icon-btn nav-icon-mobile" aria-label="Shop"><i class="fas fa-th-large"></i></a>
+                    <button class="nav-icon-btn" id="searchToggle" aria-label="Search"><i class="fas fa-search"></i></button>
+                    <a href="wishlist.html" class="nav-icon-btn wishlist-nav-btn" aria-label="Wishlist">
+                        <i class="fas fa-heart"></i>
+                        <span class="cart-count" id="wishlistCount" style="display:none;">0</span>
+                    </a>
+                    <button class="nav-icon-btn" id="authBtn" aria-label="Account"><i class="fas fa-user"></i></button>
+                    <button class="nav-icon-btn cart-toggle" aria-label="Cart" id="cartToggle">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-count" id="cartCount">0</span>
+                    </button>
+                    <a href="categories.html" class="btn btn-gradient nav-cta">Shop Now</a>
+                </div>
+                <button class="hamburger" id="hamburger" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Tickets Page -->
+    <main class="tkt-page" id="ticketsPage">
+        <section class="tkt-hero">
+            <div class="tkt-hero-blob tkt-blob-1"></div>
+            <div class="tkt-hero-blob tkt-blob-2"></div>
+            <div class="container tkt-hero-inner">
+                <span class="tkt-hero-badge"><i class="fas fa-headset"></i> Support Center</span>
+                <h1>Track Your Tickets</h1>
+                <p>Follow every update, comment and attachment from our support team in real time.</p>
+                <div class="tkt-search-wrap">
+                    <div class="tkt-search-box">
+                        <i class="fas fa-hashtag"></i>
+                        <input type="text" id="tktSearchInput" placeholder="Enter a Ticket ID e.g. TKT-ABC123" autocomplete="off" onkeydown="if(event.key==='Enter')trackTicketSearch()">
+                        <button onclick="trackTicketSearch()"><i class="fas fa-search"></i> Track</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="container">
+            <div id="tktGuestResult"></div>
+
+            <div id="tktMyTicketsWrap">
+                <div class="tkt-section-head">
+                    <h2><i class="fas fa-ticket-alt"></i> My Tickets</h2>
+                    <button class="btn btn-outline-dark btn-sm" onclick="loadMyTickets()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                </div>
+                <div id="tktMyTicketsList">
+                    <div class="tkt-loading"><div class="loader-ring" style="width:34px;height:34px;"></div><p>Loading your tickets&hellip;</p></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-about">
+                    <a href="index.html" class="logo">
+                        <div class="logo-icon"><img src="images/Images/SSA Logo.png" alt="SSA Logo" width="44" height="48"></div>
+                        <div class="logo-text-wrap"><span class="logo-text">Siva Suresh</span><span class="logo-sub">Agency</span></div>
+                    </a>
+                    <p>Leading manufacturers and suppliers of premium hospital linen, medical uniforms, and hotel textiles since 2010.</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+                <div class="footer-links"><h4>Quick Links</h4><ul><li><a href="about.html">About Us</a></li><li><a href="categories.html">Shop Online</a></li><li><a href="services.html">Services</a></li><li><a href="contact.html">Contact</a></li></ul></div>
+                <div class="footer-links"><h4>Support</h4><ul><li><a href="contact.html#contact-form">Send Us a Message</a></li><li><a href="tickets.html">Track My Tickets</a></li><li><a href="wishlist.html">My Wishlist</a></li></ul></div>
+                <div class="footer-contact">
+                    <h4>Get In Touch</h4>
+                    <p><i class="fas fa-map-marker-alt"></i> PVT Towers, 37/10, Selvam Nagar, Erode - 638 011</p>
+                    <p><i class="fas fa-envelope"></i> <a href="mailto:info@sivasureshagency.onmicrosoft.com">info@sivasureshagency.onmicrosoft.com</a></p>
+                    <p><i class="fas fa-phone-alt"></i> <a href="tel:+919366640050">+91 93666 40050</a></p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Siva Suresh Agency. All rights reserved.</p>
+                <div class="footer-bottom-links"><a href="#" onclick="openPolicyModal('privacy');return false;">Privacy Policy</a><a href="#" onclick="openPolicyModal('terms');return false;">Terms of Service</a><a href="#" onclick="openPolicyModal('shipping');return false;">Shipping Policy</a></div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Auth Modal -->
+    <div class="modal-overlay" id="authModal"></div>
+    <!-- Product Detail Modal -->
+    <div class="modal-overlay" id="productDetailModal"></div>
+    <!-- Cart Sidebar -->
+    <div class="cart-overlay" id="cartOverlay"></div>
+    <div class="cart-drawer" id="cartDrawer">
+        <div class="cart-header"><h3><i class="fas fa-shopping-cart"></i> Cart</h3><button class="cart-close" id="cartClose"><i class="fas fa-times"></i></button></div>
+        <div class="cart-items" id="cartItems"></div>
+        <div class="cart-footer" id="cartFooter"><div class="cart-total"><span>Total</span><span id="cartTotal">&#8377;0</span></div><button class="btn btn-gradient btn-full" id="checkoutBtn">Checkout <i class="fas fa-arrow-right"></i></button></div>
+    </div>
+    <!-- Track Order Modal -->
+    <div class="track-modal-overlay" id="trackOrderModal">
+        <div class="track-modal">
+            <div class="track-modal-head">
+                <button class="track-modal-close" onclick="closeTrackOrder()"><i class="fas fa-times"></i></button>
+                <h3><i class="fas fa-location-arrow" style="color:#5eead4"></i> Track Your Order</h3>
+                <p>Enter your Order ID to see live status updates</p>
+            </div>
+            <div class="track-modal-body">
+                <div class="track-input-wrap">
+                    <i class="fas fa-hashtag track-input-icon"></i>
+                    <input type="text" class="track-input" id="trackOrderInput" placeholder="e.g. SSA-1234ABCD" autocomplete="off" onkeydown="if(event.key==='Enter')trackOrderSearch()">
+                </div>
+                <button class="btn btn-gradient btn-full" onclick="trackOrderSearch()"><i class="fas fa-search"></i> Search Order</button>
+                <div class="track-result" id="trackResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Chatbot -->
+    <div class="chatbot-container" id="chatbotContainer">
+        <div class="chatbot-window" id="chatbotWindow">
+            <div class="chatbot-header">
+                <div class="chatbot-header-info">
+                    <div class="chatbot-avatar"><i class="fas fa-robot"></i></div>
+                    <div><h4>SSA Assistant</h4><span class="chatbot-status"><i class="fas fa-circle"></i> Online</span></div>
+                </div>
+                <button class="chatbot-minimize" id="chatbotMinimize" title="Minimize"><i class="fas fa-minus"></i></button>
+            </div>
+            <div class="chatbot-messages" id="chatbotMessages"></div>
+            <div class="chatbot-file-preview" id="chatbotFilePreview" style="display:none;padding:6px 12px;background:#f0fdfa;border-top:1px solid #e2e8f0;font-size:0.78rem;"></div>
+            <div class="chatbot-input">
+                <label for="chatFileInput" class="chat-attach-btn" title="Attach file"><i class="fas fa-paperclip"></i></label>
+                <input type="file" id="chatFileInput" accept="image/*,.pdf" style="display:none" onchange="handleChatFile(this)">
+                <input type="text" id="chatInput" placeholder="Type your message...">
+                <button id="chatSend" title="Send"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+        <button class="chatbot-toggle" id="chatbotToggle" aria-label="Open chat"><i class="fas fa-comments"></i><span class="chatbot-badge">1</span></button>
+    </div>
+
+    <button id="backToTop" class="back-to-top" aria-label="Back to top"><i class="fas fa-chevron-up"></i></button>
+    <div id="ariaToast" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
+    <script src="js/product-helpers.js" defer></script>
+    <script src="js/ssa-comm.js?v=2" defer></script>
+    <script src="js/script.js?v=110" defer></script>
+    <script src="js/animations.js?v=5" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="js/api.js?v=80" defer></script>
+    <script src="js/backend-config.js?v=67" defer></script>
+    <script src="js/db-init.js?v=80" defer></script>
+    <script defer src="js/db-integration.js?v=83"></script>
+    <script src="js/script.js?v=109" defer></script>
+    <script src="js/animations.js?v=5" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="js/api.js?v=80" defer></script>
+    <script src="js/backend-config.js?v=67" defer></script>
+    <script src="js/db-init.js?v=80" defer></script>
+    <script defer src="js/db-integration.js?v=83"></script>
+</body>
+</html>
