@@ -6048,6 +6048,11 @@ async function loadMyTickets() {
 window.loadMyTickets = loadMyTickets;
 
 async function trackTicketSearch() {
+    if (!currentUser) {
+        showToast('Please sign in to track your tickets', 'info');
+        setTimeout(() => openLoginModal(), 300);
+        return;
+    }
     const input = document.getElementById('tktSearchInput');
     const resultEl = document.getElementById('tktGuestResult');
     if (!input || !resultEl) return;
@@ -6076,6 +6081,21 @@ async function trackTicketSearch() {
 window.trackTicketSearch = trackTicketSearch;
 
 function initTicketsPage() {
+    // Gate: require login to track tickets
+    if (!currentUser) {
+        const searchWrap = document.getElementById('tktSearchWrap');
+        if (searchWrap) {
+            searchWrap.innerHTML = `
+                <div style="text-align:center;padding:28px 20px;background:rgba(255,255,255,0.15);border-radius:16px;backdrop-filter:blur(8px);max-width:480px;margin:0 auto;">
+                    <i class="fas fa-lock" style="font-size:2.2rem;color:rgba(255,255,255,0.9);margin-bottom:12px;display:block;"></i>
+                    <p style="color:#fff;font-size:1rem;font-weight:700;margin-bottom:6px;">Sign in to track your tickets</p>
+                    <p style="color:rgba(255,255,255,0.78);font-size:0.84rem;margin-bottom:18px;">Your ticket history is tied to your account.</p>
+                    <button onclick="openLoginModal()" style="background:#fff;color:#0d9488;border:none;padding:10px 28px;border-radius:50px;font-weight:800;font-size:0.9rem;cursor:pointer;"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+                </div>`;
+        }
+        return;
+    }
+
     // Auto-search from ?id=TKT-XXXX URL param (e.g. link from email)
     const urlId = new URLSearchParams(window.location.search).get('id');
     if (urlId) {
