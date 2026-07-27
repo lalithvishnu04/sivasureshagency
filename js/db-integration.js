@@ -82,7 +82,9 @@ async function saveCustomerToDb(customerData) {
         if (window.ssaApi && window.ssaApi.enabled) { await window.ssaApi.postCustomer(customerData); return; }
         if (!window.db) return;
         const docId = customerData.email.replace(/[^a-zA-Z0-9]/g, '_');
-        await db.collection('customers').doc(docId).set({ name: ((customerData.firstName || '') + ' ' + (customerData.lastName || '')).trim(), email: customerData.email, phone: customerData.phone || '', orderCount: 0, totalSpent: 0, createdAt: fsServerTimestamp() }, { merge: true });
+        const custRecord = { name: ((customerData.firstName || '') + ' ' + (customerData.lastName || '')).trim(), email: customerData.email, phone: customerData.phone || '', orderCount: 0, totalSpent: 0, createdAt: fsServerTimestamp() };
+        if (customerData.customerId) custRecord.customerId = customerData.customerId;
+        await db.collection('customers').doc(docId).set(custRecord, { merge: true });
     } catch (err) { console.error('[customer] Save error:', err.message); }
 }
 

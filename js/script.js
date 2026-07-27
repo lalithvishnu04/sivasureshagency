@@ -2881,6 +2881,10 @@ async function handleLogin() {
         localStorage.setItem('ssa_user', JSON.stringify(currentUser));
         closeAuthModal(); updateAuthUI();
         showToast(`Welcome back, ${user.firstName}!`);
+        // Sync customerId to Supabase so Admin UI can see it
+        if (typeof saveCustomerToDb === 'function') {
+            saveCustomerToDb({ firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone, customerId: cid }).catch(() => {});
+        }
         if (typeof syncPendingOrders === 'function') syncPendingOrders(currentUser.email, currentUser.name, currentUser.phone);
     } else { document.getElementById('loginPasswordError').textContent = 'Invalid credentials'; document.getElementById('loginPasswordError').style.display = 'block'; }
 }

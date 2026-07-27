@@ -1967,7 +1967,7 @@ async function loadCustomers() {
         renderCustomers();
     } catch (err) {
         console.error('Customers error:', err);
-        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty" style="color:red">Error: ' + err.message + '</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty" style="color:red">Error: ' + err.message + '</td></tr>';
     }
 }
 
@@ -1996,6 +1996,7 @@ function renderCustomers() {
         return `
         <tr>
             <td><strong>${c.name || 'N/A'}</strong></td>
+            <td>${c.customerId ? `<span style="font-size:0.75rem;font-weight:800;color:var(--primary-teal);background:rgba(13,148,136,0.08);border-radius:6px;padding:2px 8px;letter-spacing:0.5px;">${c.customerId}</span>` : '<span style="color:var(--text-faint);font-size:0.75rem;">—</span>'}</td>
             <td>${c.email || ''}</td>
             <td>${c.phone || ''}</td>
             <td>${orders}</td>
