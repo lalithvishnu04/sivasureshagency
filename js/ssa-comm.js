@@ -174,7 +174,7 @@ Reply to this ticket from your Admin panel: https://lalithvishnu04.github.io/siv
         const isNew = data.isNew === true;
         return postWebhook(cfg.ticketStatusWebhook, {
             type: isNew ? 'ticket_created' : 'ticket_status',
-            toEmail: data.customerEmail,
+            customerEmail: data.customerEmail,
             adminEmail: cfg.adminEmail,
             ticketId: data.ticketId,
             customerName: data.customerName,
