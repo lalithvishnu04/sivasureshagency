@@ -3766,16 +3766,62 @@ const TICKET_STATUS_COLORS = { 'Open': '#6366f1', 'In Progress': '#f59e0b', 'Res
 async function loadMessages() {
     const container = document.getElementById('messagesList');
     if (!container) return;
-    container.innerHTML = '<p class="empty">Loading tickets...</p>';
+
+    // Only show skeleton on very first load (empty container)
+    const isFirstLoad = !container.querySelector('.msg-card, .ticket-card, .empty');
+    if (isFirstLoad) container.innerHTML = '<p class="empty"><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
+
     try {
         const snap = await db.collection('messages').get();
-        allMessages = snap.docs.map(d => ({ docId: d.id, ...d.data() }))
+        const newMessages = snap.docs.map(d => ({ docId: d.id, ...d.data() }))
             .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+        // Build a lightweight fingerprint — re-render only when something actually changed
+        const fingerprint = m => m.docId + '|' + (m.status || '') + '|' + (m.chatMessages || []).length + '|' + (m.createdAt?.seconds || 0) + '|' + (m.read ? 1 : 0);
+        const newFP = newMessages.map(fingerprint).join(',');
+        const oldFP = allMessages.map(fingerprint).join(',');
+
+        if (!isFirstLoad && newFP === oldFP) return; // nothing changed — leave DOM untouched
+
+        // Save textarea drafts + which cards are expanded before wiping DOM
+        const uiState = _saveMessagesUIState();
+
+        allMessages = newMessages;
         renderMessages();
         _renderTicketHeroStats();
+
+        // Restore expanded cards and typed reply drafts after re-render
+        _restoreMessagesUIState(uiState);
+
     } catch (err) {
-        container.innerHTML = '<p class="empty" style="color:red">Error loading tickets: ' + err.message + '</p>';
+        if (isFirstLoad) container.innerHTML = '<p class="empty" style="color:red">Error loading tickets: ' + err.message + '</p>';
     }
+}
+
+function _saveMessagesUIState() {
+    const state = { open: {}, replies: {} };
+    document.querySelectorAll('[id^="msg-full-"]').forEach(el => {
+        if (el.classList.contains('open')) {
+            state.open[el.id.replace('msg-full-', '')] = true;
+        }
+    });
+    document.querySelectorAll('[id^="admin-chat-reply-"]').forEach(el => {
+        if (el.value.trim()) {
+            state.replies[el.id.replace('admin-chat-reply-', '')] = el.value;
+        }
+    });
+    return state;
+}
+
+function _restoreMessagesUIState(state) {
+    Object.keys(state.open).forEach(docId => {
+        const el = document.getElementById('msg-full-' + docId);
+        if (el) el.classList.add('open');
+    });
+    Object.keys(state.replies).forEach(docId => {
+        const el = document.getElementById('admin-chat-reply-' + docId);
+        if (el) { el.value = state.replies[docId]; el.focus && el === document.activeElement && el.focus(); }
+    });
 }
 
 function _renderTicketHeroStats() {
