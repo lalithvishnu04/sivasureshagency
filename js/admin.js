@@ -3996,7 +3996,6 @@ async function submitCreateTicket(event) {
         await db.collection('messages').add({
             ticketId, name, email, phone, customerId, subject, message, priority,
             status: 'Open', source: 'admin-created', read: true,
-            attachmentUrls: [], comments: [],
             createdAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date(),
             updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date()
         });
@@ -4060,7 +4059,7 @@ async function updateTicketStatus(docId) {
         }
 
         await db.collection('messages').doc(docId).update({
-            status: newStatus, adminNote: noteText, comments, read: true,
+            status: newStatus, adminNote: noteText, read: true,
             updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date()
         });
 

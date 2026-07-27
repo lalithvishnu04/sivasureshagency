@@ -15,6 +15,9 @@ alter table public.messages add column if not exists "updatedAt" timestamptz def
 alter table public.messages add column if not exists "chatMessages" jsonb;
 alter table public.messages add column if not exists "sessionId" text;
 alter table public.messages add column if not exists "adminNote" text;
+alter table public.messages add column if not exists "priority" text;
+alter table public.messages add column if not exists "comments" jsonb;
+alter table public.messages add column if not exists "convertedToTicket" text;
 
 -- Index for faster ticket lookups
 create index if not exists idx_messages_ticket_id on public.messages("ticketId");

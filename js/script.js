@@ -3057,59 +3057,48 @@ async function openAccountPanel() {
         <div class="acct-body">
             <div class="acct-section active" id="accountProfile">
 
+                <!-- ── Quick Actions ─ always visible first ── -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+                    <a href="wishlist.html" onclick="closeAuthModal()" style="display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;border-radius:9px;font-size:0.8rem;font-weight:700;text-decoration:none;background:#fdf2f8;color:#be185d;border:1.5px solid #fbcfe8;"><i class="fas fa-heart"></i> My Wishlist</a>
+                    <button onclick="handleLogout()" style="display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;border-radius:9px;font-size:0.8rem;font-weight:700;background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;cursor:pointer;font-family:inherit;"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+                </div>
+
                 <!-- ── Personal Information ─────────────── -->
-                <div style="margin-bottom:16px;">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                        <div style="width:28px;height:28px;border-radius:8px;background:rgba(13,148,136,0.1);display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="color:var(--primary);font-size:0.78rem;"></i></div>
-                        <span style="font-size:0.8rem;font-weight:800;color:var(--navy);">Personal Information</span>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div style="margin-bottom:12px;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
                         <div>
-                            <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Full Name</label>
-                            <input type="text" id="editName" value="${currentUser.name}" placeholder="Your full name" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#0d9488'" onblur="this.style.borderColor=''">
+                            <label style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Full Name</label>
+                            <input type="text" id="editName" value="${currentUser.name}" placeholder="Your full name" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.84rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#0d9488'" onblur="this.style.borderColor=''">
                         </div>
                         <div>
-                            <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Mobile</label>
-                            <input type="tel" id="editPhone" value="${currentUser.phone||''}" placeholder="Phone number" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#0d9488'" onblur="this.style.borderColor=''">
+                            <label style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Mobile</label>
+                            <input type="tel" id="editPhone" value="${currentUser.phone||''}" placeholder="Phone number" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.84rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#0d9488'" onblur="this.style.borderColor=''">
                         </div>
                     </div>
-                    <div style="margin-bottom:12px;">
-                        <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Email <span style="font-size:0.65rem;background:#f1f5f9;color:#94a3b8;padding:2px 7px;border-radius:5px;margin-left:4px;font-weight:600;text-transform:none;">cannot change</span></label>
-                        <input type="email" value="${currentUser.email}" readonly style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;background:#f8fafc;color:#64748b;cursor:not-allowed;box-sizing:border-box;">
+                    <div style="margin-bottom:10px;">
+                        <label style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Email</label>
+                        <input type="email" value="${currentUser.email}" readonly style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.84rem;background:#f8fafc;color:#64748b;cursor:not-allowed;box-sizing:border-box;">
                     </div>
-                    <button class="btn btn-gradient btn-full" onclick="saveProfileChanges()" style="border-radius:10px;padding:11px;font-size:0.88rem;"><i class="fas fa-save" style="margin-right:7px;"></i>Save Changes</button>
+                    <button class="btn btn-gradient btn-full" onclick="saveProfileChanges()" style="border-radius:9px;padding:10px;font-size:0.86rem;"><i class="fas fa-save" style="margin-right:6px;"></i>Save Changes</button>
                 </div>
 
-                <!-- ── Security ─────────────────────────── -->
-                <div style="border-top:1.5px solid var(--border);padding-top:16px;margin-bottom:16px;">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                        <div style="width:28px;height:28px;border-radius:8px;background:rgba(99,102,241,0.1);display:flex;align-items:center;justify-content:center;"><i class="fas fa-lock" style="color:#6366f1;font-size:0.78rem;"></i></div>
-                        <span style="font-size:0.8rem;font-weight:800;color:var(--navy);">Change Password</span>
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
-                        <div>
-                            <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Current Password</label>
-                            <input type="password" id="pwdCurrent" placeholder="Current password" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor=''">
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                            <div>
-                                <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">New Password</label>
-                                <input type="password" id="pwdNew" placeholder="Min 6 chars" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor=''">
-                            </div>
-                            <div>
-                                <label style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Confirm</label>
-                                <input type="password" id="pwdConfirm" placeholder="Confirm new" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor=''">
+                <!-- ── Change Password ─ collapsible ──────── -->
+                <div style="border-top:1px solid var(--border);padding-top:10px;">
+                    <button onclick="(function(b){const s=document.getElementById('pwdSection');const open=s.style.display!=='none';s.style.display=open?'none':'block';b.querySelector('i.caret').style.transform=open?'':'rotate(180deg)';})(this)" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;padding:4px 0 8px;cursor:pointer;font-family:inherit;">
+                        <span style="display:flex;align-items:center;gap:7px;font-size:0.8rem;font-weight:700;color:var(--navy);"><i class="fas fa-lock" style="color:#6366f1;font-size:0.75rem;"></i> Change Password</span>
+                        <i class="fas fa-chevron-down caret" style="font-size:0.7rem;color:var(--text-muted);transition:transform 0.2s;"></i>
+                    </button>
+                    <div id="pwdSection" style="display:none;">
+                        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+                            <input type="password" id="pwdCurrent" placeholder="Current password" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.84rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor=''">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                                <input type="password" id="pwdNew" placeholder="New password (min 6)" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.84rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor=''">
+                                <input type="password" id="pwdConfirm" placeholder="Confirm new" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.84rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor=''">
                             </div>
                         </div>
+                        <p id="pwdMsg" style="display:none;font-size:0.8rem;margin-bottom:8px;padding:7px 10px;border-radius:8px;background:#f0fdf4;color:#166534;"></p>
+                        <button class="btn btn-outline-dark btn-full" onclick="changePassword()" style="border-radius:9px;padding:10px;font-size:0.84rem;"><i class="fas fa-key" style="margin-right:6px;"></i>Update Password</button>
                     </div>
-                    <p id="pwdMsg" style="display:none;font-size:0.82rem;margin-bottom:10px;padding:8px 12px;border-radius:8px;background:#f0fdf4;color:#166534;"></p>
-                    <button class="btn btn-outline-dark btn-full" onclick="changePassword()" style="border-radius:10px;padding:11px;font-size:0.88rem;"><i class="fas fa-key" style="margin-right:7px;"></i>Update Password</button>
-                </div>
-
-                <!-- ── Quick Actions ─────────────────────── -->
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                    <a href="wishlist.html" class="acct-quicklink-btn wishlist-link" onclick="closeAuthModal()" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;font-size:0.82rem;font-weight:700;text-decoration:none;"><i class="fas fa-heart"></i> My Wishlist</a>
-                    <button class="acct-quicklink-btn signout-link" onclick="handleLogout()" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;font-size:0.82rem;font-weight:700;"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
                 </div>
             </div>
             <div class="acct-section" id="accountAddresses" style="display:none;">
@@ -5176,7 +5165,6 @@ async function _activateLiveAgent(user) {
         try {
             const docRef = await window.db.collection('messages').add({
                 ticketId: null,
-                type: 'Live Agent Request',
                 name: user.name || 'Customer',
                 email: user.email || '',
                 customerId: user.customerId || '',
@@ -5187,8 +5175,6 @@ async function _activateLiveAgent(user) {
                 status: 'Unassigned',
                 source: 'chatbot',
                 read: false,
-                attachmentUrls: [],
-                comments: [],
                 chatMessages: [],
                 createdAt: new Date().toISOString()
             });
