@@ -5327,15 +5327,16 @@ function _startLiveChatPolling(docId) {
 }
 
 // Append a user message to the Supabase live chat session
+// Uses an atomic RPC so concurrent messages from multiple sessions never overwrite each other
 async function _appendUserMsgToSession(docId, text) {
-    if (!window.db || !docId || !text) return;
+    if (!docId || !text) return;
     try {
-        const snap = await window.db.collection('messages').doc(docId).get();
-        const existing = snap.exists ? (snap.data().chatMessages || []) : [];
-        await window.db.collection('messages').doc(docId).update({
-            chatMessages: [...existing, { role: 'user', text, ts: new Date().toISOString() }],
-            updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString()
+        const sb = window._supabase;
+        if (!sb) throw new Error('Supabase not ready');
+        const { error } = await sb.rpc('append_chat_message', {
+            p_id: docId, p_role: 'user', p_text: text, p_ts: new Date().toISOString()
         });
+        if (error) throw new Error(error.message);
     } catch (e) { console.warn('[chat] append user msg failed:', e.message); }
 }
 

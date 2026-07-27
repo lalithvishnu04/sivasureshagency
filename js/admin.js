@@ -3830,11 +3830,13 @@ function _renderTicketHeroStats() {
     const tickets = allMessages.filter(m => m.ticketId);
     const chats = allMessages.filter(m => !m.ticketId);
     const open = tickets.filter(m => (m.status || 'Open') === 'Open').length;
+    const unread = allMessages.filter(m => !m.read).length;
+    // Remove tab badge — counts live on the banner only
     const badge = document.getElementById('chatReqBadge');
-    if (badge) { badge.textContent = chats.length; badge.style.display = chats.length ? 'inline-flex' : 'none'; }
+    if (badge) badge.style.display = 'none';
     el.innerHTML = `
-        <div class="ticket-stat"><span class="ticket-stat-num">${tickets.length}</span><span class="ticket-stat-label">Tickets</span></div>
-        <div class="ticket-stat"><span class="ticket-stat-num">${open}</span><span class="ticket-stat-label">Open</span></div>
+        <div class="ticket-stat"><span class="ticket-stat-num">${open}</span><span class="ticket-stat-label">Open Tickets</span></div>
+        <div class="ticket-stat"><span class="ticket-stat-num">${unread}</span><span class="ticket-stat-label">Unread</span></div>
         <div class="ticket-stat"><span class="ticket-stat-num">${chats.length}</span><span class="ticket-stat-label">Chat Requests</span></div>
     `;
 }
@@ -4160,10 +4162,15 @@ async function sendAdminChatReply(docId, customerEmail, customerName, sessionId)
     const sendBtn = replyEl?.closest('div')?.nextElementSibling?.querySelector('button');
     if (sendBtn) { sendBtn.disabled = true; sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...'; }
     try {
-        const snap = await db.collection('messages').doc(docId).get();
-        const existing = snap.exists ? (snap.data().chatMessages || []) : [];
+        // Atomic append — no read-first, safe for concurrent sessions
+        const sb = window._supabase;
+        if (!sb) throw new Error('Supabase client not available');
+        const { error: rpcErr } = await sb.rpc('append_chat_message', {
+            p_id: docId, p_role: 'admin', p_text: text, p_ts: new Date().toISOString()
+        });
+        if (rpcErr) throw new Error(rpcErr.message);
+        // Also mark as read + In Progress
         await db.collection('messages').doc(docId).update({
-            chatMessages: [...existing, { role: 'admin', text, ts: new Date().toISOString() }],
             read: true,
             status: 'In Progress',
             updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString()
