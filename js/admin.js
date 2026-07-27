@@ -238,7 +238,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         if (page === 'categories') { loadTaxonomy(); }
         if (page === 'inventory') loadInventory();
         if (page === 'customers') loadCustomers();
-        if (page === 'messages') loadMessages();
+        if (page === 'messages') { loadMessages(); _startAdminMsgsPolling(); } else { _stopAdminMsgsPolling(); }
         if (page === 'dashboard') loadDashboard();
         if (page === 'settings') { if (typeof loadWebhookSettings === 'function') loadWebhookSettings(); }
         // Update subtitle
@@ -3854,7 +3854,8 @@ function _buildChatRequestCardHTML(m) {
                         <textarea id="admin-chat-reply-${m.docId}" placeholder="Reply to ${_escHtmlCat(m.name||'customer')}... (sends in-chat + email)" rows="2" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.82rem;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;">
                             <button class="btn btn-sm" style="background:var(--primary-teal);color:#fff;padding:7px 18px;font-size:0.8rem;" onclick="sendAdminChatReply('${m.docId}','${_escHtmlCat(m.email||'')}','${_escHtmlCat(m.name||'Customer')}','${m.sessionId||''}')"><i class="fas fa-paper-plane"></i> Send Reply &amp; Email</button>
-                            <button class="btn btn-sm" style="background:var(--bg-primary);border:1.5px solid var(--border);padding:7px 18px;font-size:0.8rem;" onclick="openCreateTicketModal('${m.docId}')"><i class="fas fa-ticket-alt"></i> Create Ticket</button>
+                            <button class="btn btn-sm" style="background:#fff;color:#0f172a;border:1.5px solid var(--border);padding:7px 18px;font-size:0.8rem;" onclick="openCreateTicketModal('${m.docId}')"><i class="fas fa-ticket-alt" style="color:#6366f1"></i> Create Ticket</button>
+                            ${m.status !== 'Ended' ? `<button class="btn btn-sm" style="background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;padding:7px 18px;font-size:0.8rem;" onclick="endLiveChat('${m.docId}','${_escHtmlCat(m.name||'Customer')}')" title="End this live chat session"><i class="fas fa-phone-slash"></i> End Chat</button>` : `<span style="font-size:0.75rem;font-weight:700;color:#94a3b8;padding:7px 12px;background:#f1f5f9;border-radius:8px;"><i class="fas fa-check-circle" style="color:#10b981"></i> Chat Ended</span>`}
                         </div>
                     </div>
                 </div>
@@ -4007,7 +4008,7 @@ async function submitCreateTicket(event) {
 
         // Notify the customer their ticket was created
         if (window.SSA_COMM && window.SSA_COMM.sendTicketStatusUpdate) {
-            await window.SSA_COMM.sendTicketStatusUpdate({ ticketId, customerEmail: email, customerName: name, newStatus: 'Open', adminNote: message }).catch(() => {});
+            await window.SSA_COMM.sendTicketStatusUpdate({ ticketId, customerEmail: email, customerName: name, newStatus: 'Open', adminNote: message, isNew: true }).catch(() => {});
         }
 
         showAdminToast(`Ticket ${ticketId} created for ${name}`);
@@ -4119,6 +4120,49 @@ async function sendAdminChatReply(docId, customerEmail, customerName, sessionId)
     }
 }
 window.sendAdminChatReply = sendAdminChatReply;
+
+// ── End Live Chat Session (Admin) ────────────────────────────
+async function endLiveChat(docId, customerName) {
+    if (!confirm(`End the live chat session with ${customerName}? The customer's bot will be re-activated.`)) return;
+    try {
+        await db.collection('messages').doc(docId).update({
+            agentEnded: true,
+            status: 'Ended',
+            endedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString(),
+            updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString()
+        });
+        showAdminToast(`Chat with ${customerName} ended`);
+        await loadMessages();
+    } catch (err) {
+        showAdminToast('Error ending chat: ' + err.message, 'error');
+    }
+}
+window.endLiveChat = endLiveChat;
+
+// ── Real-time polling for admin Messages section ─────────────
+let _adminMsgsPollingTimer = null;
+function _startAdminMsgsPolling() {
+    _stopAdminMsgsPolling();
+    _adminMsgsPollingTimer = setInterval(async () => {
+        try { await loadMessages(); } catch (e) { /* silent */ }
+    }, 6000);
+}
+function _stopAdminMsgsPolling() {
+    if (_adminMsgsPollingTimer) { clearInterval(_adminMsgsPollingTimer); _adminMsgsPollingTimer = null; }
+}
+
+// ── Enter key to send chat reply ─────────────────────────────
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.id && e.target.id.startsWith('admin-chat-reply-')) {
+        e.preventDefault();
+        const docId = e.target.id.replace('admin-chat-reply-', '');
+        const card = document.getElementById('ticket-card-' + docId);
+        if (!card) return;
+        const btnRow = e.target.closest('[style*="display:flex"]')?.nextElementSibling;
+        const sendBtn = btnRow ? btnRow.querySelector('button') : null;
+        if (sendBtn) sendBtn.click();
+    }
+});
 
 async function markAllRead() {
     const unread = allMessages.filter(m => !m.read);

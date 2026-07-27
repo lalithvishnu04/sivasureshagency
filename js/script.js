@@ -3034,88 +3034,132 @@ async function openAccountPanel() {
     const avatar = localStorage.getItem('ssa_avatar_' + currentUser.email) || '';
     const avatarHtml = avatar ? `<img src="${avatar}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.15);">` : `<i class="fas fa-user-circle" style="font-size:72px;color:#0066cc;"></i>`;
     modal.innerHTML = `<div class="modal account-modal-v2">
-        <div class="acct-top">
-            <div class="acct-top-inner">
-                <div class="acct-avatar-wrap" onclick="document.getElementById('avatarUpload').click()">
-                    ${avatar ? `<img src="${avatar}" alt="Avatar" class="acct-avatar-img">` : `<div class="acct-avatar-placeholder">${currentUser.name?.charAt(0)?.toUpperCase() || 'U'}</div>`}
-                    <span class="acct-avatar-edit"><i class="fas fa-camera"></i></span>
-                    <input type="file" id="avatarUpload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
-                </div>
-                <div class="acct-user-info">
-                    <h4>${currentUser.name}${currentUser.customerId ? `<span style="display:inline-flex;align-items:center;margin-left:8px;font-size:0.65rem;font-weight:800;letter-spacing:0.08em;background:linear-gradient(135deg,#0d9488,#14b8a6);color:#fff;padding:3px 9px;border-radius:20px;vertical-align:middle;">${currentUser.customerId}</span>` : ''}</h4>
-                    <p>${currentUser.email}</p>
-                    ${currentUser.phone ? `<span class="acct-phone"><i class="fas fa-phone-alt"></i> ${currentUser.phone}</span>` : ''}
-                </div>
-            </div>
+
+        <!-- ── NEW HEADER ───────────────────────────────────── -->
+        <div class="acct-hdr3">
             <button class="acct-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button>
+            <div class="acct-hdr3-avatar-wrap" onclick="document.getElementById('avatarUpload').click()" title="Change photo">
+                ${avatar ? `<img src="${avatar}" alt="Avatar" class="acct-avatar-img acct-hdr3-img">` : `<div class="acct-avatar-placeholder acct-hdr3-placeholder">${currentUser.name?.charAt(0)?.toUpperCase() || 'U'}</div>`}
+                <span class="acct-hdr3-cam"><i class="fas fa-camera"></i></span>
+                <input type="file" id="avatarUpload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
+            </div>
+            <div class="acct-hdr3-name">
+                ${currentUser.name}
+                ${currentUser.customerId ? `<span class="acct-hdr3-badge">${currentUser.customerId}</span>` : ''}
+            </div>
+            <div class="acct-hdr3-email"><i class="fas fa-envelope" style="font-size:0.72rem;margin-right:4px;opacity:0.7"></i>${currentUser.email}</div>
+            ${currentUser.phone ? `<div class="acct-hdr3-phone"><i class="fas fa-phone-alt" style="font-size:0.72rem;margin-right:4px;opacity:0.7"></i>${currentUser.phone}</div>` : ''}
         </div>
-        <div class="acct-tabs-bar">
-            <button class="acct-tab-btn active" onclick="showAccountTab('profile')"><i class="fas fa-user-edit"></i> Profile Details</button>
-            <button class="acct-tab-btn" onclick="showAccountTab('addresses')"><i class="fas fa-map-marker-alt"></i> Address</button>
-            <button class="acct-tab-btn" onclick="showAccountTab('orders')"><i class="fas fa-box-open"></i> Orders</button>
+
+        <!-- ── SEGMENT TABS ──────────────────────────────────── -->
+        <div class="acct-seg-wrap">
+            <div class="acct-seg" role="tablist">
+                <button class="acct-seg-btn active" onclick="showAccountTab('profile')" role="tab">
+                    <i class="fas fa-user-circle"></i><span>Profile</span>
+                </button>
+                <button class="acct-seg-btn" onclick="showAccountTab('addresses')" role="tab">
+                    <i class="fas fa-map-marker-alt"></i><span>Address</span>
+                </button>
+                <button class="acct-seg-btn" onclick="showAccountTab('orders')" role="tab">
+                    <i class="fas fa-box-open"></i><span>Orders</span>
+                </button>
+            </div>
         </div>
+
+        <!-- ── TAB BODY ──────────────────────────────────────── -->
         <div class="acct-body">
+
+            <!-- ── PROFILE TAB ─────────────────────── -->
             <div class="acct-section active" id="accountProfile">
 
-                <!-- ── Quick Actions ─ always visible first ── -->
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
-                    <a href="wishlist.html" onclick="closeAuthModal()" style="display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;border-radius:9px;font-size:0.8rem;font-weight:700;text-decoration:none;background:#fdf2f8;color:#be185d;border:1.5px solid #fbcfe8;"><i class="fas fa-heart"></i> My Wishlist</a>
-                    <button onclick="handleLogout()" style="display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;border-radius:9px;font-size:0.8rem;font-weight:700;background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;cursor:pointer;font-family:inherit;"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
-                </div>
-
-                <!-- ── Personal Information ─────────────── -->
-                <div style="margin-bottom:12px;">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
-                        <div>
-                            <label style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Full Name</label>
-                            <input type="text" id="editName" value="${currentUser.name}" placeholder="Your full name" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.84rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#0d9488'" onblur="this.style.borderColor=''">
-                        </div>
-                        <div>
-                            <label style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Mobile</label>
-                            <input type="tel" id="editPhone" value="${currentUser.phone||''}" placeholder="Phone number" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.84rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#0d9488'" onblur="this.style.borderColor=''">
-                        </div>
-                    </div>
-                    <div style="margin-bottom:10px;">
-                        <label style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">Email</label>
-                        <input type="email" value="${currentUser.email}" readonly style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.84rem;background:#f8fafc;color:#64748b;cursor:not-allowed;box-sizing:border-box;">
-                    </div>
-                    <button class="btn btn-gradient btn-full" onclick="saveProfileChanges()" style="border-radius:9px;padding:10px;font-size:0.86rem;"><i class="fas fa-save" style="margin-right:6px;"></i>Save Changes</button>
-                </div>
-
-                <!-- ── Change Password ─ collapsible ──────── -->
-                <div style="border-top:1px solid var(--border);padding-top:10px;">
-                    <button onclick="(function(b){const s=document.getElementById('pwdSection');const open=s.style.display!=='none';s.style.display=open?'none':'block';b.querySelector('i.caret').style.transform=open?'':'rotate(180deg)';})(this)" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;padding:4px 0 8px;cursor:pointer;font-family:inherit;">
-                        <span style="display:flex;align-items:center;gap:7px;font-size:0.8rem;font-weight:700;color:var(--navy);"><i class="fas fa-lock" style="color:#6366f1;font-size:0.75rem;"></i> Change Password</span>
-                        <i class="fas fa-chevron-down caret" style="font-size:0.7rem;color:var(--text-muted);transition:transform 0.2s;"></i>
+                <!-- Quick Actions -->
+                <div class="acct-quick-row">
+                    <a href="wishlist.html" onclick="closeAuthModal()" class="acct-action-btn acct-action-wish">
+                        <i class="fas fa-heart"></i> My Wishlist
+                    </a>
+                    <button onclick="handleLogout()" class="acct-action-btn acct-action-out">
+                        <i class="fas fa-sign-out-alt"></i> Sign Out
                     </button>
-                    <div id="pwdSection" style="display:none;">
-                        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
-                            <input type="password" id="pwdCurrent" placeholder="Current password" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.84rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor=''">
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                                <input type="password" id="pwdNew" placeholder="New password (min 6)" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.84rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor=''">
-                                <input type="password" id="pwdConfirm" placeholder="Confirm new" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.84rem;outline:none;box-sizing:border-box;transition:border 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor=''">
-                            </div>
-                        </div>
-                        <p id="pwdMsg" style="display:none;font-size:0.8rem;margin-bottom:8px;padding:7px 10px;border-radius:8px;background:#f0fdf4;color:#166534;"></p>
-                        <button class="btn btn-outline-dark btn-full" onclick="changePassword()" style="border-radius:9px;padding:10px;font-size:0.84rem;"><i class="fas fa-key" style="margin-right:6px;"></i>Update Password</button>
-                    </div>
                 </div>
+
+                <!-- Personal Information -->
+                <div class="acct-pcard">
+                    <div class="acct-pcard-head">
+                        <i class="fas fa-user-edit"></i> Personal Information
+                    </div>
+                    <div class="acct-fg2">
+                        <div class="acct-fld">
+                            <label>Full Name</label>
+                            <input type="text" id="editName" value="${currentUser.name}" placeholder="Your full name">
+                        </div>
+                        <div class="acct-fld">
+                            <label>Mobile</label>
+                            <input type="tel" id="editPhone" value="${currentUser.phone||''}" placeholder="Phone number">
+                        </div>
+                    </div>
+                    <div class="acct-fld">
+                        <label>Email <span style="color:#94a3b8;font-size:0.65rem;font-weight:500;text-transform:none">(cannot be changed)</span></label>
+                        <input type="email" value="${currentUser.email}" readonly>
+                    </div>
+                    <button class="btn btn-gradient btn-full acct-save-btn" onclick="saveProfileChanges()">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+
+                <!-- Change Password — always visible -->
+                <div class="acct-pcard acct-pcard--sec">
+                    <div class="acct-pcard-head acct-pcard-head--sec">
+                        <i class="fas fa-lock"></i> Change Password
+                    </div>
+                    <div class="acct-fld">
+                        <label>Current Password</label>
+                        <input type="password" id="pwdCurrent" placeholder="Enter current password">
+                    </div>
+                    <div class="acct-fg2">
+                        <div class="acct-fld">
+                            <label>New Password</label>
+                            <input type="password" id="pwdNew" placeholder="Min 6 characters">
+                        </div>
+                        <div class="acct-fld">
+                            <label>Confirm Password</label>
+                            <input type="password" id="pwdConfirm" placeholder="Repeat new password">
+                        </div>
+                    </div>
+                    <p id="pwdMsg" style="display:none" class="acct-pwd-msg"></p>
+                    <button class="btn btn-full acct-pwd-btn" onclick="changePassword()">
+                        <i class="fas fa-key"></i> Update Password
+                    </button>
+                </div>
+
             </div>
+
+            <!-- ── ADDRESS TAB ─────────────────────── -->
             <div class="acct-section" id="accountAddresses" style="display:none;">
                 <div id="addressList"></div>
-                <button class="btn btn-outline-dark btn-full" style="margin-top:8px" onclick="showAddAddressForm()"><i class="fas fa-plus"></i> Add New Address</button>
-                <div id="addAddressForm" style="display:none;margin-top:12px;">
-                    <div class="form-group"><label>Street / Door No.</label><input type="text" id="addrStreet" placeholder="Street address"></div>
-                    <div class="form-row"><div class="form-group"><label>City</label><input type="text" id="addrCity" placeholder="City"></div><div class="form-group"><label>PIN Code</label><input type="text" id="addrPin" placeholder="PIN"></div></div>
-                    <div class="form-group"><label>State</label><input type="text" id="addrState" placeholder="State" value="Tamil Nadu"></div>
-                    <div class="form-row"><button class="btn btn-gradient" onclick="saveNewAddress()"><i class="fas fa-save"></i> Save</button><button class="btn btn-outline-dark" onclick="document.getElementById('addAddressForm').style.display=\'none\'">Cancel</button></div>
+                <button class="btn acct-add-addr-btn" onclick="showAddAddressForm()">
+                    <i class="fas fa-plus-circle"></i> Add New Address
+                </button>
+                <div id="addAddressForm" style="display:none;margin-top:14px;" class="acct-pcard">
+                    <div class="acct-pcard-head"><i class="fas fa-map-pin"></i> New Address</div>
+                    <div class="acct-fld"><label>Street / Door No.</label><input type="text" id="addrStreet" placeholder="e.g. 37/10, Selvam Nagar"></div>
+                    <div class="acct-fg2">
+                        <div class="acct-fld"><label>City</label><input type="text" id="addrCity" placeholder="City"></div>
+                        <div class="acct-fld"><label>PIN Code</label><input type="text" id="addrPin" placeholder="6-digit PIN"></div>
+                    </div>
+                    <div class="acct-fld"><label>State</label><input type="text" id="addrState" placeholder="State" value="Tamil Nadu"></div>
+                    <div style="display:flex;gap:10px;margin-top:4px;">
+                        <button class="btn btn-gradient" style="flex:1" onclick="saveNewAddress()"><i class="fas fa-save"></i> Save Address</button>
+                        <button class="btn btn-outline-dark" onclick="document.getElementById('addAddressForm').style.display='none'">Cancel</button>
+                    </div>
                 </div>
             </div>
+
+            <!-- ── ORDERS TAB ──────────────────────── -->
             <div class="acct-section" id="accountOrders" style="display:none;">
                 ${orders.length === 0 ? '<div class="acct-orders-empty"><i class="fas fa-box-open"></i><p>No orders yet. Start shopping!</p><a href="categories.html" class="btn btn-gradient btn-sm" onclick="closeAuthModal()">Browse Products</a></div>' : _buildOrderCardsHTML(orders)}
             </div>
-        </div>
 
+        </div>
     </div>`;
     renderAddressList();
     // Init rating stars and tab slider for the freshly rendered modal
@@ -3352,11 +3396,12 @@ function _buildOrderCardsHTML(orders) {
     }).join('') + '</div>';
 }
 function showAccountTab(tab) {
-    document.querySelectorAll('.acct-tab-btn, .account-tab').forEach(t => t.classList.remove('active'));
+    // Deactivate all tab buttons (old underline style + new segment style)
+    document.querySelectorAll('.acct-tab-btn, .account-tab, .acct-seg-btn').forEach(t => t.classList.remove('active'));
     ['accountProfile','accountAddresses','accountOrders'].forEach(id => { const el = document.getElementById(id); if (el) { el.style.display = 'none'; el.classList.remove('active'); } });
     const map = { profile:'accountProfile', addresses:'accountAddresses', orders:'accountOrders', security:'accountProfile' };
     const el = document.getElementById(map[tab]); if (el) { el.style.display = 'block'; el.classList.add('active'); }
-    const tabBtns = document.querySelectorAll('.acct-tab-btn, .account-tab');
+    const tabBtns = document.querySelectorAll('.acct-tab-btn, .account-tab, .acct-seg-btn');
     const tabIdx = { profile:0, addresses:1, orders:2, security:0 };
     if (tabBtns[tabIdx[tab]]) tabBtns[tabIdx[tab]].classList.add('active');
     // Update URL param so each tab has its own URL (replaceState = no new history entry)
@@ -3575,12 +3620,16 @@ function saveProfileChanges() {
 function renderAddressList() {
     const el = document.getElementById('addressList'); if (!el) return;
     const addrs = getSavedAddresses();
-    if (addrs.length === 0) { el.innerHTML = '<p style="color:#94a3b8;font-size:0.85rem;text-align:center;padding:10px 0">No saved addresses yet</p>'; return; }
-    el.innerHTML = addrs.map((a, i) => `<div class="addr-card" style="border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:8px;position:relative;">
-        ${i===0?'<span style="font-size:0.7rem;font-weight:700;color:#0066cc;margin-bottom:4px;display:block">DEFAULT</span>':''}
-        <p style="margin:0;font-size:0.88rem;line-height:1.6">${a.street}, ${a.city} – ${a.pincode}, ${a.state||'Tamil Nadu'}</p>
-        <button onclick="deleteAddress(${i})" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:#ef4444;font-size:0.78rem;padding:2px 6px;"><i class="fas fa-trash"></i></button>
-        ${i>0?`<button onclick="setDefaultAddress(${i})" style="font-size:0.72rem;color:#0066cc;background:none;border:none;cursor:pointer;margin-top:4px;padding:0">Set as default</button>`:''}
+    if (addrs.length === 0) { el.innerHTML = '<div class="acct-addr-empty"><i class="fas fa-map-marker-alt"></i><p>No saved addresses yet</p></div>'; return; }
+    el.innerHTML = addrs.map((a, i) => `<div class="acct-addr-card${i===0?' acct-addr-card--default':''}">
+        <div class="acct-addr-card-body">
+            ${i===0?'<span class="acct-addr-default-badge"><i class="fas fa-check-circle"></i> Default</span>':''}
+            <p class="acct-addr-text"><i class="fas fa-map-marker-alt" style="color:#0d9488;margin-right:6px;font-size:0.82rem"></i>${a.street}, ${a.city} – ${a.pincode}, ${a.state||'Tamil Nadu'}</p>
+        </div>
+        <div class="acct-addr-card-actions">
+            ${i>0?`<button onclick="setDefaultAddress(${i})" class="acct-addr-action-btn acct-addr-action-default"><i class="fas fa-star"></i> Set Default</button>`:''}
+            <button onclick="deleteAddress(${i})" class="acct-addr-action-btn acct-addr-action-del"><i class="fas fa-trash"></i> Remove</button>
+        </div>
     </div>`).join('');
 }
 function showAddAddressForm() { document.getElementById('addAddressForm').style.display = 'block'; }
@@ -4886,35 +4935,45 @@ async function sendChatMessage(msg) {
 
     _chatMsgCount++;
 
-    // Typing indicator
+    // When live agent is connected: silently forward message to session — NO bot typing or response
+    if (_chatLiveAgentMode) {
+        if (_chatSessionDocId && window.db && msg) _appendUserMsgToSession(_chatSessionDocId, msg);
+        // Show a tiny "delivered" tick on the last user message (not a bot reply)
+        const lastUser = [...messages.querySelectorAll('.chat-message.user')].pop();
+        if (lastUser) {
+            const tick = document.createElement('div');
+            tick.style.cssText = 'font-size:0.68rem;color:#10b981;text-align:right;margin-top:2px;padding-right:10px;';
+            tick.innerHTML = '<i class="fas fa-check-double"></i> Delivered to agent';
+            lastUser.after(tick);
+        }
+        messages.scrollTop = messages.scrollHeight;
+        return;
+    }
+
+    // Bot typing indicator (only for AI bot mode)
     const typing = document.createElement('div');
     typing.className = 'chat-message bot typing-row';
     typing.innerHTML = '<div class="message-avatar"><i class="fas fa-robot"></i></div><div class="message-content"><div class="typing-indicator"><span></span><span></span><span></span></div></div>';
     messages.appendChild(typing);
     messages.scrollTop = messages.scrollHeight;
 
-    const delay = _chatLiveAgentMode ? 500 : 900 + Math.random() * 600;
+    const delay = 900 + Math.random() * 600;
     setTimeout(async () => {
         typing.remove();
-        if (_chatLiveAgentMode) {
-            if (_chatSessionDocId && window.db && msg) _appendUserMsgToSession(_chatSessionDocId, msg);
-            appendMsg('bot', '<i class="fas fa-check-circle" style="color:#10b981;margin-right:6px"></i> Message sent to agent. You\'ll see their reply here and receive an email notification.');
-        } else {
-            const response = await getAIResponse(msg || '');
-            if (typeof response === 'string') {
-                appendMsg('bot', response);
-            } else if (response && response.text) {
-                if (response.quickReplies) {
-                    appendMsgWithQuickReplies('bot', response.text, response.quickReplies);
-                } else {
-                    appendMsg('bot', response.text);
-                }
+        const response = await getAIResponse(msg || '');
+        if (typeof response === 'string') {
+            appendMsg('bot', response);
+        } else if (response && response.text) {
+            if (response.quickReplies) {
+                appendMsgWithQuickReplies('bot', response.text, response.quickReplies);
+            } else {
+                appendMsg('bot', response.text);
             }
         }
         messages.scrollTop = messages.scrollHeight;
 
-        // After 3 messages, proactively offer help options
-        if (!_chatLiveAgentMode && _chatMsgCount > 0 && _chatMsgCount % 5 === 0) {
+        // After every 5 messages, proactively offer help options
+        if (_chatMsgCount > 0 && _chatMsgCount % 5 === 0) {
             setTimeout(() => {
                 appendMsgWithQuickReplies('bot', 'Is there anything else I can help with?', [
                     { label: '📧 Send Message', msg: 'send message' },
@@ -5212,7 +5271,39 @@ function _startLiveChatPolling(docId) {
         try {
             const snap = await window.db.collection('messages').doc(docId).get();
             if (!snap.exists) return;
-            const msgs = (snap.data().chatMessages || []).filter(m => m.role === 'admin');
+            const data = snap.data();
+
+            // ── Agent ended the chat ─────────────────────────────────
+            if (data.agentEnded === true) {
+                clearInterval(_chatPollInterval);
+                _chatPollInterval = null;
+                _chatLiveAgentMode = false;
+                _chatSessionDocId = null;
+
+                const el = document.getElementById('chatbotMessages');
+                if (el) {
+                    const div = document.createElement('div');
+                    div.className = 'chat-message bot';
+                    div.innerHTML = `<div class="message-avatar"><i class="fas fa-headset"></i></div><div class="message-content"><p style="background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;border-radius:10px;padding:10px 14px;font-size:0.82rem;margin:0;"><i class="fas fa-info-circle" style="margin-right:6px"></i><strong>Chat ended by agent.</strong> The AI assistant is active again — feel free to ask anything!</p></div>`;
+                    el.appendChild(div);
+                    el.scrollTop = el.scrollHeight;
+                }
+
+                // Restore chatbot header
+                const statusEl = document.querySelector('#chatbotWindow .chatbot-status');
+                if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle"></i> Online';
+                const headerEl = document.querySelector('#chatbotWindow h4');
+                if (headerEl) headerEl.textContent = 'SSA Assistant';
+
+                // Flash badge
+                const badge = document.querySelector('.chatbot-badge');
+                const win = document.getElementById('chatbotWindow');
+                if (badge && win && !win.classList.contains('open')) { badge.style.display = 'inline-flex'; badge.textContent = '!'; }
+                return;
+            }
+
+            // ── New admin messages ───────────────────────────────────
+            const msgs = (data.chatMessages || []).filter(m => m.role === 'admin');
             if (msgs.length > _chatShownAdminMsgs) {
                 msgs.slice(_chatShownAdminMsgs).forEach(m => {
                     const el = document.getElementById('chatbotMessages');
@@ -5980,6 +6071,19 @@ async function trackTicketSearch() {
 window.trackTicketSearch = trackTicketSearch;
 
 function initTicketsPage() {
+    // Auto-search from ?id=TKT-XXXX URL param (e.g. link from email)
+    const urlId = new URLSearchParams(window.location.search).get('id');
+    if (urlId) {
+        const inp = document.getElementById('tktSearchInput');
+        if (inp) inp.value = urlId.toUpperCase();
+        const doSearch = () => trackTicketSearch();
+        if (window.db) { doSearch(); }
+        else {
+            window.addEventListener('ssa:dbReady', doSearch, { once: true });
+            setTimeout(() => { if (!window._dbReady) doSearch(); }, 2500);
+        }
+    }
+
     // Auto-load tickets when db becomes ready (slight delay for Supabase init)
     if (window.db) {
         loadMyTickets();

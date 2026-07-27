@@ -166,30 +166,53 @@ Reply to this ticket from your Admin panel: https://lalithvishnu04.github.io/siv
         });
     }
 
-    // ── Ticket Status Update (notify customer) ───────────────
+    // ── Ticket Status Update / Creation (notify customer) ───────────────
     async function sendTicketStatusUpdate(data) {
-        // data: { ticketId, customerEmail, customerName, newStatus, adminNote }
+        // data: { ticketId, customerEmail, customerName, newStatus, adminNote, isNew? }
         const cfg = await _cfg();
+        const trackUrl = `https://lalithvishnu04.github.io/sivasureshagency/tickets.html?id=${encodeURIComponent(data.ticketId)}`;
+        const isNew = data.isNew === true;
         return postWebhook(cfg.ticketStatusWebhook, {
-            type: 'ticket_status',
+            type: isNew ? 'ticket_created' : 'ticket_status',
             toEmail: data.customerEmail,
             adminEmail: cfg.adminEmail,
             ticketId: data.ticketId,
             customerName: data.customerName,
             newStatus: data.newStatus,
             adminNote: data.adminNote || '',
+            trackUrl,
             timestamp: new Date().toISOString(),
-            emailSubject: `[${data.ticketId}] Status Update: ${data.newStatus}`,
-            emailBody: `
+            emailSubject: isNew
+                ? `[${data.ticketId}] Your Support Ticket Has Been Created`
+                : `[${data.ticketId}] Ticket Update: ${data.newStatus}`,
+            emailBody: isNew ? `
+Dear ${data.customerName},
+
+A support ticket has been created for you by our team.
+
+Ticket ID : ${data.ticketId}
+Status    : Open
+${data.adminNote ? 'Details   : ' + data.adminNote : ''}
+
+Track your ticket anytime here:
+${trackUrl}
+
+Save your Ticket ID (${data.ticketId}) to look it up without logging in.
+
+Thank you,
+Siva Suresh Agency Support Team
+info@sivasureshagency.onmicrosoft.com
+            `.trim() : `
 Dear ${data.customerName},
 
 Your support ticket has been updated.
 
-Ticket ID: ${data.ticketId}
-New Status: ${data.newStatus}
-${data.adminNote ? 'Note from our team: ' + data.adminNote : ''}
+Ticket ID  : ${data.ticketId}
+New Status : ${data.newStatus}
+${data.adminNote ? 'Note       : ' + data.adminNote : ''}
 
-You can track your ticket status on our website.
+Track your ticket here:
+${trackUrl}
 
 Thank you,
 Siva Suresh Agency Support Team

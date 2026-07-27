@@ -1225,32 +1225,90 @@ body.modal-open { overflow: hidden; touch-action: none; }
     .od-item-price { flex-direction: column; align-items: flex-start; }
 }
 
-/* ── 36. Account Modal Improved ──────────────────────────────── */
-.account-modal-v2 { max-width: 1080px; padding: 0; overflow: hidden; }
-.acct-top { background: linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #115e59 100%); padding: 28px 24px 22px; color: #fff; position: relative; overflow: hidden; }
-.acct-top::before { content: ''; position: absolute; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.07); top: -70px; right: -50px; pointer-events: none; }
-.acct-top::after { content: ''; position: absolute; width: 100px; height: 100px; border-radius: 50%; background: rgba(255,255,255,0.05); bottom: -40px; left: 30px; pointer-events: none; }
-.acct-top-inner { display: flex; align-items: center; gap: 16px; position: relative; z-index: 1; }
-.acct-avatar-wrap { position: relative; cursor: pointer; flex-shrink: 0; }
-.acct-avatar-img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.4); }
-.acct-avatar-placeholder { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,0.18); border: 3px solid rgba(255,255,255,0.35); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.7rem; font-weight: 800; }
-.acct-avatar-edit { position: absolute; bottom: 0; right: 0; width: 22px; height: 22px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #0d9488; }
-.acct-avatar-edit i { font-size: 0.55rem; color: #0d9488; }
-.acct-user-info h4 { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
-.acct-user-info p { font-size: 0.8rem; color: rgba(255,255,255,0.75); }
-.acct-user-info .acct-phone { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 0.77rem; color: rgba(255,255,255,0.6); }
+/* ── 36. Account Modal v3 ─────────────────────────────────────── */
+.account-modal-v2 { max-width: 520px; padding: 0; overflow: hidden; }
+
+/* Header */
+.acct-hdr3 { background: linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #115e59 100%); padding: 32px 24px 24px; text-align: center; position: relative; overflow: hidden; }
+.acct-hdr3::before { content:''; position:absolute; width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.06); top:-80px; right:-60px; pointer-events:none; }
+.acct-hdr3::after  { content:''; position:absolute; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,0.04); bottom:-50px; left:20px; pointer-events:none; }
 .acct-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,0.15); border: none; color: rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: var(--transition); font-size: 0.9rem; z-index: 2; }
 .acct-close:hover { background: rgba(255,255,255,0.28); color: #fff; }
-.acct-tabs-bar { display: flex; background: #f8fffe; border-bottom: 2px solid #e2e8f0; overflow-x: auto; scrollbar-width: none; }
-.acct-tabs-bar::-webkit-scrollbar { display: none; }
-.acct-tab-btn { flex: 1; min-width: 90px; padding: 14px 12px 11px; border: none; background: none; font-family: var(--font); font-size: 0.79rem; font-weight: 600; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: var(--transition); border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; }
-.acct-tab-btn i { font-size: 1rem; }
-.acct-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: rgba(13,148,136,0.04); }
-.acct-tab-btn:hover:not(.active) { color: var(--text); background: rgba(0,0,0,0.02); }
-.acct-body { padding: 20px 22px 22px; max-height: 68vh; overflow-y: auto; background: #ffffff; overscroll-behavior: contain; }
+.acct-hdr3-avatar-wrap { position: relative; display: inline-block; cursor: pointer; margin-bottom: 12px; }
+.acct-hdr3-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.5); display: block; }
+.acct-hdr3-placeholder { width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.18); border: 3px solid rgba(255,255,255,0.4); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 2rem; font-weight: 800; }
+.acct-hdr3-cam { position: absolute; bottom: 2px; right: 2px; width: 24px; height: 24px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #0d9488; }
+.acct-hdr3-cam i { font-size: 0.55rem; color: #0d9488; }
+.acct-hdr3-name { font-size: 1.05rem; font-weight: 800; color: #fff; margin-bottom: 4px; position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.acct-hdr3-badge { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; background: rgba(255,255,255,0.22); color: #fff; padding: 3px 9px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); }
+.acct-hdr3-email { font-size: 0.8rem; color: rgba(255,255,255,0.78); position: relative; z-index: 1; margin-bottom: 2px; }
+.acct-hdr3-phone { font-size: 0.76rem; color: rgba(255,255,255,0.6); position: relative; z-index: 1; }
+
+/* Segment tab control */
+.acct-seg-wrap { padding: 14px 20px 0; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.acct-seg { display: flex; background: #e2e8f0; border-radius: 12px; padding: 3px; gap: 2px; }
+.acct-seg-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 6px 8px; border: none; border-radius: 9px; background: none; font-family: var(--font); font-size: 0.73rem; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.22s; }
+.acct-seg-btn i { font-size: 0.96rem; }
+.acct-seg-btn.active { background: #fff; color: #0d9488; box-shadow: 0 2px 8px rgba(15,23,42,0.12); font-weight: 700; }
+.acct-seg-btn:hover:not(.active) { background: rgba(13,148,136,0.08); color: #0d9488; }
+
+/* Body */
+.acct-body { padding: 18px 20px 22px; max-height: 60vh; overflow-y: auto; background: #f8fafc; overscroll-behavior: contain; }
 .acct-section { display: none; }
 .acct-section.active { display: block; }
-/* Order cards in account */
+
+/* Profile cards */
+.acct-pcard { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; }
+.acct-pcard--sec { border-color: #ede9fe; }
+.acct-pcard-head { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; color: var(--navy); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; }
+.acct-pcard-head i { font-size: 0.88rem; color: #0d9488; }
+.acct-pcard-head--sec i { color: #6366f1; }
+.acct-fg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.acct-fld { margin-bottom: 12px; }
+.acct-fld label { font-size: 0.67rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 5px; }
+.acct-fld input { width: 100%; padding: 9px 12px; border: 1.5px solid #e2e8f0; border-radius: 9px; font-family: var(--font); font-size: 0.84rem; outline: none; box-sizing: border-box; transition: border-color 0.2s; background: #fff; color: var(--text); }
+.acct-fld input:focus { border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,0.08); }
+.acct-pcard--sec .acct-fld input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+.acct-fld input[readonly] { background: #f8fafc; color: #94a3b8; cursor: not-allowed; border-style: dashed; }
+.acct-save-btn { margin-top: 4px; padding: 10px; font-size: 0.86rem; border-radius: 10px; }
+.acct-pwd-btn { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; padding: 10px; font-size: 0.86rem; border-radius: 10px; cursor: pointer; font-family: var(--font); font-weight: 700; transition: opacity 0.2s; }
+.acct-pwd-btn:hover { opacity: 0.88; }
+.acct-pwd-msg { font-size: 0.8rem; padding: 8px 12px; border-radius: 8px; background: #f0fdf4; color: #166534; margin-bottom: 10px; }
+
+/* Quick actions row */
+.acct-quick-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.acct-action-btn { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 12px; border-radius: 10px; font-size: 0.8rem; font-weight: 700; text-decoration: none; border: 1.5px solid; cursor: pointer; font-family: var(--font); transition: all 0.2s; }
+.acct-action-wish { background: #fdf2f8; color: #be185d; border-color: #fbcfe8; }
+.acct-action-wish:hover { background: #be185d; color: #fff; border-color: #be185d; }
+.acct-action-out  { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+.acct-action-out:hover  { background: #dc2626; color: #fff; border-color: #dc2626; }
+
+/* Address cards */
+.acct-addr-empty { text-align: center; padding: 20px; color: #94a3b8; }
+.acct-addr-empty i { font-size: 2rem; margin-bottom: 8px; display: block; }
+.acct-addr-card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; transition: border-color 0.2s; }
+.acct-addr-card--default { border-color: #0d9488; }
+.acct-addr-card-body { margin-bottom: 10px; }
+.acct-addr-default-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 0.69rem; font-weight: 800; color: #0d9488; background: #f0fdf4; border: 1px solid #a7f3d0; padding: 2px 9px; border-radius: 20px; margin-bottom: 6px; }
+.acct-addr-text { font-size: 0.86rem; color: var(--text); line-height: 1.6; margin: 0; }
+.acct-addr-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.acct-addr-action-btn { font-size: 0.75rem; font-weight: 700; padding: 5px 12px; border-radius: 8px; border: 1.5px solid; cursor: pointer; font-family: var(--font); background: #fff; transition: all 0.18s; }
+.acct-addr-action-default { color: #0d9488; border-color: #a7f3d0; }
+.acct-addr-action-default:hover { background: #0d9488; color: #fff; border-color: #0d9488; }
+.acct-addr-action-del { color: #dc2626; border-color: #fecaca; }
+.acct-addr-action-del:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+.acct-add-addr-btn { width: 100%; background: #f8fafc; border: 2px dashed #cbd5e1; color: #64748b; border-radius: 12px; padding: 11px; font-size: 0.84rem; font-weight: 600; cursor: pointer; font-family: var(--font); transition: all 0.2s; margin-top: 4px; }
+.acct-add-addr-btn:hover { border-color: #0d9488; color: #0d9488; background: #f0fdf4; }
+
+/* Responsive */
+@media (max-width: 480px) {
+    .acct-fg2 { grid-template-columns: 1fr; }
+    .acct-quick-row { grid-template-columns: 1fr 1fr; }
+    .acct-body { max-height: 55vh; padding: 14px 14px 18px; }
+    .account-modal-v2 { max-width: 96vw; }
+}
+
+/* Old order cards in account */
 .acct-order-card { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 11px; transition: var(--transition); }
 .acct-order-card:hover { border-color: var(--primary); }
 .acct-orders-hub { display: flex; flex-direction: column; gap: 16px; }
