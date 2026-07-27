@@ -3830,14 +3830,13 @@ function _renderTicketHeroStats() {
     const tickets = allMessages.filter(m => m.ticketId);
     const chats = allMessages.filter(m => !m.ticketId);
     const open = tickets.filter(m => (m.status || 'Open') === 'Open').length;
-    const unread = allMessages.filter(m => !m.read).length;
+    const unreadChats = chats.filter(m => !m.read).length;
     // Remove tab badge — counts live on the banner only
     const badge = document.getElementById('chatReqBadge');
     if (badge) badge.style.display = 'none';
     el.innerHTML = `
         <div class="ticket-stat"><span class="ticket-stat-num">${open}</span><span class="ticket-stat-label">Open Tickets</span></div>
-        <div class="ticket-stat"><span class="ticket-stat-num">${unread}</span><span class="ticket-stat-label">Unread</span></div>
-        <div class="ticket-stat"><span class="ticket-stat-num">${chats.length}</span><span class="ticket-stat-label">Chat Requests</span></div>
+        <div class="ticket-stat"><span class="ticket-stat-num">${unreadChats}</span><span class="ticket-stat-label">Unread Chats</span></div>
     `;
 }
 
@@ -3865,19 +3864,39 @@ function renderMessages() {
             : '<p class="empty"><i class="fas fa-ticket-alt"></i>No tickets found</p>';
         return;
     }
-    container.innerHTML = msgs.map(m => m.ticketId ? _buildTicketCardHTML(m) : _buildChatRequestCardHTML(m)).join('');
+
+    if (_ticketView === 'chats') {
+        // Group: Active chats first, then Ended chats
+        const active = msgs.filter(m => m.status !== 'Ended');
+        const ended  = msgs.filter(m => m.status === 'Ended');
+        let html = '';
+        if (active.length) {
+            html += `<div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);padding:6px 4px 4px;margin-bottom:6px;border-bottom:1px solid var(--border);"><i class="fas fa-circle" style="color:#10b981;font-size:0.6rem;"></i> Active Chats (${active.length})</div>`;
+            html += active.map(m => _buildChatRequestCardHTML(m)).join('');
+        }
+        if (ended.length) {
+            html += `<div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#94a3b8;padding:6px 4px 4px;margin:12px 0 6px;border-bottom:1px solid var(--border);"><i class="fas fa-check-circle" style="color:#94a3b8;font-size:0.6rem;"></i> Ended Chats (${ended.length})</div>`;
+            html += ended.map(m => _buildChatRequestCardHTML(m)).join('');
+        }
+        container.innerHTML = html;
+    } else {
+        container.innerHTML = msgs.map(m => _buildTicketCardHTML(m)).join('');
+    }
 }
 
 function _buildChatRequestCardHTML(m) {
     const ts = m.createdAt ? new Date(m.createdAt.seconds ? m.createdAt.seconds * 1000 : m.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
     return `
         <div class="msg-card ${m.read ? '' : 'unread'}" id="ticket-card-${m.docId}">
-            <div class="msg-header" onclick="toggleMessage('${m.docId}')">
+            <div class="msg-header" onclick="toggleMessage('${m.docId}')" style="cursor:pointer;">
                 <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
                     <span style="font-size:0.7rem;font-weight:800;color:#94a3b8;background:#94a3b818;border-radius:6px;padding:3px 8px;letter-spacing:0.5px;white-space:nowrap;"><i class="fas fa-comment-dots"></i> CHAT</span>
                     <span class="msg-sender" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="fas fa-user-circle" style="color:#6366f1;margin-right:5px"></i>${m.name || 'Unknown'}</span>
                 </div>
-                <span class="msg-time">${ts}</span>
+                <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                    <span class="msg-time">${ts}</span>
+                    <i class="fas fa-chevron-down msg-chevron" id="chevron-${m.docId}" style="font-size:0.75rem;color:var(--text-muted);transition:transform 0.22s;"></i>
+                </div>
             </div>
             <div class="msg-subject" onclick="toggleMessage('${m.docId}')" style="cursor:pointer;">${m.subject || 'Live Agent Request'}</div>
             <div class="msg-meta">
@@ -3926,14 +3945,15 @@ function _buildTicketCardHTML(m) {
         </div>`).join('')}</div>` : '';
     return `
         <div class="msg-card ${m.read ? '' : 'unread'}" id="ticket-card-${m.docId}">
-            <div class="msg-header" onclick="toggleMessage('${m.docId}')">
+            <div class="msg-header" onclick="toggleMessage('${m.docId}')" style="cursor:pointer;">
                 <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
                     <span style="font-size:0.7rem;font-weight:800;color:${statusColor};background:${statusColor}18;border-radius:6px;padding:3px 8px;letter-spacing:0.5px;white-space:nowrap;">${m.ticketId}</span>
                     <span class="msg-sender" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="fas fa-user-circle" style="color:#6366f1;margin-right:5px"></i>${m.name || 'Unknown'}</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
                     <span style="font-size:0.7rem;font-weight:700;color:${statusColor};background:${statusColor}18;border:1px solid ${statusColor}40;border-radius:20px;padding:2px 9px;">${status}</span>
                     <span class="msg-time">${ts}</span>
+                    <i class="fas fa-chevron-down msg-chevron" id="chevron-${m.docId}" style="font-size:0.75rem;color:var(--text-muted);transition:transform 0.22s;"></i>
                 </div>
             </div>
             <div class="msg-subject" onclick="toggleMessage('${m.docId}')" style="cursor:pointer;">${m.subject || 'General Inquiry'}</div>
@@ -3986,7 +4006,24 @@ window._previewTicketFile = _previewTicketFile;
 
 async function toggleMessage(docId) {
     const full = document.getElementById('msg-full-' + docId);
+    const isOpening = full && !full.classList.contains('open');
+
+    // Auto-collapse all other expanded cards
+    if (isOpening) {
+        document.querySelectorAll('[id^="msg-full-"].open').forEach(el => {
+            const otherId = el.id.replace('msg-full-', '');
+            if (otherId !== docId) {
+                el.classList.remove('open');
+                const otherChevron = document.getElementById('chevron-' + otherId);
+                if (otherChevron) otherChevron.style.transform = '';
+            }
+        });
+    }
+
     if (full) full.classList.toggle('open');
+    const chevron = document.getElementById('chevron-' + docId);
+    if (chevron) chevron.style.transform = (full && full.classList.contains('open')) ? 'rotate(180deg)' : '';
+
     // Mark as read
     const msg = allMessages.find(m => m.docId === docId);
     if (msg && !msg.read) {
@@ -3995,7 +4032,8 @@ async function toggleMessage(docId) {
             msg.read = true;
             const card = document.getElementById('ticket-card-' + docId);
             if (card) card.classList.remove('unread');
-            loadDashboard();
+            _updateSidebarMsgBadge();
+            _renderTicketHeroStats();
         } catch (e) { /* ignore */ }
     }
 }
@@ -4266,15 +4304,54 @@ function _rtNormMsg(row) {
     return msg;
 }
 
+// Update the sidebar Messages badge from in-memory allMessages
+function _updateSidebarMsgBadge() {
+    const unread = allMessages.filter(m => !m.read).length;
+    const badge = document.getElementById('msgBadge');
+    if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'inline' : 'none'; }
+    _renderTicketHeroStats();
+}
+
+// Show a Teams-style pop-up notification at the bottom-right
+let _notifTimer = null;
+function _showChatNotification(name, text) {
+    let el = document.getElementById('adminChatNotif');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'adminChatNotif';
+        el.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;background:#fff;border:1.5px solid #0d9488;border-radius:14px;box-shadow:0 8px 32px rgba(13,148,136,0.18);padding:14px 18px 12px;min-width:260px;max-width:340px;animation:msgSlideIn 0.35s ease;cursor:pointer;';
+        el.onclick = () => { el.remove(); clearTimeout(_notifTimer); document.querySelector('[data-page="messages"]')?.click(); };
+        document.body.appendChild(el);
+    }
+    el.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#0d9488,#6366f1);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-comment-dots" style="color:#fff;font-size:0.85rem;"></i></span>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:0.8rem;font-weight:700;color:#0f172a;">${name}</div>
+                <div style="font-size:0.72rem;color:#64748b;">New message</div>
+            </div>
+            <button onclick="event.stopPropagation();this.closest('#adminChatNotif').remove()" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:0.9rem;"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="font-size:0.8rem;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(text||'').replace(/</g,'&lt;').substring(0,80)}</div>
+        <div style="font-size:0.68rem;color:#0d9488;margin-top:6px;font-weight:600;">Click to open →</div>
+    `;
+    clearTimeout(_notifTimer);
+    _notifTimer = setTimeout(() => { el?.remove(); }, 8000);
+}
+
 function _onMsgInsert(row) {
     const msg = _rtNormMsg(row);
     if (allMessages.find(m => m.docId === msg.docId)) { _onMsgUpdate(row); return; }
     allMessages.unshift(msg);
-    _renderTicketHeroStats();
+    _updateSidebarMsgBadge();
 
     // Only inject card if we are on the matching view tab
     const isChat = !msg.ticketId;
-    if ((_ticketView === 'chats') !== isChat) return;
+    if ((_ticketView === 'chats') !== isChat) {
+        // Admin is on a different tab — show notification
+        if (isChat) _showChatNotification(msg.name || 'Visitor', msg.message || 'New chat request');
+        return;
+    }
 
     const container = document.getElementById('messagesList');
     if (!container) return;
@@ -4289,7 +4366,8 @@ function _onMsgInsert(row) {
         card.style.animation = 'msgSlideIn 0.4s ease';
         container.insertBefore(card, container.firstChild);
     }
-    showAdminToast(`💬 New ${msg.ticketId ? 'ticket' : 'chat'} from ${msg.name || 'visitor'}`, 'info');
+    if (isChat) _showChatNotification(msg.name || 'Visitor', msg.message || 'New chat request');
+    else showAdminToast(`🎫 New ticket from ${msg.name || 'visitor'}`, 'info');
 }
 
 function _onMsgUpdate(row) {
@@ -4297,13 +4375,27 @@ function _onMsgUpdate(row) {
     const docId = msg.docId;
 
     const idx = allMessages.findIndex(m => m.docId === docId);
+    const oldMsg = idx !== -1 ? allMessages[idx] : null;
+    const oldChatLen = (oldMsg?.chatMessages || []).length;
+    const newChatLen = msg.chatMessages.length;
+    const lastMsg = msg.chatMessages[newChatLen - 1];
+
     if (idx !== -1) allMessages[idx] = msg; else allMessages.unshift(msg);
-    _renderTicketHeroStats();
+    _updateSidebarMsgBadge();
+
+    // Notify admin if a new USER message arrived on a chat session
+    if (!msg.ticketId && newChatLen > oldChatLen && lastMsg?.role === 'user') {
+        const cardFull = document.getElementById('msg-full-' + docId);
+        const isCollapsed = !cardFull || !cardFull.classList.contains('open');
+        if (isCollapsed) {
+            _showChatNotification(msg.name || 'Customer', lastMsg.text || '');
+        }
+    }
 
     const card = document.getElementById('ticket-card-' + docId);
     if (!card) return;
 
-    // Save open/draft state before rebuilding this card
+    // Save open/draft/chevron state before rebuilding this card
     const wasOpen = document.getElementById('msg-full-' + docId)?.classList.contains('open');
     const savedDraft = document.getElementById('admin-chat-reply-' + docId)?.value || '';
 
@@ -4313,7 +4405,7 @@ function _onMsgUpdate(row) {
 
     // Restore state in the freshly rendered card
     const newCard = document.getElementById('ticket-card-' + docId);
-    if (newCard && wasOpen) {
+    if (wasOpen) {
         const newFull = document.getElementById('msg-full-' + docId);
         if (newFull) {
             newFull.classList.add('open');
@@ -4321,9 +4413,11 @@ function _onMsgUpdate(row) {
             const thread = newFull.querySelector('[style*="overflow-y"]');
             if (thread) setTimeout(() => { thread.scrollTop = thread.scrollHeight; }, 60);
         }
+        const chevron = document.getElementById('chevron-' + docId);
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
         const newReply = document.getElementById('admin-chat-reply-' + docId);
-        if (newReply && savedDraft) { newReply.value = savedDraft; newReply.focus(); }
-        newCard.style.animation = 'msgPulse 0.5s ease';
+        if (newReply && savedDraft) { newReply.value = savedDraft; }
+        if (newCard) newCard.style.animation = 'msgPulse 0.5s ease';
     }
 }
 
