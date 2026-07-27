@@ -17,6 +17,7 @@ ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS type text;
 ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS priority text;
 ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS "sessionId" text;
 ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS "convertedToTicket" text;
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS "agentEnded" boolean NOT NULL DEFAULT false;
 ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz;
 
 CREATE INDEX IF NOT EXISTS idx_messages_ticket_id ON public.messages("ticketId");

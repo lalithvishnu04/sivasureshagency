@@ -5274,7 +5274,7 @@ function _startLiveChatPolling(docId) {
             const data = snap.data();
 
             // ── Agent ended the chat ─────────────────────────────────
-            if (data.agentEnded === true) {
+            if (data.agentEnded === true || data.status === 'Ended') {
                 clearInterval(_chatPollInterval);
                 _chatPollInterval = null;
                 _chatLiveAgentMode = false;
@@ -6057,15 +6057,18 @@ async function trackTicketSearch() {
             await new Promise(res => { const t = setTimeout(res, 3000); window.addEventListener('ssa:dbReady', () => { clearTimeout(t); res(); }, { once: true }); });
         }
         if (!window.db) throw new Error('Database not ready');
-        const snap = await window.db.collection('messages').where('ticketId', '==', tid).get();
-        if (snap.empty) {
-            resultEl.innerHTML = `<div class="tkt-empty"><i class="fas fa-search"></i><p>No ticket found with ID <strong>${tid}</strong>.</p></div>`;
+
+        // Use the SECURITY DEFINER RPC function so anonymous users can look up
+        // their own ticket by ID without exposing the full messages table via RLS.
+        const rows = await window.db.rpc('get_ticket_by_id', { p_ticket_id: tid });
+        if (!rows || !rows.length) {
+            resultEl.innerHTML = `<div class="tkt-empty"><i class="fas fa-search"></i><p>No ticket found with ID <strong>${tid}</strong>. Check the ID and try again.</p></div>`;
             return;
         }
-        const tkt = { docId: snap.docs[0].id, ...snap.docs[0].data() };
-        resultEl.innerHTML = `<div class="tkt-section-head" style="margin-top:24px"><h2><i class="fas fa-search"></i> Search Result</h2></div><div class="tkt-list">${_renderTicketCard(tkt)}</div>`;
+        const tkt = rows[0];
+        resultEl.innerHTML = `<div class="tkt-section-head" style="margin-top:24px"><h2><i class="fas fa-search"></i> Ticket Found</h2></div><div class="tkt-list">${_renderTicketCard(tkt)}</div>`;
     } catch (err) {
-        resultEl.innerHTML = `<div class="tkt-empty"><i class="fas fa-exclamation-circle" style="color:#ef4444"></i><p>Error: ${err.message}</p></div>`;
+        resultEl.innerHTML = `<div class="tkt-empty"><i class="fas fa-exclamation-circle" style="color:#ef4444"></i><p>Error: ${err.message}</p><button class="btn btn-outline-dark btn-sm" onclick="trackTicketSearch()" style="margin-top:8px">Retry</button></div>`;
     }
 }
 window.trackTicketSearch = trackTicketSearch;

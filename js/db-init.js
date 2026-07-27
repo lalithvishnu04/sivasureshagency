@@ -301,7 +301,15 @@ console.log('[backend-init] Starting Supabase initialization...');
         }
     }
 
-    window.db = { collection: (name) => new ColRef(name) };
+    window.db = {
+        collection: (name) => new ColRef(name),
+        // rpc: call a Supabase SECURITY DEFINER function (used for guest ticket lookup etc.)
+        rpc: async (fnName, params) => {
+            const { data, error } = await client.rpc(fnName, params || {});
+            if (error) throw new Error(error.message || 'RPC failed');
+            return data;
+        }
+    };
     // fireDb kept only as a deprecated alias — all new code should use window.db
     window.fireDb = window.db;
 

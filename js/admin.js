@@ -4007,11 +4007,15 @@ async function submitCreateTicket(event) {
         }
 
         // Notify the customer their ticket was created
+        let emailSent = false;
         if (window.SSA_COMM && window.SSA_COMM.sendTicketStatusUpdate) {
-            await window.SSA_COMM.sendTicketStatusUpdate({ ticketId, customerEmail: email, customerName: name, newStatus: 'Open', adminNote: message, isNew: true }).catch(() => {});
+            emailSent = await window.SSA_COMM.sendTicketStatusUpdate({ ticketId, customerEmail: email, customerName: name, newStatus: 'Open', adminNote: message, isNew: true }).catch(() => false);
         }
-
-        showAdminToast(`Ticket ${ticketId} created for ${name}`);
+        if (!emailSent) {
+            showAdminToast(`Ticket ${ticketId} created — email NOT sent (configure Ticket Status webhook in Settings)`, 'warning');
+        } else {
+            showAdminToast(`Ticket ${ticketId} created & email sent to ${name}`);
+        }
         closeCreateTicketModal();
         await loadMessages();
     } catch (err) {
@@ -4066,17 +4070,21 @@ async function updateTicketStatus(docId) {
 
         msg.status = newStatus; msg.adminNote = noteText; msg.comments = comments; msg.read = true;
 
-        showAdminToast(`Ticket updated: ${newStatus}`);
-
         // Send notification to customer via Power Automate
+        let emailOk = false;
         if (window.SSA_COMM && window.SSA_COMM.sendTicketStatusUpdate) {
-            await window.SSA_COMM.sendTicketStatusUpdate({
+            emailOk = await window.SSA_COMM.sendTicketStatusUpdate({
                 ticketId: msg.ticketId || docId,
                 customerEmail: msg.email,
                 customerName: msg.name,
                 newStatus,
                 adminNote: noteText
-            }).catch(() => {});
+            }).catch(() => false);
+        }
+        if (!emailOk) {
+            showAdminToast(`Status → ${newStatus} (email NOT sent — configure Ticket Status webhook in Settings)`, 'warning');
+        } else {
+            showAdminToast(`Ticket updated: ${newStatus} — customer notified`);
         }
 
         renderMessages();
@@ -4125,16 +4133,26 @@ window.sendAdminChatReply = sendAdminChatReply;
 async function endLiveChat(docId, customerName) {
     if (!confirm(`End the live chat session with ${customerName}? The customer's bot will be re-activated.`)) return;
     try {
+        // agentEnded column requires migration_tickets.sql — fallback to status-only if missing
         await db.collection('messages').doc(docId).update({
             agentEnded: true,
             status: 'Ended',
-            endedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString(),
             updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString()
         });
-        showAdminToast(`Chat with ${customerName} ended`);
+        showAdminToast(`Chat with ${customerName} ended — bot re-activated for customer`);
         await loadMessages();
     } catch (err) {
-        showAdminToast('Error ending chat: ' + err.message, 'error');
+        // Graceful fallback: agentEnded column may not yet exist — update status only
+        try {
+            await db.collection('messages').doc(docId).update({
+                status: 'Ended',
+                updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString()
+            });
+            showAdminToast(`Chat marked Ended. Run migration_tickets.sql in Supabase to enable full end-chat signal.`, 'warning');
+            await loadMessages();
+        } catch (err2) {
+            showAdminToast('Error ending chat: ' + err2.message, 'error');
+        }
     }
 }
 window.endLiveChat = endLiveChat;
