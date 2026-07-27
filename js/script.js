@@ -2874,8 +2874,11 @@ async function handleLogin() {
             closeAuthModal();
             updateAuthUI();
             showToast(`Welcome back, ${firstName || 'User'}!`);
+            if (typeof saveCustomerToDb === 'function') {
+                await saveCustomerToDb({ firstName, lastName, email: currentUser.email, phone, customerId }).catch(() => {});
+            }
             if (typeof syncPendingOrders === 'function') syncPendingOrders(currentUser.email, currentUser.name, currentUser.phone);
-            setTimeout(() => location.reload(), 1200);
+            location.reload();
             return;
         } catch (e) {
             console.warn('[login] Backend auth failed, trying local fallback:', e.message);
@@ -2892,12 +2895,11 @@ async function handleLogin() {
         localStorage.setItem('ssa_user', JSON.stringify(currentUser));
         closeAuthModal(); updateAuthUI();
         showToast(`Welcome back, ${user.firstName}!`);
-        setTimeout(() => location.reload(), 1200);
-        // Sync customerId to Supabase so Admin UI can see it
         if (typeof saveCustomerToDb === 'function') {
-            saveCustomerToDb({ firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone, customerId: cid }).catch(() => {});
+            await saveCustomerToDb({ firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone, customerId: cid }).catch(() => {});
         }
         if (typeof syncPendingOrders === 'function') syncPendingOrders(currentUser.email, currentUser.name, currentUser.phone);
+        location.reload();
     } else { document.getElementById('loginPasswordError').textContent = 'Invalid credentials'; document.getElementById('loginPasswordError').style.display = 'block'; }
 }
 async function handleRegister() {
@@ -2935,14 +2937,13 @@ async function handleRegister() {
     currentUser = { name: firstName + ' ' + lastName, email, phone, customerId };
     localStorage.setItem('ssa_user', JSON.stringify(currentUser));
 
-    // Save customer to Supabase with customer ID (async)
+    // Save customer to Supabase with customer ID (await so it completes before reload)
     if (typeof saveCustomerToDb === 'function') {
-        saveCustomerToDb({ firstName, lastName, email, phone, customerId })
-            .catch(err => console.error('[register] Async save failed:', err));
+        await saveCustomerToDb({ firstName, lastName, email, phone, customerId }).catch(err => console.error('[register] Async save failed:', err));
     }
     closeAuthModal(); updateAuthUI();
     showToast(`Welcome, ${firstName}! Your Customer ID: ${customerId}`);
-    setTimeout(() => location.reload(), 1200);
+    location.reload();
 }
 
 function _generateCustomerId(email) {
@@ -3036,7 +3037,7 @@ async function openAccountPanel() {
         <div class="acct-top">
             <div class="acct-top-inner">
                 <div class="acct-avatar-wrap" onclick="document.getElementById('avatarUpload').click()">
-                    ${avatar ? `<img src="${avatar}" alt="Avatar" class="acct-avatar-img">` : `<div class="acct-avatar-placeholder"><i class="fas fa-user"></i></div>`}
+                    ${avatar ? `<img src="${avatar}" alt="Avatar" class="acct-avatar-img">` : `<div class="acct-avatar-placeholder">${currentUser.name?.charAt(0)?.toUpperCase() || 'U'}</div>`}
                     <span class="acct-avatar-edit"><i class="fas fa-camera"></i></span>
                     <input type="file" id="avatarUpload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
                 </div>
@@ -3055,12 +3056,6 @@ async function openAccountPanel() {
         </div>
         <div class="acct-body">
             <div class="acct-section active" id="accountProfile">
-                <!-- ── Customer ID chip ─────────────────── -->
-                ${currentUser.customerId ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,rgba(13,148,136,0.08),rgba(20,184,166,0.05));border:1px solid rgba(13,148,136,0.18);border-radius:10px;margin-bottom:16px;">
-                    <i class="fas fa-id-badge" style="color:#0d9488;font-size:1rem;"></i>
-                    <span style="font-size:0.71rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Customer ID</span>
-                    <span style="font-size:0.82rem;font-weight:900;letter-spacing:0.1em;color:#0d9488;margin-left:auto;">${currentUser.customerId}</span>
-                </div>` : ''}
 
                 <!-- ── Personal Information ─────────────── -->
                 <div style="margin-bottom:16px;">

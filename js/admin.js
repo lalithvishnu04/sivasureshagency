@@ -240,7 +240,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         if (page === 'customers') loadCustomers();
         if (page === 'messages') loadMessages();
         if (page === 'dashboard') loadDashboard();
-        if (page === 'settings') { loadSettings(); if (typeof loadWebhookSettings === 'function') loadWebhookSettings(); }
+        if (page === 'settings') { if (typeof loadWebhookSettings === 'function') loadWebhookSettings(); }
         // Update subtitle
         const subtitles = {dashboard:'Overview & analytics',orders:'Manage customer orders',products:'Product catalogue',categories:'Add & remove shop categories',inventory:'Stock levels',customers:'Registered users',messages:'Contact form submissions',settings:'Site configuration'};
         const sub = document.getElementById('pageSubtitle');
@@ -3294,59 +3294,6 @@ function refreshProductSubSelect(selected) {
     populateSubCategorySelect(catSel.value, selected);
 }
 window.refreshProductSubSelect = refreshProductSubSelect;
-
-// ===== Settings =====
-function loadSettings() {
-    try {
-        const cfg = JSON.parse(localStorage.getItem('ssa_scrub_brand') || '{}');
-        const nameEl = document.getElementById('sScrubBrandName');
-        const suffixEl = document.getElementById('sScrubBrandSuffix');
-        if (nameEl) nameEl.value = cfg.name || 'CliniFlex';
-        if (suffixEl) suffixEl.value = cfg.suffix !== undefined ? cfg.suffix : '™';
-        updateBrandPreview();
-    } catch(e) {}
-    // Wire up live preview
-    ['sScrubBrandName','sScrubBrandSuffix'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('input', updateBrandPreview);
-    });
-}
-function updateBrandPreview() {
-    const name = document.getElementById('sScrubBrandName')?.value?.trim() || 'CliniFlex';
-    const suffix = document.getElementById('sScrubBrandSuffix')?.value || '';
-    const preview = document.getElementById('brandPreviewText');
-    if (preview) preview.textContent = name + suffix;
-}
-function insertScrubBrandSymbol(sym) {
-    const inp = document.getElementById('sScrubBrandName');
-    if (!inp) return;
-    const s = inp.selectionStart, e = inp.selectionEnd;
-    inp.value = inp.value.slice(0, s) + sym + inp.value.slice(e);
-    inp.selectionStart = inp.selectionEnd = s + sym.length;
-    inp.focus();
-    updateBrandPreview();
-}
-function saveSettings() {
-    const name = document.getElementById('sScrubBrandName')?.value?.trim() || 'CliniFlex';
-    const suffix = document.getElementById('sScrubBrandSuffix')?.value || '™';
-    const cfg = { name, suffix };
-    localStorage.setItem('ssa_scrub_brand', JSON.stringify(cfg));
-    // Optionally persist to Supabase so other devices/sessions pick it up
-    if (window.db) {
-        window.db.collection('settings').doc('scrubBrand').set(cfg)
-            .then(() => showAdminToast('Settings saved — brand name updated to "' + name + suffix + '"'))
-            .catch(() => {
-                // Supabase write failed but localStorage is saved; that's fine for single-admin use
-                showAdminToast('Settings saved locally. Brand: "' + name + suffix + '"');
-            });
-    } else {
-        showAdminToast('Settings saved locally. Brand: "' + name + suffix + '"');
-    }
-}
-window.loadSettings = loadSettings;
-window.saveSettings = saveSettings;
-window.updateBrandPreview = updateBrandPreview;
-window.insertScrubBrandSymbol = insertScrubBrandSymbol;
 
 // ── Webhook Settings ──────────────────────────────────────────
 async function loadWebhookSettings() {

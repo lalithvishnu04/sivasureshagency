@@ -370,17 +370,10 @@
             <!-- Settings Page -->
             <div class="page" id="page-settings">
                 <div class="page-toolbar">
-                    <div class="toolbar-left"><h3 style="margin:0;font-size:1rem;font-weight:700;"><i class="fas fa-cog"></i> Site Settings</h3></div>
-                    <div class="toolbar-right">
-                        <button class="btn-primary" onclick="saveSettings()"><i class="fas fa-save"></i> Save Settings</button>
-                    </div>
+                    <div class="toolbar-left"><h3 style="margin:0;font-size:1rem;font-weight:700;"><i class="fas fa-share-alt"></i> Communication Settings</h3></div>
+                    <div class="toolbar-right"></div>
                 </div>
                 <div class="settings-panel">
-                    <div class="settings-section">
-                        <h4 class="settings-section-title"><i class="fas fa-tag"></i> Signature Collection Name</h4>
-                        <p class="settings-section-desc">To rename the Signature collection (e.g. "CliniFlex&trade;"), go to <strong>Categories</strong> &rarr; expand the Signature heading &rarr; edit the name inline, then click <strong>Save &amp; Publish</strong>.</p>
-                        <div class="info-banner"><i class="fas fa-info-circle"></i><div>The name you type in the Category Tree is what appears in the navigation, product tiles, hero section, and everywhere on the site. The symbol (&trade;/&reg;) can be inserted at any cursor position using the <strong>&trade;</strong> and <strong>&reg;</strong> buttons next to the heading name.</div></div>
-                    </div>
                     <!-- Communication / Power Automate Webhook Settings -->
                     <div class="settings-section">
                         <h4 class="settings-section-title"><i class="fas fa-share-alt"></i> Communication Webhooks (Power Automate)</h4>
@@ -390,7 +383,6 @@
                         <div class="form-group"><label><i class="fas fa-star"></i> Rating Notification Webhook URL</label><input type="url" id="webhookRating" placeholder="https://prod-xx.westus.logic.azure.com/..."></div>
                         <div class="form-group"><label><i class="fas fa-headset"></i> Live Agent Request Webhook URL (Teams)</label><input type="url" id="webhookLiveAgent" placeholder="https://prod-xx.westus.logic.azure.com/..."></div>
                         <button class="btn-primary" onclick="saveWebhookSettings()"><i class="fas fa-save"></i> Save Webhook URLs</button>
-                        <div class="info-banner" style="margin-top:12px;"><i class="fab fa-microsoft"></i><div><strong>Power Automate Setup:</strong> Create 4 flows (one per webhook). Each flow: <em>When an HTTP request is received</em> &rarr; <em>Send an email (V2) via Outlook 365</em> + <em>Post message in Teams channel</em>. Copy the trigger URL into each field above. <a href="https://make.powerautomate.com" target="_blank" style="color:var(--primary-teal);">Open Power Automate &rarr;</a></div></div>
                     </div>
                 </div>
             </div>

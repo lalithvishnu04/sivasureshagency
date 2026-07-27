@@ -1614,10 +1614,6 @@ img{max-width:100%;display:block;}
   transform: scale(1);
   transition: transform 0.3s ease;
 }
-.empty:hover i {
-  transform: scale(1.08);
-  opacity: 0.22;
-}
 
 /* ── A20. Product form — image preview ────────────────────────── */
 .img-preview.show {
@@ -1750,7 +1746,11 @@ img{max-width:100%;display:block;}
   /* Nav items: center icon, hide label */
   .sidebar.collapsed .nav-item {
     justify-content: center;
-    padding: 10px 8px;
+    padding: 10px;
+    overflow: visible;
+  }
+  .sidebar.collapsed .nav-item.active {
+    box-shadow: none;
   }
   .sidebar.collapsed .nav-label {
     opacity: 0;

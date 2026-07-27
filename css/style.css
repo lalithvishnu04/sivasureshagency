@@ -1227,24 +1227,27 @@ body.modal-open { overflow: hidden; touch-action: none; }
 
 /* ── 36. Account Modal Improved ──────────────────────────────── */
 .account-modal-v2 { max-width: 1080px; padding: 0; overflow: hidden; }
-.acct-top { background: var(--navy); padding: 26px 24px 20px; color: #fff; position: relative; }
-.acct-top-inner { display: flex; align-items: center; gap: 16px; }
+.acct-top { background: linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #115e59 100%); padding: 28px 24px 22px; color: #fff; position: relative; overflow: hidden; }
+.acct-top::before { content: ''; position: absolute; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.07); top: -70px; right: -50px; pointer-events: none; }
+.acct-top::after { content: ''; position: absolute; width: 100px; height: 100px; border-radius: 50%; background: rgba(255,255,255,0.05); bottom: -40px; left: 30px; pointer-events: none; }
+.acct-top-inner { display: flex; align-items: center; gap: 16px; position: relative; z-index: 1; }
 .acct-avatar-wrap { position: relative; cursor: pointer; flex-shrink: 0; }
-.acct-avatar-img { width: 62px; height: 62px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.2); }
-.acct-avatar-placeholder { width: 62px; height: 62px; border-radius: 50%; background: rgba(13,148,136,0.22); border: 3px solid rgba(13,148,136,0.3); display: flex; align-items: center; justify-content: center; color: #5eead4; font-size: 1.55rem; }
-.acct-avatar-edit { position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--navy); }
-.acct-avatar-edit i { font-size: 0.55rem; color: #fff; }
+.acct-avatar-img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.4); }
+.acct-avatar-placeholder { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,0.18); border: 3px solid rgba(255,255,255,0.35); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.7rem; font-weight: 800; }
+.acct-avatar-edit { position: absolute; bottom: 0; right: 0; width: 22px; height: 22px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #0d9488; }
+.acct-avatar-edit i { font-size: 0.55rem; color: #0d9488; }
 .acct-user-info h4 { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
-.acct-user-info p { font-size: 0.8rem; color: rgba(255,255,255,0.65); }
-.acct-user-info .acct-phone { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 0.77rem; color: rgba(255,255,255,0.55); }
-.acct-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.7); width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: var(--transition); font-size: 0.9rem; }
-.acct-close:hover { background: rgba(255,255,255,0.2); }
-.acct-tabs-bar { display: flex; background: #fff; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+.acct-user-info p { font-size: 0.8rem; color: rgba(255,255,255,0.75); }
+.acct-user-info .acct-phone { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 0.77rem; color: rgba(255,255,255,0.6); }
+.acct-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,0.15); border: none; color: rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: var(--transition); font-size: 0.9rem; z-index: 2; }
+.acct-close:hover { background: rgba(255,255,255,0.28); color: #fff; }
+.acct-tabs-bar { display: flex; background: #f8fffe; border-bottom: 2px solid #e2e8f0; overflow-x: auto; scrollbar-width: none; }
 .acct-tabs-bar::-webkit-scrollbar { display: none; }
-.acct-tab-btn { flex: 1; min-width: 80px; padding: 13px 10px; border: none; background: none; font-family: var(--font); font-size: 0.78rem; font-weight: 600; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: var(--transition); border-bottom: 2px solid transparent; white-space: nowrap; }
-.acct-tab-btn i { font-size: 0.95rem; }
-.acct-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
-.acct-body { padding: 20px 22px 22px; max-height: 68vh; overflow-y: auto; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); overscroll-behavior: contain; }
+.acct-tab-btn { flex: 1; min-width: 90px; padding: 14px 12px 11px; border: none; background: none; font-family: var(--font); font-size: 0.79rem; font-weight: 600; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: var(--transition); border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+.acct-tab-btn i { font-size: 1rem; }
+.acct-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: rgba(13,148,136,0.04); }
+.acct-tab-btn:hover:not(.active) { color: var(--text); background: rgba(0,0,0,0.02); }
+.acct-body { padding: 20px 22px 22px; max-height: 68vh; overflow-y: auto; background: #ffffff; overscroll-behavior: contain; }
 .acct-section { display: none; }
 .acct-section.active { display: block; }
 /* Order cards in account */
