@@ -238,7 +238,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         if (page === 'categories') { loadTaxonomy(); }
         if (page === 'inventory') loadInventory();
         if (page === 'customers') loadCustomers();
-        if (page === 'messages') { loadMessages(); _startAdminMsgsRealtime(); } else { _stopAdminMsgsRealtime(); }
+        if (page === 'messages') { loadMessages(); _startAdminMsgsRealtime(); loadLiveAgentToggle(); } else { _stopAdminMsgsRealtime(); }
         if (page === 'dashboard') loadDashboard();
         if (page === 'settings') { if (typeof loadWebhookSettings === 'function') loadWebhookSettings(); }
         // Update subtitle
@@ -3322,6 +3322,46 @@ async function saveWebhookSettings() {
 }
 window.loadWebhookSettings = loadWebhookSettings;
 window.saveWebhookSettings = saveWebhookSettings;
+
+// ── Live Agent ON/OFF Toggle ─────────────────────────────────
+async function loadLiveAgentToggle() {
+    try {
+        const doc = await db.collection('settings').doc('liveAgentConfig').get();
+        const enabled = doc.exists ? (JSON.parse(doc.data().name || '{}').enabled !== false) : true;
+        const toggle = document.getElementById('liveAgentToggle');
+        if (toggle) toggle.checked = enabled;
+        _updateLiveAgentLabel(enabled);
+    } catch(e) { _updateLiveAgentLabel(true); }
+}
+async function setLiveAgentStatus(enabled) {
+    try {
+        await db.collection('settings').doc('liveAgentConfig').set({ name: JSON.stringify({ enabled }) });
+        _updateLiveAgentLabel(enabled);
+        showAdminToast(enabled ? '✅ Live Agent support is now Online' : '⏸️ Live Agent support is now Offline');
+    } catch(e) {
+        showAdminToast('Error saving setting: ' + e.message, 'error');
+    }
+}
+function _updateLiveAgentLabel(enabled) {
+    const label = document.getElementById('liveAgentStatusLabel');
+    const slider = document.getElementById('liveAgentSlider');
+    const dot = document.getElementById('liveAgentDot');
+    const toggle = document.getElementById('liveAgentToggle');
+    if (label) { label.textContent = enabled ? 'Online' : 'Offline'; label.style.color = enabled ? '#0d9488' : '#94a3b8'; }
+    if (slider) slider.style.background = enabled ? '#0d9488' : '#cbd5e1';
+    if (dot) { dot.style.background = enabled ? '#10b981' : '#94a3b8'; dot.style.boxShadow = enabled ? '0 0 0 3px rgba(16,185,129,0.2)' : 'none'; }
+    // Knob
+    if (slider && !slider.querySelector('.knob')) {
+        const knob = document.createElement('span');
+        knob.className = 'knob';
+        knob.style.cssText = 'position:absolute;height:16px;width:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform 0.25s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 4px rgba(0,0,0,0.22);';
+        slider.appendChild(knob);
+    }
+    const knob = slider?.querySelector('.knob');
+    if (knob) knob.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
+}
+window.loadLiveAgentToggle = loadLiveAgentToggle;
+window.setLiveAgentStatus = setLiveAgentStatus;
 
 function applyTextFormat(fieldId, action) {
     const inp = document.getElementById(fieldId);

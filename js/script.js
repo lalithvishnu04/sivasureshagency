@@ -5182,14 +5182,42 @@ async function getAIResponse(msg) {
 function _handleLiveAgentRequest() {
     const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
     if (!user) {
-        // Require login first
         return { text: `To connect with a live agent, I'll need you to <strong>sign in</strong> first so our team can identify you and give personalized support.`, quickReplies: [
             { label: '🔑 Sign In & Connect', msg: '_login_then_agent' }
         ]};
     }
-    // User is logged in - trigger live agent connection
+    // Check live agent availability asynchronously then activate
+    _checkAndActivateLiveAgent(user);
+    return { text: `<i class="fas fa-spinner fa-spin"></i> <strong>Checking live agent availability...</strong>` };
+}
+
+async function _checkAndActivateLiveAgent(user) {
+    try {
+        if (window.db) {
+            const doc = await window.db.collection('settings').doc('liveAgentConfig').get();
+            const cfg = doc.exists ? JSON.parse(doc.data().name || '{}') : {};
+            if (cfg.enabled === false) {
+                // Remove the "checking..." message and show unavailable
+                const msgs = document.getElementById('chatbotMessages');
+                const last = msgs?.querySelector('.chat-message.bot:last-child');
+                if (last) last.remove();
+                appendMsgWithQuickReplies('bot',
+                    `⚠️ <strong>Live Agent support is currently unavailable.</strong><br><br>Our team is offline right now. You can:<br>• Try again later during business hours (Mon–Sat, 9am–6pm)<br>• Send us a message and we'll respond by email`,
+                    [
+                        { label: '📧 Send Us a Message', msg: 'send message' },
+                        { label: '🎫 Create a Support Ticket', msg: 'send message' }
+                    ]
+                );
+                return;
+            }
+        }
+    } catch(e) { /* if check fails, allow by default */ }
+    // Remove the "checking..." placeholder
+    const msgs = document.getElementById('chatbotMessages');
+    const last = msgs?.querySelector('.chat-message.bot:last-child');
+    if (last) last.remove();
     _activateLiveAgent(user);
-    return { text: `✅ <strong>Connecting you to a live agent...</strong><br><br>Our support team has been notified. They'll respond here shortly (typically within a few minutes during business hours).<br><br>You can also email us at <a href="mailto:info@sivasureshagency.onmicrosoft.com">info@sivasureshagency.onmicrosoft.com</a>` };
+    appendMsg('bot', `✅ <strong>Connecting you to a live agent...</strong><br><br>Our support team has been notified. They'll respond here shortly (typically within a few minutes during business hours).<br><br>You can also email us at <a href="mailto:info@sivasureshagency.onmicrosoft.com">info@sivasureshagency.onmicrosoft.com</a>`);
 }
 
 // Handle special meta-messages from quick replies
