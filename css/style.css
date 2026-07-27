@@ -2671,6 +2671,60 @@ section.section-alt { background: var(--bg-off); }
   .odp-tl-step { min-width: 72px; }
 }
 
+/* ── Ticket Tracking Page (tickets.html) ──────────────────────────── */
+.tkt-page { padding-top: 90px; min-height: 100vh; background: var(--bg-off); }
+.tkt-hero { position: relative; overflow: hidden; padding: 64px 0 84px; background: linear-gradient(135deg, #0d9488 0%, #0f766e 45%, #134e4a 100%); color: #fff; text-align: center; }
+.tkt-hero-blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.35; pointer-events: none; animation: tkt-blob-float 9s ease-in-out infinite; }
+.tkt-blob-1 { width: 320px; height: 320px; background: #5eead4; top: -120px; left: -80px; }
+.tkt-blob-2 { width: 260px; height: 260px; background: #a7f3d0; bottom: -100px; right: -60px; animation-delay: 2.4s; }
+@keyframes tkt-blob-float { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(24px) scale(1.08); } }
+.tkt-hero-inner { position: relative; z-index: 1; }
+.tkt-hero-badge { display: inline-flex; align-items: center; gap: 7px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 50px; padding: 6px 16px; margin-bottom: 16px; backdrop-filter: blur(6px); }
+.tkt-hero-inner h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 900; margin: 0 0 10px; letter-spacing: -0.02em; }
+.tkt-hero-inner > p { font-size: 0.95rem; color: rgba(255,255,255,0.85); max-width: 520px; margin: 0 auto 30px; }
+.tkt-search-wrap { display: flex; justify-content: center; }
+.tkt-search-box { display: flex; align-items: center; gap: 8px; background: #fff; border-radius: 50px; padding: 6px 6px 6px 20px; box-shadow: 0 14px 40px rgba(0,0,0,0.22); max-width: 520px; width: 100%; }
+.tkt-search-box i.fa-hashtag { color: var(--text-faint); }
+.tkt-search-box input { flex: 1; border: none; outline: none; font-family: var(--font); font-size: 0.9rem; color: var(--text); padding: 10px 0; }
+.tkt-search-box button { display: inline-flex; align-items: center; gap: 6px; border: none; background: linear-gradient(135deg, #0d9488, #14b8a6); color: #fff; font-weight: 700; font-size: 0.85rem; padding: 11px 22px; border-radius: 50px; cursor: pointer; transition: var(--transition); white-space: nowrap; }
+.tkt-search-box button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+.tkt-section-head { display: flex; justify-content: space-between; align-items: center; margin: 32px 0 16px; flex-wrap: wrap; gap: 10px; }
+.tkt-section-head h2 { font-size: 1.15rem; font-weight: 800; color: var(--navy); display: flex; align-items: center; gap: 9px; margin: 0; }
+.tkt-section-head h2 i { color: var(--primary); }
+
+.tkt-loading { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 50px 20px; color: var(--text-muted); font-size: 0.85rem; }
+.tkt-empty { text-align: center; padding: 50px 20px; background: #fff; border-radius: 18px; border: 1px dashed var(--border); }
+.tkt-empty i { font-size: 2.4rem; color: var(--text-faint); display: block; margin-bottom: 12px; }
+.tkt-empty p { color: var(--text-muted); font-size: 0.88rem; margin-bottom: 14px; }
+.tkt-signin-prompt { text-align: center; padding: 50px 20px; background: #fff; border-radius: 18px; border: 1px solid var(--border); margin-bottom: 24px; }
+.tkt-signin-prompt i { font-size: 2.4rem; color: var(--primary); display: block; margin-bottom: 12px; }
+
+.tkt-list { display: flex; flex-direction: column; gap: 14px; padding-bottom: 50px; }
+.tkt-card { background: #fff; border: 1px solid var(--border); border-radius: 18px; overflow: hidden; box-shadow: 0 2px 14px rgba(15,23,42,0.05); transition: var(--transition); animation: od-card-in 0.32s ease both; }
+.tkt-card:hover { box-shadow: 0 10px 28px rgba(13,148,136,0.1); }
+.tkt-card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; cursor: pointer; flex-wrap: wrap; }
+.tkt-card-id { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.03em; padding: 4px 11px; border-radius: 7px; }
+.tkt-card-subject { font-size: 0.95rem; font-weight: 800; color: var(--text); margin: 6px 20px 0; }
+.tkt-card-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.74rem; color: var(--text-muted); padding: 8px 20px 16px; }
+.tkt-card-status { font-size: 0.72rem; font-weight: 800; padding: 4px 13px; border-radius: 50px; white-space: nowrap; }
+.tkt-card-body { display: none; padding: 0 20px 20px; border-top: 1px solid var(--border); }
+.tkt-card-body.open { display: block; animation: fade-up-in 0.25s ease both; }
+.tkt-card-message { font-size: 0.85rem; color: var(--text-mid); line-height: 1.7; white-space: pre-wrap; padding-top: 14px; }
+.tkt-attach-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.tkt-attach-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--primary-dark); background: rgba(13,148,136,0.08); border-radius: 8px; padding: 5px 10px; text-decoration: none; }
+.tkt-thread { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.tkt-thread-item { border-left: 3px solid #94a3b8; background: var(--bg-off); border-radius: 10px; padding: 10px 14px; }
+.tkt-thread-item.is-admin { border-left-color: var(--primary); background: rgba(13,148,136,0.05); }
+.tkt-thread-meta { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px; }
+.tkt-thread-text { font-size: 0.83rem; color: var(--text); line-height: 1.6; }
+.tkt-chevron { transition: transform 0.25s ease; color: var(--text-faint); }
+.tkt-card-head.expanded .tkt-chevron { transform: rotate(180deg); }
+@media (max-width: 640px) {
+  .tkt-hero { padding: 48px 0 64px; }
+  .tkt-card-meta { flex-direction: column; gap: 4px; }
+}
+
 /* ── 46. Redesigned Order List Cards (v2) ────────────────────────── */
 .acct-orders-v2 { display: flex; flex-direction: column; gap: 12px; }
 .acct-order-v2 { background: #fff; border: 1px solid var(--border); border-radius: 18px; overflow: hidden; transition: var(--transition); animation: od-card-in 0.32s ease both; }

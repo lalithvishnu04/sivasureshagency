@@ -3348,25 +3348,29 @@ window.updateBrandPreview = updateBrandPreview;
 window.insertScrubBrandSymbol = insertScrubBrandSymbol;
 
 // ── Webhook Settings ──────────────────────────────────────────
-function loadWebhookSettings() {
+async function loadWebhookSettings() {
     if (!window.SSA_COMM) return;
-    const cfg = window.SSA_COMM.getConfig();
+    const cfg = await window.SSA_COMM.getConfig();
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
     set('webhookContactForm', cfg.contactFormWebhook);
     set('webhookTicketStatus', cfg.ticketStatusWebhook);
     set('webhookRating', cfg.ratingWebhook);
     set('webhookLiveAgent', cfg.liveAgentWebhook);
 }
-function saveWebhookSettings() {
+async function saveWebhookSettings() {
     if (!window.SSA_COMM) { showAdminToast('Comm module not loaded', 'error'); return; }
     const get = id => document.getElementById(id)?.value?.trim() || '';
-    window.SSA_COMM.saveConfig({
-        contactFormWebhook: get('webhookContactForm'),
-        ticketStatusWebhook: get('webhookTicketStatus'),
-        ratingWebhook: get('webhookRating'),
-        liveAgentWebhook: get('webhookLiveAgent')
-    });
-    showAdminToast('Webhook URLs saved. Communication flows are now active.');
+    try {
+        await window.SSA_COMM.saveConfig({
+            contactFormWebhook: get('webhookContactForm'),
+            ticketStatusWebhook: get('webhookTicketStatus'),
+            ratingWebhook: get('webhookRating'),
+            liveAgentWebhook: get('webhookLiveAgent')
+        });
+        showAdminToast('Webhook URLs saved for every visitor (stored in Supabase). Communication flows are now active.');
+    } catch (err) {
+        showAdminToast('Error saving webhook URLs: ' + err.message, 'error');
+    }
 }
 window.loadWebhookSettings = loadWebhookSettings;
 window.saveWebhookSettings = saveWebhookSettings;
@@ -3807,8 +3811,9 @@ function handleProductImageUpload(event) {
 
 // ===== Messages / Support Tickets =====
 let allMessages = [];
+let _ticketView = 'tickets'; // 'tickets' | 'chats'
 const TICKET_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
-const TICKET_STATUS_COLORS = { 'Open': '#6366f1', 'In Progress': '#f59e0b', 'Resolved': '#10b981', 'Closed': '#94a3b8' };
+const TICKET_STATUS_COLORS = { 'Open': '#6366f1', 'In Progress': '#f59e0b', 'Resolved': '#10b981', 'Closed': '#94a3b8', 'Unassigned': '#94a3b8' };
 
 async function loadMessages() {
     const container = document.getElementById('messagesList');
@@ -3819,34 +3824,98 @@ async function loadMessages() {
         allMessages = snap.docs.map(d => ({ docId: d.id, ...d.data() }))
             .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         renderMessages();
+        _renderTicketHeroStats();
     } catch (err) {
         container.innerHTML = '<p class="empty" style="color:red">Error loading tickets: ' + err.message + '</p>';
     }
 }
+
+function _renderTicketHeroStats() {
+    const el = document.getElementById('ticketHeroStats');
+    if (!el) return;
+    const tickets = allMessages.filter(m => m.ticketId);
+    const chats = allMessages.filter(m => !m.ticketId);
+    const open = tickets.filter(m => (m.status || 'Open') === 'Open').length;
+    const badge = document.getElementById('chatReqBadge');
+    if (badge) { badge.textContent = chats.length; badge.style.display = chats.length ? 'inline-flex' : 'none'; }
+    el.innerHTML = `
+        <div class="ticket-stat"><span class="ticket-stat-num">${tickets.length}</span><span class="ticket-stat-label">Tickets</span></div>
+        <div class="ticket-stat"><span class="ticket-stat-num">${open}</span><span class="ticket-stat-label">Open</span></div>
+        <div class="ticket-stat"><span class="ticket-stat-num">${chats.length}</span><span class="ticket-stat-label">Chat Requests</span></div>
+    `;
+}
+
+function setTicketView(view) {
+    _ticketView = view;
+    document.querySelectorAll('.ticket-view-tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    const statusFilter = document.getElementById('ticketStatusFilter');
+    if (statusFilter) statusFilter.style.display = view === 'chats' ? 'none' : '';
+    renderMessages();
+}
+window.setTicketView = setTicketView;
 
 function renderMessages() {
     const container = document.getElementById('messagesList');
     if (!container) return;
     const search = (document.getElementById('messageSearch')?.value || '').toLowerCase();
     const statusFilter = document.getElementById('ticketStatusFilter')?.value || '';
-    let msgs = allMessages;
+    let msgs = allMessages.filter(m => _ticketView === 'chats' ? !m.ticketId : !!m.ticketId);
     if (search) msgs = msgs.filter(m => (m.name||'').toLowerCase().includes(search) || (m.email||'').toLowerCase().includes(search) || (m.message||'').toLowerCase().includes(search) || (m.ticketId||'').toLowerCase().includes(search));
-    if (statusFilter) msgs = msgs.filter(m => (m.status || 'Open') === statusFilter);
+    if (statusFilter && _ticketView !== 'chats') msgs = msgs.filter(m => (m.status || 'Open') === statusFilter);
 
     if (!msgs.length) {
-        container.innerHTML = '<p class="empty"><i class="fas fa-ticket-alt"></i>No tickets found</p>';
+        container.innerHTML = _ticketView === 'chats'
+            ? '<p class="empty"><i class="fas fa-comment-dots"></i>No pending chat requests</p>'
+            : '<p class="empty"><i class="fas fa-ticket-alt"></i>No tickets found</p>';
         return;
     }
-    container.innerHTML = msgs.map(m => {
-        const status = m.status || 'Open';
-        const statusColor = TICKET_STATUS_COLORS[status] || '#6366f1';
-        const ts = m.createdAt ? new Date(m.createdAt.seconds * 1000).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
-        const attachments = m.attachmentUrls && m.attachmentUrls.length ? m.attachmentUrls.map(url => `<a href="${url}" target="_blank" style="color:var(--primary-teal);font-size:0.75rem;"><i class="fas fa-paperclip"></i> Attachment</a>`).join(' ') : '';
-        return `
+    container.innerHTML = msgs.map(m => m.ticketId ? _buildTicketCardHTML(m) : _buildChatRequestCardHTML(m)).join('');
+}
+
+function _buildChatRequestCardHTML(m) {
+    const ts = m.createdAt ? new Date(m.createdAt.seconds ? m.createdAt.seconds * 1000 : m.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+    return `
         <div class="msg-card ${m.read ? '' : 'unread'}" id="ticket-card-${m.docId}">
             <div class="msg-header" onclick="toggleMessage('${m.docId}')">
                 <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-                    ${m.ticketId ? `<span style="font-size:0.7rem;font-weight:800;color:${statusColor};background:${statusColor}18;border-radius:6px;padding:3px 8px;letter-spacing:0.5px;white-space:nowrap;">${m.ticketId}</span>` : ''}
+                    <span style="font-size:0.7rem;font-weight:800;color:#94a3b8;background:#94a3b818;border-radius:6px;padding:3px 8px;letter-spacing:0.5px;white-space:nowrap;"><i class="fas fa-comment-dots"></i> CHAT</span>
+                    <span class="msg-sender" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="fas fa-user-circle" style="color:#6366f1;margin-right:5px"></i>${m.name || 'Unknown'}</span>
+                </div>
+                <span class="msg-time">${ts}</span>
+            </div>
+            <div class="msg-subject" onclick="toggleMessage('${m.docId}')" style="cursor:pointer;">${m.subject || 'Live Agent Request'}</div>
+            <div class="msg-meta">
+                <span class="msg-tag"><i class="fas fa-envelope"></i> ${m.email || ''}</span>
+                ${m.phone ? `<span class="msg-tag"><i class="fas fa-phone"></i> ${m.phone}</span>` : ''}
+                ${m.customerId ? `<span class="msg-tag"><i class="fas fa-id-badge"></i> ${m.customerId}</span>` : ''}
+                ${!m.read ? '<span class="msg-tag" style="background:#ede9fe;color:#6366f1;">New</span>' : ''}
+            </div>
+            <div class="msg-full" id="msg-full-${m.docId}">
+                <div style="padding:12px 0;border-top:1px solid var(--border);margin-top:10px;">
+                    <p style="margin-bottom:10px;color:var(--text-dark);line-height:1.7;white-space:pre-wrap;">${(m.message||'').replace(/</g,'&lt;')}</p>
+                    <button class="btn btn-sm" style="background:var(--primary-teal);color:#fff;padding:7px 18px;font-size:0.8rem;" onclick="openCreateTicketModal('${m.docId}')"><i class="fas fa-ticket-alt"></i> Create Ticket for this Customer</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function _buildTicketCardHTML(m) {
+    const status = m.status || 'Open';
+    const statusColor = TICKET_STATUS_COLORS[status] || '#6366f1';
+    const ts = m.createdAt ? new Date(m.createdAt.seconds ? m.createdAt.seconds * 1000 : m.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+    const attachments = m.attachmentUrls && m.attachmentUrls.length ? m.attachmentUrls.map(url => `<a href="${url}" target="_blank" style="color:var(--primary-teal);font-size:0.75rem;"><i class="fas fa-paperclip"></i> Attachment</a>`).join(' ') : '';
+    const comments = Array.isArray(m.comments) ? m.comments : [];
+    const commentsHtml = comments.length ? `<div class="ticket-thread">${comments.map(c => `
+        <div class="ticket-thread-item ${c.role === 'admin' ? 'is-admin' : 'is-system'}">
+            <div class="ticket-thread-meta"><strong>${c.author || (c.role === 'admin' ? 'Support Team' : 'System')}</strong><span>${c.createdAt ? new Date(c.createdAt).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : ''}</span></div>
+            <div class="ticket-thread-text">${(c.text||'').replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+            ${c.attachmentUrl ? `<a href="${c.attachmentUrl}" target="_blank" class="ticket-thread-attach"><i class="fas fa-paperclip"></i> ${c.attachmentName || 'Attachment'}</a>` : ''}
+        </div>`).join('')}</div>` : '';
+    return `
+        <div class="msg-card ${m.read ? '' : 'unread'}" id="ticket-card-${m.docId}">
+            <div class="msg-header" onclick="toggleMessage('${m.docId}')">
+                <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                    <span style="font-size:0.7rem;font-weight:800;color:${statusColor};background:${statusColor}18;border-radius:6px;padding:3px 8px;letter-spacing:0.5px;white-space:nowrap;">${m.ticketId}</span>
                     <span class="msg-sender" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="fas fa-user-circle" style="color:#6366f1;margin-right:5px"></i>${m.name || 'Unknown'}</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
@@ -3859,33 +3928,48 @@ function renderMessages() {
                 <span class="msg-tag"><i class="fas fa-envelope"></i> ${m.email || ''}</span>
                 ${m.phone ? `<span class="msg-tag"><i class="fas fa-phone"></i> ${m.phone}</span>` : ''}
                 ${m.customerId ? `<span class="msg-tag"><i class="fas fa-id-badge"></i> ${m.customerId}</span>` : ''}
+                ${m.source === 'admin-created' ? `<span class="msg-tag" style="background:#ede9fe;color:#6366f1;">Admin-created</span>` : ''}
                 ${!m.read ? '<span class="msg-tag" style="background:#ede9fe;color:#6366f1;">New</span>' : ''}
             </div>
             <!-- Expandable full message -->
             <div class="msg-full" id="msg-full-${m.docId}">
                 <div style="padding:12px 0;border-top:1px solid var(--border);margin-top:10px;">
-                    <p style="margin-bottom:10px;color:var(--text-dark);line-height:1.7;">${(m.message||'').replace(/\n/g,'<br>')}</p>
+                    <p style="margin-bottom:10px;color:var(--text-dark);line-height:1.7;white-space:pre-wrap;">${(m.message||'').replace(/</g,'&lt;')}</p>
                     ${attachments ? `<div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;">${attachments}</div>` : ''}
+                    ${commentsHtml}
                     <!-- Admin Reply / Status Update -->
                     <div style="background:var(--bg-secondary);border-radius:10px;padding:14px;margin-top:10px;">
-                        <div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);margin-bottom:10px;">Admin Response</div>
+                        <div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);margin-bottom:10px;">Update Ticket</div>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
-                            <label style="font-size:0.78rem;font-weight:600;color:var(--text-muted);">Update Status:</label>
-                            <select id="ticketStatus-${m.docId}" onchange="" style="padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:0.82rem;background:#fff;cursor:pointer;">
+                            <label style="font-size:0.78rem;font-weight:600;color:var(--text-muted);">Status:</label>
+                            <select id="ticketStatus-${m.docId}" style="padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:0.82rem;background:#fff;cursor:pointer;">
                                 ${TICKET_STATUSES.map(s => `<option value="${s}" ${(m.status||'Open')===s?'selected':''}>${s}</option>`).join('')}
                             </select>
                         </div>
-                        <textarea id="ticketNote-${m.docId}" placeholder="Add a note to customer (optional)..." rows="3" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.82rem;resize:vertical;outline:none;">${m.adminNote || ''}</textarea>
+                        <textarea id="ticketNote-${m.docId}" placeholder="Add a comment for the customer (optional)..." rows="3" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.82rem;resize:vertical;outline:none;"></textarea>
+                        <div style="margin-top:8px;">
+                            <label class="btn btn-sm" style="background:var(--bg-primary);border:1.5px solid var(--border);padding:6px 14px;font-size:0.78rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                                <i class="fas fa-paperclip"></i> Attach file
+                                <input type="file" id="ticketFile-${m.docId}" style="display:none" onchange="_previewTicketFile('${m.docId}')">
+                            </label>
+                            <span id="ticketFileName-${m.docId}" style="font-size:0.76rem;color:var(--text-muted);margin-left:6px;"></span>
+                        </div>
                         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-                            <button class="btn btn-sm" style="background:var(--primary-teal);color:#fff;padding:7px 18px;font-size:0.8rem;" onclick="updateTicketStatus('${m.docId}')"><i class="fas fa-save"></i> Save & Notify Customer</button>
+                            <button class="btn btn-sm" style="background:var(--primary-teal);color:#fff;padding:7px 18px;font-size:0.8rem;" onclick="updateTicketStatus('${m.docId}')"><i class="fas fa-save"></i> Save &amp; Notify Customer</button>
                             <button class="btn btn-sm" style="background:var(--bg-primary);border:1.5px solid var(--border);padding:7px 18px;font-size:0.8rem;" onclick="replyToCustomer('${m.email||''}','${m.ticketId||''}')"><i class="fas fa-envelope"></i> Email Customer</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>`;
-    }).join('');
 }
+
+function _previewTicketFile(docId) {
+    const input = document.getElementById('ticketFile-' + docId);
+    const label = document.getElementById('ticketFileName-' + docId);
+    if (label) label.textContent = input?.files?.[0]?.name || '';
+}
+window._previewTicketFile = _previewTicketFile;
 
 async function toggleMessage(docId) {
     const full = document.getElementById('msg-full-' + docId);
@@ -3903,36 +3987,137 @@ async function toggleMessage(docId) {
     }
 }
 
-async function updateTicketStatus(docId) {
-    const statusEl = document.getElementById('ticketStatus-' + docId);
-    const noteEl = document.getElementById('ticketNote-' + docId);
-    if (!statusEl) return;
-    const newStatus = statusEl.value;
-    const adminNote = noteEl?.value?.trim() || '';
+// ── Create Ticket (Admin) ────────────────────────────────────
+function openCreateTicketModal(sourceDocId) {
+    const form = document.getElementById('createTicketForm');
+    if (form) form.reset();
+    document.getElementById('ctSourceDocId').value = sourceDocId || '';
+    if (sourceDocId) {
+        const src = allMessages.find(m => m.docId === sourceDocId);
+        if (src) {
+            document.getElementById('ctCustomerId').value = src.customerId || '';
+            document.getElementById('ctCustomerName').value = src.name || '';
+            document.getElementById('ctCustomerMobile').value = src.phone || '';
+            document.getElementById('ctCustomerEmail').value = src.email || '';
+            document.getElementById('ctSubject').value = 'Live Agent Follow-up';
+            document.getElementById('ctDescription').value = src.message || '';
+        }
+    }
+    openModal('createTicketModal');
+}
+window.openCreateTicketModal = openCreateTicketModal;
+
+function closeCreateTicketModal() {
+    closeModal('createTicketModal');
+}
+window.closeCreateTicketModal = closeCreateTicketModal;
+
+async function submitCreateTicket(event) {
+    event.preventDefault();
+    const sourceDocId = document.getElementById('ctSourceDocId').value || '';
+    const customerId = document.getElementById('ctCustomerId').value.trim();
+    const name = document.getElementById('ctCustomerName').value.trim();
+    const phone = document.getElementById('ctCustomerMobile').value.trim();
+    const email = document.getElementById('ctCustomerEmail').value.trim();
+    const priority = document.getElementById('ctPriority').value;
+    const subject = document.getElementById('ctSubject').value.trim() || 'Support Ticket';
+    const message = document.getElementById('ctDescription').value.trim();
+    if (!name || !phone || !email || !message) { showAdminToast('Please fill all required fields', 'error'); return; }
+
+    const btn = document.querySelector('#createTicketForm button[type=submit]');
+    const origText = btn?.innerHTML;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...'; }
 
     try {
-        await db.collection('messages').doc(docId).update({
-            status: newStatus, adminNote, read: true,
+        const ticketId = window.SSA_COMM && window.SSA_COMM.generateTicketId ? window.SSA_COMM.generateTicketId() : ('TKT-' + Date.now().toString(36).toUpperCase());
+        await db.collection('messages').add({
+            ticketId, name, email, phone, customerId, subject, message, priority,
+            status: 'Open', source: 'admin-created', read: true,
+            attachmentUrls: [], comments: [],
+            createdAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date(),
             updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date()
         });
 
-        const msg = allMessages.find(m => m.docId === docId);
-        if (msg) { msg.status = newStatus; msg.adminNote = adminNote; msg.read = true; }
+        // Mark the originating chat request as converted so it drops off the Chat Requests tab
+        if (sourceDocId) {
+            try { await db.collection('messages').doc(sourceDocId).update({ status: 'Converted', convertedToTicket: ticketId, read: true }); } catch (e) { /* ignore */ }
+        }
+
+        // Notify the customer their ticket was created
+        if (window.SSA_COMM && window.SSA_COMM.sendTicketStatusUpdate) {
+            await window.SSA_COMM.sendTicketStatusUpdate({ ticketId, customerEmail: email, customerName: name, newStatus: 'Open', adminNote: message }).catch(() => {});
+        }
+
+        showAdminToast(`Ticket ${ticketId} created for ${name}`);
+        closeCreateTicketModal();
+        await loadMessages();
+    } catch (err) {
+        showAdminToast('Error creating ticket: ' + err.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = origText; }
+    }
+}
+window.submitCreateTicket = submitCreateTicket;
+
+async function updateTicketStatus(docId) {
+    const statusEl = document.getElementById('ticketStatus-' + docId);
+    const noteEl = document.getElementById('ticketNote-' + docId);
+    const fileEl = document.getElementById('ticketFile-' + docId);
+    if (!statusEl) return;
+    const newStatus = statusEl.value;
+    const noteText = noteEl?.value?.trim() || '';
+    const file = fileEl?.files?.[0] || null;
+
+    const msg = allMessages.find(m => m.docId === docId);
+    if (!msg) return;
+
+    try {
+        let attachmentUrl = '', attachmentName = '';
+        if (file && window.supabase) {
+            const path = 'tickets/' + (msg.ticketId || docId) + '/comments/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const { data } = await window.supabase.storage.from('assets').upload(path, file, { upsert: true });
+            if (data) {
+                const { data: urlData } = window.supabase.storage.from('assets').getPublicUrl(path);
+                attachmentUrl = urlData?.publicUrl || '';
+                attachmentName = file.name;
+            }
+        }
+
+        const comments = Array.isArray(msg.comments) ? [...msg.comments] : [];
+        const statusChanged = newStatus !== (msg.status || 'Open');
+        if (noteText || attachmentUrl || statusChanged) {
+            comments.push({
+                author: 'Support Team',
+                role: 'admin',
+                text: noteText || (statusChanged ? `Status changed to ${newStatus}` : ''),
+                attachmentUrl: attachmentUrl || undefined,
+                attachmentName: attachmentName || undefined,
+                createdAt: new Date().toISOString()
+            });
+        }
+
+        await db.collection('messages').doc(docId).update({
+            status: newStatus, adminNote: noteText, comments, read: true,
+            updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date()
+        });
+
+        msg.status = newStatus; msg.adminNote = noteText; msg.comments = comments; msg.read = true;
 
         showAdminToast(`Ticket updated: ${newStatus}`);
 
         // Send notification to customer via Power Automate
-        if (window.SSA_COMM && window.SSA_COMM.sendTicketStatusUpdate && msg) {
+        if (window.SSA_COMM && window.SSA_COMM.sendTicketStatusUpdate) {
             await window.SSA_COMM.sendTicketStatusUpdate({
                 ticketId: msg.ticketId || docId,
                 customerEmail: msg.email,
                 customerName: msg.name,
                 newStatus,
-                adminNote
-            });
+                adminNote: noteText
+            }).catch(() => {});
         }
 
         renderMessages();
+        _renderTicketHeroStats();
         loadDashboard();
     } catch (err) {
         showAdminToast('Error: ' + err.message, 'error');

@@ -336,8 +336,22 @@
 
             <!-- Messages Page -->
             <div class="page" id="page-messages">
+                <div class="ticket-hero">
+                    <div class="ticket-hero-inner">
+                        <div class="ticket-hero-text">
+                            <h3><i class="fas fa-ticket-alt"></i> Ticket Tracking</h3>
+                            <p>Chatbot requests do <strong>not</strong> auto-create tickets. Review chat requests and create a ticket only when an issue needs to be tracked. "Send Us a Message" from the site still creates a ticket automatically.</p>
+                        </div>
+                        <div class="ticket-hero-stats" id="ticketHeroStats"></div>
+                    </div>
+                </div>
                 <div class="page-toolbar">
-                    <div class="toolbar-left"><h3 style="margin:0;font-size:1rem;font-weight:700;"><i class="fas fa-ticket-alt"></i> Support Tickets</h3></div>
+                    <div class="toolbar-left">
+                        <div class="ticket-view-tabs">
+                            <button type="button" class="ticket-view-tab active" data-view="tickets" onclick="setTicketView('tickets')"><i class="fas fa-ticket-alt"></i> Tickets</button>
+                            <button type="button" class="ticket-view-tab" data-view="chats" onclick="setTicketView('chats')"><i class="fas fa-comment-dots"></i> Chat Requests <span class="ticket-view-badge" id="chatReqBadge" style="display:none;">0</span></button>
+                        </div>
+                    </div>
                     <div class="toolbar-right">
                         <select id="ticketStatusFilter" onchange="renderMessages()" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:0.82rem;cursor:pointer;">
                             <option value="">All Status</option>
@@ -346,11 +360,12 @@
                             <option value="Resolved">Resolved</option>
                             <option value="Closed">Closed</option>
                         </select>
+                        <button class="btn-primary" onclick="openCreateTicketModal()"><i class="fas fa-plus"></i> Create Ticket</button>
                         <button class="btn-secondary" onclick="markAllRead()"><i class="fas fa-check-double"></i> Mark All Read</button>
                         <input type="text" id="messageSearch" placeholder="Search tickets..." class="search-input" oninput="renderMessages()">
                     </div>
                 </div>
-                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>Support Tickets:</strong> All messages from the contact form appear here as tickets with unique IDs. Update status to notify customers automatically. Admin email: <strong>info@sivasureshagency.onmicrosoft.com</strong></div></div>
+                <div class="info-banner"><i class="fas fa-info-circle"></i><div><strong>Support Tickets:</strong> "Send Us a Message" creates a ticket automatically. Chatbot / live-agent requests appear under <strong>Chat Requests</strong> — use <strong>Create Ticket</strong> there (or the button above) to turn one into a tracked ticket for a customer. Admin email: <strong>info@sivasureshagency.onmicrosoft.com</strong></div></div>
                 <div id="messagesList"><p class="empty"><i class="fas fa-ticket-alt"></i>No tickets yet. Messages from the contact form will appear here.</p></div>
             </div>
 
@@ -555,6 +570,41 @@
                         </select>
                     </div>
                     <button type="submit" class="btn-primary btn-full"><i class="fas fa-save"></i> Save Status</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Ticket Modal -->
+    <div class="modal-overlay" id="createTicketModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3><i class="fas fa-ticket-alt"></i> Create Support Ticket</h3>
+                <button onclick="closeCreateTicketModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="createTicketForm" onsubmit="submitCreateTicket(event)">
+                    <input type="hidden" id="ctSourceDocId">
+                    <div class="info-banner" style="margin-bottom:14px;"><i class="fas fa-info-circle"></i><div>This ticket will be linked to the customer below and will appear on their <strong>My Tickets</strong> page.</div></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Customer ID</label><input type="text" id="ctCustomerId" placeholder="e.g. SSA-CUST-0001"></div>
+                        <div class="form-group"><label>Customer Name *</label><input type="text" id="ctCustomerName" placeholder="Full name" required></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Mobile *</label><input type="tel" id="ctCustomerMobile" placeholder="Mobile number" required></div>
+                        <div class="form-group"><label>Email *</label><input type="email" id="ctCustomerEmail" placeholder="Email address" required></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select id="ctPriority" style="background:var(--surface-2);">
+                            <option value="Normal">Normal</option>
+                            <option value="High">High</option>
+                            <option value="Urgent">Urgent</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Subject</label><input type="text" id="ctSubject" placeholder="Short summary of the issue"></div>
+                    <div class="form-group"><label>Description *</label><textarea id="ctDescription" rows="4" placeholder="Describe the issue that needs to be tracked..." required></textarea></div>
+                    <button type="submit" class="btn-primary btn-full"><i class="fas fa-save"></i> Create Ticket</button>
                 </form>
             </div>
         </div>

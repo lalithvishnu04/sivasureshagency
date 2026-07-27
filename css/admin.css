@@ -989,6 +989,37 @@ img{max-width:100%;display:block;}
 .msg-full{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:0.86rem;line-height:1.7;}
 .msg-full.open{display:block;}
 
+/* ── Ticket Tracking (hero, tabs, thread) ─────────────────── */
+.ticket-hero{
+  background:linear-gradient(135deg,#0d9488 0%,#0f766e 45%,#134e4a 100%);
+  border-radius:var(--radius);
+  padding:22px 26px;
+  margin-bottom:18px;
+  color:#fff;
+  position:relative;
+  overflow:hidden;
+}
+.ticket-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 85% 20%,rgba(255,255,255,0.14),transparent 55%);pointer-events:none;}
+.ticket-hero-inner{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;position:relative;z-index:1;}
+.ticket-hero-text h3{margin:0 0 6px;font-size:1.15rem;font-weight:800;display:flex;align-items:center;gap:8px;}
+.ticket-hero-text p{margin:0;font-size:0.82rem;color:rgba(255,255,255,0.85);max-width:560px;line-height:1.6;}
+.ticket-hero-stats{display:flex;gap:14px;flex-wrap:wrap;}
+.ticket-stat{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.22);border-radius:12px;padding:10px 18px;text-align:center;min-width:84px;backdrop-filter:blur(4px);}
+.ticket-stat-num{display:block;font-size:1.3rem;font-weight:800;line-height:1.1;}
+.ticket-stat-label{display:block;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;color:rgba(255,255,255,0.8);margin-top:2px;}
+
+.ticket-view-tabs{display:flex;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:4px;}
+.ticket-view-tab{border:none;background:transparent;padding:8px 14px;border-radius:9px;font-size:0.82rem;font-weight:700;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:6px;transition:var(--transition);}
+.ticket-view-tab.active{background:var(--surface);color:var(--primary-teal);box-shadow:var(--shadow-sm);}
+.ticket-view-badge{background:#ef4444;color:#fff;border-radius:20px;padding:1px 7px;font-size:0.68rem;font-weight:800;display:inline-flex;}
+
+.ticket-thread{margin:12px 0;display:flex;flex-direction:column;gap:8px;}
+.ticket-thread-item{background:#fff;border:1px solid var(--border);border-left:3px solid #94a3b8;border-radius:8px;padding:9px 12px;font-size:0.82rem;}
+.ticket-thread-item.is-admin{border-left-color:var(--primary-teal);background:#f0fdfa;}
+.ticket-thread-meta{display:flex;justify-content:space-between;gap:8px;font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;}
+.ticket-thread-text{color:var(--text-dark);line-height:1.6;}
+.ticket-thread-attach{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:0.75rem;color:var(--primary-teal);}
+
 /* ── Toast ────────────────────────────────────────────── */
 .admin-toast{
   position:fixed;

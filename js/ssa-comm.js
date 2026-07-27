@@ -11,25 +11,81 @@
 
 window.SSA_COMM = (function () {
     // ── Configurable Webhook URLs ────────────────────────────
-    // Load from localStorage (admin can update via Settings UI)
-    function _cfg() {
-        try {
-            const saved = JSON.parse(localStorage.getItem('ssa_comm_config') || '{}');
-            return {
-                // Power Automate HTTP trigger → Outlook Send Email + Teams alert
-                contactFormWebhook: saved.contactFormWebhook || '',
-                ticketStatusWebhook: saved.ticketStatusWebhook || '',
-                ratingWebhook: saved.ratingWebhook || '',
-                liveAgentWebhook: saved.liveAgentWebhook || '',
-                // Admin email (where all notifications go)
-                adminEmail: saved.adminEmail || 'info@sivasureshagency.onmicrosoft.com'
-            };
-        } catch { return { adminEmail: 'info@sivasureshagency.onmicrosoft.com' }; }
+    // IMPORTANT: webhook URLs used to be stored in localStorage only, which
+    // meant they were scoped to a single browser (usually the admin's own).
+    // Any customer visiting the live site from a different browser/device
+    // always saw an EMPTY config, so postWebhook() silently no-opped and
+    // Power Automate never received a request (confirmed: 0 flow runs ever).
+    // Fix: persist the config in Supabase `settings` (shared by everyone),
+    // with localStorage kept only as a fast local cache / offline fallback.
+    const _CFG_DOC = 'commWebhooks';
+    const _CFG_TTL = 5 * 60 * 1000; // 5 min in-memory cache
+    let _cfgCache = null;
+    let _cfgCacheAt = 0;
+
+    function _localCfg() {
+        try { return JSON.parse(localStorage.getItem('ssa_comm_config') || '{}'); } catch { return {}; }
     }
 
-    function saveConfig(cfg) {
-        const current = _cfg();
-        localStorage.setItem('ssa_comm_config', JSON.stringify({ ...current, ...cfg }));
+    function _defaults(overrides) {
+        return {
+            contactFormWebhook: '',
+            ticketStatusWebhook: '',
+            ratingWebhook: '',
+            liveAgentWebhook: '',
+            adminEmail: 'info@sivasureshagency.onmicrosoft.com',
+            ...overrides
+        };
+    }
+
+    async function _cfg() {
+        const now = Date.now();
+        if (_cfgCache && (now - _cfgCacheAt) < _CFG_TTL) return _cfgCache;
+
+        let remote = null;
+        try {
+            if (window.db) {
+                const doc = await window.db.collection('settings').doc(_CFG_DOC).get();
+                if (doc && doc.exists) remote = JSON.parse(doc.data().name || '{}');
+            }
+        } catch (e) {
+            console.warn('[SSA-COMM] Could not load shared webhook config from Supabase:', e.message);
+        }
+
+        const local = _localCfg();
+        const merged = _defaults({
+            contactFormWebhook: remote?.contactFormWebhook || local.contactFormWebhook || '',
+            ticketStatusWebhook: remote?.ticketStatusWebhook || local.ticketStatusWebhook || '',
+            ratingWebhook: remote?.ratingWebhook || local.ratingWebhook || '',
+            liveAgentWebhook: remote?.liveAgentWebhook || local.liveAgentWebhook || '',
+            adminEmail: remote?.adminEmail || local.adminEmail || undefined
+        });
+        _cfgCache = merged;
+        _cfgCacheAt = now;
+        return merged;
+    }
+
+    // Synchronous best-effort read (cache or localStorage) — used only for
+    // instantly pre-filling the Admin Settings form before the async load
+    // finishes; never relied on for actually sending webhooks.
+    function _cfgSync() {
+        if (_cfgCache) return _cfgCache;
+        return _defaults(_localCfg());
+    }
+
+    async function saveConfig(cfg) {
+        const current = await _cfg();
+        const merged = { ...current, ...cfg };
+        _cfgCache = merged;
+        _cfgCacheAt = Date.now();
+        // Local cache for instant reload / offline
+        try { localStorage.setItem('ssa_comm_config', JSON.stringify(merged)); } catch { /* ignore */ }
+        // Shared source of truth — every visitor's browser reads this
+        if (window.db) {
+            await window.db.collection('settings').doc(_CFG_DOC).set({ name: JSON.stringify(merged) }, { merge: true });
+        } else {
+            throw new Error('Database not ready — webhook URLs saved locally only. Reload and try again.');
+        }
     }
 
     // ── Ticket ID Generator ──────────────────────────────────
@@ -75,7 +131,7 @@ window.SSA_COMM = (function () {
     // ── Contact Form Submission ──────────────────────────────
     async function sendContactFormEmail(data) {
         // data: { ticketId, name, email, phone, subject, message, attachmentUrls, customerIdStr }
-        const cfg = _cfg();
+        const cfg = await _cfg();
         return postWebhook(cfg.contactFormWebhook, {
             type: 'contact_form',
             adminEmail: cfg.adminEmail,
@@ -113,7 +169,7 @@ Reply to this ticket from your Admin panel: https://lalithvishnu04.github.io/siv
     // ── Ticket Status Update (notify customer) ───────────────
     async function sendTicketStatusUpdate(data) {
         // data: { ticketId, customerEmail, customerName, newStatus, adminNote }
-        const cfg = _cfg();
+        const cfg = await _cfg();
         return postWebhook(cfg.ticketStatusWebhook, {
             type: 'ticket_status',
             toEmail: data.customerEmail,
@@ -145,7 +201,7 @@ info@sivasureshagency.onmicrosoft.com
     // ── Product Rating Notification ──────────────────────────
     async function sendRatingNotification(data) {
         // data: { orderId, productName, rating, comment, customerName, customerEmail, imageUrl }
-        const cfg = _cfg();
+        const cfg = await _cfg();
         return postWebhook(cfg.ratingWebhook, {
             type: 'rating',
             adminEmail: cfg.adminEmail,
@@ -179,7 +235,7 @@ View in Admin: https://lalithvishnu04.github.io/sivasureshagency/admin.html
     // ── Live Agent Request (Teams notification) ──────────────
     async function requestLiveAgent(data) {
         // data: { customerName, customerEmail, customerId, context, sessionId }
-        const cfg = _cfg();
+        const cfg = await _cfg();
         return postWebhook(cfg.liveAgentWebhook, {
             type: 'live_agent_request',
             adminEmail: cfg.adminEmail,
@@ -211,7 +267,8 @@ Please respond on Microsoft Teams or via email.
         sendTicketStatusUpdate,
         sendRatingNotification,
         requestLiveAgent,
-        getConfig: _cfg,
+        getConfig: _cfg,       // async — always fresh/shared (Supabase)
+        getConfigSync: _cfgSync, // sync best-effort — UI pre-fill only
         saveConfig
     };
 })();
