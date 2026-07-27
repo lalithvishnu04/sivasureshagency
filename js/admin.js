@@ -4164,16 +4164,6 @@ async function sendAdminChatReply(docId, customerEmail, customerName, sessionId)
             status: 'In Progress',
             updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString()
         });
-        // Email the customer via Power Automate
-        if (window.SSA_COMM && window.SSA_COMM.sendTicketStatusUpdate && customerEmail) {
-            await window.SSA_COMM.sendTicketStatusUpdate({
-                ticketId: sessionId || docId.slice(0, 12).toUpperCase(),
-                customerEmail,
-                customerName,
-                newStatus: 'Agent Reply',
-                adminNote: text
-            }).catch(() => {});
-        }
         if (replyEl) replyEl.value = '';
         showAdminToast(`Reply sent to ${customerName}`);
         await loadMessages();
