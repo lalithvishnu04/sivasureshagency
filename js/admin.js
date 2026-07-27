@@ -3897,9 +3897,9 @@ function _buildChatRequestCardHTML(m) {
                         </div>`).join('')}
                     </div>` : ''}
                     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
-                        <textarea id="admin-chat-reply-${m.docId}" placeholder="Type reply to ${_escHtmlCat(m.name||'customer')}... (Shift+Enter for new line)" rows="2" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.82rem;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+                        <textarea id="admin-chat-reply-${m.docId}" placeholder="${m.status === 'Ended' ? 'Chat has ended — replies disabled' : 'Type reply to ' + _escHtmlCat(m.name||'customer') + '... (Shift+Enter for new line)'}" rows="2" ${m.status === 'Ended' ? 'disabled' : ''} style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.82rem;resize:vertical;outline:none;box-sizing:border-box;${m.status === 'Ended' ? 'background:#f8fafc;color:#94a3b8;cursor:not-allowed;' : ''}"></textarea>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;" class="chat-reply-actions">
-                            <button class="btn btn-sm" style="background:#0d9488;color:#fff;padding:7px 18px;font-size:0.8rem;" onclick="sendAdminChatReply('${m.docId}','${_escHtmlCat(m.email||'')}','${_escHtmlCat(m.name||'Customer')}','${m.sessionId||''}')"><i class="fas fa-paper-plane"></i> Send</button>
+                            <button class="btn btn-sm" style="background:${m.status === 'Ended' ? '#e2e8f0' : '#0d9488'};color:${m.status === 'Ended' ? '#94a3b8' : '#fff'};padding:7px 18px;font-size:0.8rem;cursor:${m.status === 'Ended' ? 'not-allowed' : 'pointer'};" ${m.status === 'Ended' ? 'disabled' : ''} onclick="sendAdminChatReply('${m.docId}','${_escHtmlCat(m.email||'')}','${_escHtmlCat(m.name||'Customer')}','${m.sessionId||''}')"><i class="fas fa-paper-plane"></i> Send</button>
                             <button class="btn btn-sm" style="background:#fff;color:#0f172a;border:1.5px solid var(--border);padding:7px 18px;font-size:0.8rem;" onclick="openCreateTicketModal('${m.docId}')"><i class="fas fa-ticket-alt" style="color:#6366f1"></i> Create Ticket</button>
                             ${m.status !== 'Ended' ? `<button class="btn btn-sm" style="background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;padding:7px 18px;font-size:0.8rem;" onclick="endLiveChat('${m.docId}','${_escHtmlCat(m.name||'Customer')}')" title="End this live chat session"><i class="fas fa-phone-slash"></i> End Chat</button>` : `<span style="font-size:0.75rem;font-weight:700;color:#94a3b8;padding:7px 12px;background:#f1f5f9;border-radius:8px;"><i class="fas fa-check-circle" style="color:#10b981"></i> Chat Ended</span>`}
                         </div>
@@ -4152,6 +4152,7 @@ window.replyToCustomer = replyToCustomer;
 // ── Admin reply to a live-chat session (Chat Requests tab) ──────────────
 async function sendAdminChatReply(docId, customerEmail, customerName, sessionId) {
     const replyEl = document.getElementById('admin-chat-reply-' + docId);
+    if (replyEl?.disabled) { showAdminToast('Chat has ended — cannot send reply', 'error'); return; }
     const text = replyEl?.value?.trim();
     if (!text) { showAdminToast('Reply cannot be empty', 'error'); return; }
     const sendBtn = replyEl?.closest('div')?.nextElementSibling?.querySelector('button');
@@ -4321,6 +4322,7 @@ function _onMsgUpdate(row) {
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.id && e.target.id.startsWith('admin-chat-reply-')) {
         e.preventDefault();
+        if (e.target.disabled) return;
         const docId = e.target.id.replace('admin-chat-reply-', '');
         // Find the Send button in the sibling actions div
         const actionsDiv = e.target.parentElement?.querySelector('.chat-reply-actions');
