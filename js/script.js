@@ -3035,7 +3035,7 @@ async function openAccountPanel() {
     const avatarHtml = avatar ? `<img src="${avatar}" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.15);">` : `<i class="fas fa-user-circle" style="font-size:72px;color:#0066cc;"></i>`;
     modal.innerHTML = `<div class="modal account-modal-v2">
 
-        <!-- ── NEW HEADER ───────────────────────────────────── -->
+        <!-- ── HEADER ─────────────────────────────────────── -->
         <div class="acct-hdr3">
             <button class="acct-close" onclick="closeAuthModal()"><i class="fas fa-times"></i></button>
             <div class="acct-hdr3-avatar-wrap" onclick="document.getElementById('avatarUpload').click()" title="Change photo">
@@ -3043,12 +3043,14 @@ async function openAccountPanel() {
                 <span class="acct-hdr3-cam"><i class="fas fa-camera"></i></span>
                 <input type="file" id="avatarUpload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
             </div>
-            <div class="acct-hdr3-name">
-                ${currentUser.name}
-                ${currentUser.customerId ? `<span class="acct-hdr3-badge">${currentUser.customerId}</span>` : ''}
+            <div class="acct-hdr3-info">
+                <div class="acct-hdr3-name">
+                    ${currentUser.name}
+                    ${currentUser.customerId ? `<span class="acct-hdr3-badge">${currentUser.customerId}</span>` : ''}
+                </div>
+                <div class="acct-hdr3-email"><i class="fas fa-envelope" style="font-size:0.7rem;margin-right:4px;opacity:0.7"></i>${currentUser.email}</div>
+                ${currentUser.phone ? `<div class="acct-hdr3-phone"><i class="fas fa-phone-alt" style="font-size:0.7rem;margin-right:4px;opacity:0.7"></i>${currentUser.phone}</div>` : ''}
             </div>
-            <div class="acct-hdr3-email"><i class="fas fa-envelope" style="font-size:0.72rem;margin-right:4px;opacity:0.7"></i>${currentUser.email}</div>
-            ${currentUser.phone ? `<div class="acct-hdr3-phone"><i class="fas fa-phone-alt" style="font-size:0.72rem;margin-right:4px;opacity:0.7"></i>${currentUser.phone}</div>` : ''}
         </div>
 
         <!-- ── SEGMENT TABS ──────────────────────────────────── -->
