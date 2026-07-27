@@ -1042,9 +1042,10 @@ img{max-width:100%;display:block;}
   box-shadow:0 10px 30px rgba(0,0,0,0.18);
   backdrop-filter:blur(8px);
 }
-.admin-toast.success{background:linear-gradient(135deg,#0f766e,#0d9488);}
-.admin-toast.error  {background:linear-gradient(135deg,#7f1d1d,#ef4444);}
-.admin-toast.info   {background:linear-gradient(135deg,#1e3a8a,#3b82f6);}
+.admin-toast.success {background:linear-gradient(135deg,#0f766e,#0d9488);}
+.admin-toast.error   {background:linear-gradient(135deg,#7f1d1d,#ef4444);}
+.admin-toast.info    {background:linear-gradient(135deg,#1e3a8a,#3b82f6);}
+.admin-toast.warning {background:linear-gradient(135deg,#92400e,#d97706);}
 .admin-toast.show{transform:translateY(0);opacity:1;}
 
 /* ── Empty ────────────────────────────────────────────── */

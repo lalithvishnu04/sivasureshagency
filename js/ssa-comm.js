@@ -347,5 +347,16 @@ window.SSA_COMM = (function () {
             emailBody: _emailWrap('Live Agent Request', '#6366f1', bodyRows, ctaHtml)
         });
     }
+
+    // ── Public API ───────────────────────────────────────────
+    return {
+        generateTicketId,
+        sendContactFormEmail,
+        sendTicketStatusUpdate,
+        sendRatingNotification,
+        requestLiveAgent,
+        getConfig: _cfg,
+        getConfigSync: _cfgSync,
+        saveConfig
     };
 })();

@@ -3869,7 +3869,7 @@ function _renderTicketHeroStats() {
     if (!el) return;
     const tickets = allMessages.filter(m => m.ticketId);
     const chats = allMessages.filter(m => !m.ticketId);
-    const open = tickets.filter(m => (m.status || 'Open') === 'Open').length;
+    const open = tickets.filter(m => !['Closed'].includes(m.status || 'Open')).length;
     const unreadChats = chats.filter(m => !m.read).length;
     // Remove tab badge — counts live on the banner only
     const badge = document.getElementById('chatReqBadge');

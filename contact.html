@@ -400,7 +400,8 @@
                     ticketId,
                     customerEmail: email,
                     customerName: name,
-                    newStatus: 'Received',
+                    newStatus: 'Open',
+                    isNew: true,
                     adminNote: 'Thank you for contacting us! We have received your message and will respond within 24 hours. Use your Ticket ID to track the status on our Tickets page.'
                 }).catch(() => {});
             }
@@ -426,6 +427,8 @@
         document.getElementById('ctSubmitBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Send Message';
         document.getElementById('ctFilePreviews').innerHTML = '';
         _ctAttachedFiles = [];
+        // Re-populate name/email/phone from logged-in user session
+        prefillContactFromLogin();
     }
     window.submitContactForm = submitContactForm;
     window.resetContactForm = resetContactForm;
