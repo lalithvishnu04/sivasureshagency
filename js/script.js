@@ -1539,20 +1539,52 @@ function initCommon() {
         });
     }
 
-    // Search
+    // Search — inline dropdown anchored below header
     const searchToggle = document.getElementById('searchToggle');
     const searchOverlay = document.getElementById('searchOverlay');
-    const searchClose = document.getElementById('searchClose');
-    if (searchToggle) searchToggle.addEventListener('click', () => searchOverlay.classList.add('active'));
-    if (searchClose) searchClose.addEventListener('click', () => searchOverlay.classList.remove('active'));
+    if (searchToggle && searchOverlay) {
+        searchToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = searchOverlay.classList.contains('active');
+            if (!isOpen) {
+                const hdr = document.getElementById('header');
+                if (hdr) searchOverlay.style.top = hdr.getBoundingClientRect().bottom + 'px';
+                searchOverlay.classList.add('active');
+                setTimeout(() => document.getElementById('searchInput')?.focus(), 60);
+            } else {
+                searchOverlay.classList.remove('active');
+            }
+        });
+        document.addEventListener('click', (e) => {
+            if (searchOverlay.classList.contains('active') && !searchOverlay.contains(e.target) && !e.target.closest('#searchToggle')) {
+                searchOverlay.classList.remove('active');
+            }
+        });
+    }
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             const q = e.target.value.toLowerCase().trim();
             const results = document.getElementById('searchResults');
+            if (!results) return;
             if (q.length < 2) { results.innerHTML = ''; return; }
-            const matches = productsData.filter(p => p.name.toLowerCase().includes(q) || p.category.includes(q));
-            results.innerHTML = matches.slice(0, 6).map(p => `<div class="search-result-item" onclick="addToCart(${p.id}); document.getElementById('searchOverlay').classList.remove('active');"><img src="${p.image}" alt="${p.name}"><div><strong>${p.name}</strong><div style="color:var(--primary);font-weight:600;">₹${p.price}</div></div></div>`).join('');
+            const matches = productsData.filter(p => p.name.toLowerCase().includes(q) || (p.category || '').includes(q));
+            if (!matches.length) {
+                results.innerHTML = `<div class="search-no-results">No products found for "<strong>${q}</strong>"</div>`;
+                return;
+            }
+            results.innerHTML = matches.slice(0, 8).map(p =>
+                `<a href="categories.html?cat=${encodeURIComponent(p.category)}&q=${encodeURIComponent(p.name)}" class="search-result-item" onclick="document.getElementById('searchOverlay').classList.remove('active')">` +
+                `<img src="${p.image}" alt="${p.name}" onerror="this.src='images/Images/SSA Logo.png'" loading="lazy">` +
+                `<div><strong>${p.name}</strong><div style="color:var(--primary);font-weight:600;">₹${p.price}</div></div></a>`
+            ).join('');
+        });
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                searchOverlay?.classList.remove('active');
+                searchInput.value = '';
+                document.getElementById('searchResults').innerHTML = '';
+            }
         });
     }
 
@@ -1794,12 +1826,22 @@ function initCategoriesPage() {
     const gender = params.get('gender');
     const sleeve = params.get('sleeve');
     const sub = params.get('sub');
+    const qParam = params.get('q'); // pre-fill from navbar search
 
     if (cat) currentFilter = cat;
     window._currentFilter = currentFilter;
     // Build filter chips from the (admin-managed) category list; this also binds
     // click handlers and sets the active chip based on the current filter.
     renderShopFilters();
+
+    // Pre-fill search box when arriving from the navbar search dropdown
+    if (qParam) {
+        currentSearch = qParam;
+        const psi = document.getElementById('productSearchInput');
+        if (psi) { psi.value = qParam; }
+        const psc = document.getElementById('productSearchClear');
+        if (psc) psc.style.display = 'flex';
+    }
 
     // Re-apply the URL filter when the page is restored from the bfcache
     // (mobile back/forward) so it never shows a stale category. This fixes the
