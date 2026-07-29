@@ -4838,20 +4838,21 @@ function initChatbot() {
     const send = document.getElementById('chatSend');
     if (!toggle) return;
 
-    // Fetch and cache live-agent enabled state so quick-reply buttons are
-    // suppressed immediately — before the user even opens the chatbot.
-    (async () => {
-        try {
-            if (window.db) {
-                const doc = await window.db.collection('settings').doc('liveAgentConfig').get();
+    // Subscribe to live-agent status — updates instantly when admin toggles on/off
+    if (window.db) {
+        window.db.collection('settings').doc('liveAgentConfig').onSnapshot(
+            (doc) => {
                 if (doc.exists) {
                     const cfg = JSON.parse(doc.data().name || '{}');
                     _liveAgentEnabled = cfg.enabled !== false;
-                    _updateLiveAgentBanner();
+                } else {
+                    _liveAgentEnabled = true;
                 }
-            }
-        } catch (e) { /* keep default true on error */ }
-    })();
+                _updateLiveAgentBanner();
+            },
+            () => { /* keep current state on error */ }
+        );
+    }
 
     // Show greeting message on first open
     toggle.addEventListener('click', () => {
@@ -5367,22 +5368,16 @@ function _handleLiveAgentRequest() {
 }
 
 async function _checkAndActivateLiveAgent(user) {
-    try {
-        if (window.db) {
-            const doc = await window.db.collection('settings').doc('liveAgentConfig').get();
-            const cfg = doc.exists ? JSON.parse(doc.data().name || '{}') : {};
-            if (cfg.enabled === false) {
-                // Remove the "checking..." message and show the offline card
-                const msgs = document.getElementById('chatbotMessages');
-                const last = msgs?.querySelector('.chat-message.bot:last-child');
-                if (last) last.remove();
-                appendCardMsg('bot', _LA_OFFLINE_CARD_HTML, [
-                    { label: '🔄 Try Again Later', msg: 'connect live agent' }
-                ]);
-                return;
-            }
-        }
-    } catch(e) { /* if check fails, allow by default */ }
+    // Use the already-live cached value (updated every 2s by onSnapshot)
+    if (!_liveAgentEnabled) {
+        const msgs = document.getElementById('chatbotMessages');
+        const last = msgs?.querySelector('.chat-message.bot:last-child');
+        if (last) last.remove();
+        appendCardMsg('bot', _LA_OFFLINE_CARD_HTML, [
+            { label: '🔄 Try Again Later', msg: 'connect live agent' }
+        ]);
+        return;
+    }
     // Remove the "checking..." placeholder
     const msgs = document.getElementById('chatbotMessages');
     const last = msgs?.querySelector('.chat-message.bot:last-child');
