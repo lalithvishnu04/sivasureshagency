@@ -5209,6 +5209,44 @@ async function getAIResponse(msg) {
         ]};
     }
 
+    // ── Chat Support button: "I need help with my order #ORDERID" ──
+    const _oIdm = m.match(/#([a-z0-9]+)/);
+    if (_oIdm && /help|support|issue|problem/.test(m)) {
+        const orderId = _oIdm[1].toUpperCase();
+        let foundOrder = null;
+        if (user) {
+            const _saved = JSON.parse(localStorage.getItem('ssa_orders_' + (user.email || '')) || '[]');
+            foundOrder = _saved.find(o => (o.id || o.orderId || '').toUpperCase() === orderId);
+        }
+        const _sEmoji = { Processing: '🟡', Approved: '🟢', Packed: '📦', Shipped: '🚚', Delivered: '✅', Cancelled: '❌' };
+        const _st = foundOrder?.status;
+        const _statusLine = _st
+            ? `${_sEmoji[_st] || '🟡'} <strong>${_st}</strong>${foundOrder.trackingId ? ` &nbsp;·&nbsp; Tracking: <strong>${foundOrder.trackingId}</strong>` : ''}`
+            : null;
+        return {
+            text: _statusLine
+                ? `📋 <strong>Order #${orderId}</strong><br>Status: ${_statusLine}<br><br>How can I help you further?`
+                : `I can see you need help with <strong>Order #${orderId}</strong>. How can I assist you?`,
+            quickReplies: [
+                { label: '📧 Contact Form', msg: 'send message' },
+                { label: '👤 Live Agent', msg: 'connect live agent' },
+                { label: '🎫 Raise a Ticket', msg: 'raise ticket' }
+            ]
+        };
+    }
+
+    // ── Generic order support (no order ID) — show support options, not tracking steps ──
+    if (/help.*my order|my order.*help|order.*support|order.*issue|order.*problem/.test(m)) {
+        return {
+            text: `I can help with your order! Please choose how you'd like to reach us:`,
+            quickReplies: [
+                { label: '📧 Contact Form', msg: 'send message' },
+                { label: '👤 Live Agent', msg: 'connect live agent' },
+                { label: '🎫 Raise a Ticket', msg: 'raise ticket' }
+            ]
+        };
+    }
+
     // ── Order status / tracking ──
     if (/track|order status|my order|where.*order|order.*id|order.*number|check.*order|order.*update/.test(m)) {
         if (!user) {
