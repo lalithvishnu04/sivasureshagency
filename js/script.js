@@ -5344,7 +5344,7 @@ async function getAIResponse(msg) {
     ]};
 }
 
-
+function _handleLiveAgentRequest() {
     // Synchronous short-circuit: if admin has disabled live agent, show
     // unavailable card immediately without an async Firestore round-trip.
     if (!_liveAgentEnabled) {
