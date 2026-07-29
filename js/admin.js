@@ -378,6 +378,67 @@ async function loadDashboard() {
         if (aovEl) aovEl.textContent = '\u20b9' + aov.toLocaleString();
         if (repeatEl) repeatEl.textContent = repeatRate + '%';
         if (topEl) topEl.textContent = topProduct;
+
+        // ── Chart.js initialization ────────────────────────────────────
+        if (typeof window.initAdminCharts === 'function') {
+            // Last 7 days labels
+            const revLabels = [];
+            const revData = new Array(7).fill(0);
+            const ordData = new Array(7).fill(0);
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(); d.setDate(d.getDate() - i);
+                revLabels.push(d.toLocaleDateString('en-IN', { weekday: 'short' }));
+            }
+            for (const o of nonCancelled) {
+                if (!o.createdAt?.seconds) continue;
+                const dt = new Date(o.createdAt.seconds * 1000);
+                const diff = Math.floor((Date.now() - dt.getTime()) / 86400000);
+                if (diff >= 0 && diff < 7) { revData[6 - diff] += (o.total || 0); ordData[6 - diff]++; }
+            }
+            // Order status counts
+            const statusMap = { Processing: 0, Approved: 0, Packed: 0, Shipped: 0, Delivered: 0, Cancelled: 0 };
+            for (const o of orders) {
+                const s = (o.status || 'Processing');
+                if (statusMap[s] !== undefined) statusMap[s]++;
+            }
+            // Inventory health
+            const invAll = filteredInv.length;
+            const invLow = filteredInv.filter(i => { const st = i.status || (i.quantity === 0 ? 'out_of_stock' : i.quantity <= 10 ? 'low_stock' : 'in_stock'); return st === 'low_stock'; }).length;
+            const invOut = filteredInv.filter(i => { const st = i.status || (i.quantity === 0 ? 'out_of_stock' : i.quantity <= 10 ? 'low_stock' : 'in_stock'); return st === 'out_of_stock'; }).length;
+            const invIn  = invAll - invLow - invOut;
+            // Category distribution
+            const catMap = new Map();
+            for (const o of nonCancelled) {
+                for (const item of (o.items || [])) {
+                    const cat = (item.category || 'Other').trim();
+                    catMap.set(cat, (catMap.get(cat) || 0) + 1);
+                }
+            }
+            const catEntries = [...catMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+            // Customer weekly growth (last 4 weeks)
+            const custLabels = ['W1', 'W2', 'W3', 'W4'];
+            const custData   = [0, 0, 0, 0];
+            try {
+                const custDocs = customersSnap.docs.map(d => d.data());
+                const now = Date.now();
+                for (const c of custDocs) {
+                    if (!c.createdAt?.seconds) continue;
+                    const wk = Math.floor((now - c.createdAt.seconds * 1000) / (7 * 86400000));
+                    if (wk >= 0 && wk < 4) custData[3 - wk]++;
+                }
+            } catch (e) { /* ignore */ }
+            window.initAdminCharts({
+                revLabels, revData, ordData,
+                statusLabels: Object.keys(statusMap),
+                statusData:   Object.values(statusMap),
+                catLabels: catEntries.map(e => e[0]),
+                catData:   catEntries.map(e => e[1]),
+                custLabels, custData,
+                invLabels: ['In Stock', 'Low Stock', 'Out of Stock'],
+                invData:   [invIn, invLow, invOut]
+            });
+        }
+        // ───────────────────────────────────────────────────────────────
     } catch (err) { console.error('Dashboard error:', err); }
 }
 
@@ -1020,6 +1081,38 @@ function renderProducts() {
     const tbody = document.getElementById('productsTableBody');
     if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">No products. Click "Add Product" or "Sync Products" in Inventory.</td></tr>'; return; }
 
+    // Update product KPI strip
+    if (typeof window.updateProductsKpi === 'function') {
+        window.updateProductsKpi(allProducts);
+        // Low stock KPI
+        const lowCount = Object.values((() => {
+            const map = {};
+            for (const inv of allInventory) {
+                if (!map[inv.productName]) map[inv.productName] = 'in_stock';
+                const st = _invStatus(inv);
+                if (st === 'out_of_stock') map[inv.productName] = 'out_of_stock';
+                else if (st === 'low_stock' && map[inv.productName] !== 'out_of_stock') map[inv.productName] = 'low_stock';
+            }
+            return map;
+        })()).filter(s => s !== 'in_stock').length;
+        const pkpiLow = document.getElementById('pkpiLowStock');
+        if (pkpiLow) pkpiLow.textContent = lowCount;
+        // Top seller from allOrders
+        if (allOrders && allOrders.length) {
+            const qty = new Map();
+            for (const o of allOrders.filter(o => (o.status || '').toLowerCase() !== 'cancelled')) {
+                for (const item of (o.items || [])) {
+                    const n = (item.name || '').trim();
+                    qty.set(n, (qty.get(n) || 0) + (item.qty || 1));
+                }
+            }
+            let top = '-', topN = 0;
+            for (const [n, c] of qty) { if (c > topN) { topN = c; top = n; } }
+            const pkpiBest = document.getElementById('pkpiBestSeller');
+            if (pkpiBest) pkpiBest.textContent = top.length > 12 ? top.slice(0, 12) + '…' : top;
+        }
+    }
+
     // Build stock status from allInventory (by status field, fall back to quantity)
     const stockByProduct = {};
     for (const inv of allInventory) {
@@ -1597,6 +1690,11 @@ function renderInventory() {
     const lowCount = allInventory.filter(i => _invStatus(i) === 'low_stock').length;
     const outCount = allInventory.filter(i => _invStatus(i) === 'out_of_stock').length;
 
+    // Update KPI strip
+    if (typeof window.updateInventoryKpi === 'function') {
+        window.updateInventoryKpi(allInventory.map(i => ({ stock_status: _invStatus(i) })));
+    }
+
     if (summary) summary.innerHTML = `
         <div class="inv-chip total"><i class="fas fa-boxes"></i> ${allInventory.length} SKUs</div>
         <div class="inv-chip ok"><i class="fas fa-check-circle"></i> ${okCount} In Stock</div>
@@ -1987,6 +2085,15 @@ function renderCustomers() {
         if (!key) continue;
         ordersByEmail.set(key, (ordersByEmail.get(key) || 0) + 1);
         if (o.status !== 'Cancelled') spendByEmail.set(key, (spendByEmail.get(key) || 0) + (o.total || 0));
+    }
+
+    // Update KPI strip
+    if (typeof window.updateCustomersKpi === 'function') {
+        const kpiData = allCustomers.map(c => ({
+            orderCount:  ordersByEmail.get((c.email || '').trim().toLowerCase()) ?? (c.orderCount || 0),
+            joinedAt:    c.createdAt ? new Date(c.createdAt.seconds * 1000).toISOString() : null
+        }));
+        window.updateCustomersKpi(kpiData);
     }
 
     tbody.innerHTML = filtered.map(c => {
@@ -3304,6 +3411,13 @@ async function loadWebhookSettings() {
     set('webhookTicketStatus', cfg.ticketStatusWebhook);
     set('webhookRating', cfg.ratingWebhook);
     set('webhookLiveAgent', cfg.liveAgentWebhook);
+    // Refresh accordion badges
+    if (typeof window.updateAccBadge === 'function') {
+        window.updateAccBadge('badgeEmail',  cfg.contactFormWebhook  || '');
+        window.updateAccBadge('badgeTicket', cfg.ticketStatusWebhook || '');
+        window.updateAccBadge('badgeAgent',  cfg.liveAgentWebhook    || '');
+        window.updateAccBadge('badgeRating', cfg.ratingWebhook       || '');
+    }
 }
 async function saveWebhookSettings() {
     if (!window.SSA_COMM) { showAdminToast('Comm module not loaded', 'error'); return; }

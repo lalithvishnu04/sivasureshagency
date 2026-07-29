@@ -8,8 +8,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=90">
+    <link rel="stylesheet" href="css/admin.css?v=91">
     <link rel="stylesheet" href="css/animations.css?v=6">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -94,73 +95,121 @@
                 <div class="topbar-title"><h2 id="pageTitle">Dashboard</h2><p id="pageSubtitle">Welcome back, <span id="adminNameTop">Admin</span></p></div>
                 <div class="topbar-right">
                     <button class="topbar-btn" onclick="loadDashboard()" title="Refresh"><i class="fas fa-sync-alt"></i></button>
-                    <button class="topbar-btn" onclick="openModal('resetPasswordModal')" title="Change Password"><i class="fas fa-key"></i></button>
                     <a href="index.html" target="_blank" class="btn-view-site"><i class="fas fa-external-link-alt"></i> View Site</a>
                 </div>
             </header>
 
             <!-- Dashboard Page -->
             <div class="page active" id="page-dashboard">
-                <div class="stats-row">
-                    <div class="stat-card blue">
-                        <div class="stat-icon-wrap"><i class="fas fa-box"></i></div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="statTotalOrders">0</div>
-                            <div class="stat-label">Total Orders</div>
-                        </div>
+                <!-- KPI Cards -->
+                <div class="kpi-grid" id="kpiGrid">
+                    <div class="kpi-card kpi-teal">
+                        <div class="kpi-icon"><i class="fas fa-box"></i></div>
+                        <span class="kpi-value" id="statTotalOrders">0</span>
+                        <span class="kpi-label">Total Orders</span>
+                        <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> Live</div>
                     </div>
-                    <div class="stat-card orange">
-                        <div class="stat-icon-wrap"><i class="fas fa-clock"></i></div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="statPending">0</div>
-                            <div class="stat-label">Active Orders</div>
-                        </div>
+                    <div class="kpi-card kpi-orange">
+                        <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+                        <span class="kpi-value" id="statPending">0</span>
+                        <span class="kpi-label">Active Orders</span>
+                        <div class="kpi-trend up"><i class="fas fa-circle" style="font-size:6px;"></i> In Progress</div>
                     </div>
-                    <div class="stat-card green">
-                        <div class="stat-icon-wrap"><i class="fas fa-rupee-sign"></i></div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="statRevenue">?0</div>
-                            <div class="stat-label">Total Revenue</div>
-                        </div>
+                    <div class="kpi-card kpi-blue">
+                        <div class="kpi-icon"><i class="fas fa-rupee-sign"></i></div>
+                        <span class="kpi-value" id="statRevenue">₹0</span>
+                        <span class="kpi-label">Total Revenue</span>
+                        <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> All Time</div>
                     </div>
-                    <div class="stat-card purple">
-                        <div class="stat-icon-wrap"><i class="fas fa-users"></i></div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="statCustomers">0</div>
-                            <div class="stat-label">Customers</div>
-                        </div>
+                    <div class="kpi-card kpi-purple">
+                        <div class="kpi-icon"><i class="fas fa-users"></i></div>
+                        <span class="kpi-value" id="statCustomers">0</span>
+                        <span class="kpi-label">Customers</span>
+                        <div class="kpi-trend up"><i class="fas fa-user-plus"></i> Registered</div>
                     </div>
-                    <div class="stat-card pink">
-                        <div class="stat-icon-wrap"><i class="fas fa-envelope"></i></div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="statMessages">0</div>
-                            <div class="stat-label">New Messages</div>
-                        </div>
+                    <div class="kpi-card kpi-pink">
+                        <div class="kpi-icon"><i class="fas fa-envelope"></i></div>
+                        <span class="kpi-value" id="statMessages">0</span>
+                        <span class="kpi-label">New Messages</span>
+                        <div class="kpi-trend"><i class="fas fa-ticket-alt"></i> Open Tickets</div>
                     </div>
                 </div>
-                <div class="quick-actions">
-                    <a href="#" class="qa-btn" onclick="navigateTo('orders');return false;"><i class="fas fa-box" style="color:#3b82f6"></i> View Orders</a>
-                    <a href="#" class="qa-btn" onclick="navigateTo('products');return false;"><i class="fas fa-tshirt" style="color:#8b5cf6"></i> Manage Products</a>
-                    <a href="#" class="qa-btn" onclick="navigateTo('inventory');return false;"><i class="fas fa-warehouse" style="color:#10b981"></i> Check Inventory</a>
-                    <a href="#" class="qa-btn" onclick="navigateTo('messages');return false;"><i class="fas fa-envelope" style="color:#f59e0b"></i> Read Messages</a>
-                </div>
+
+                <!-- Analytics Strip -->
                 <div class="analytics-strip">
                     <div class="analytic-card"><span class="analytic-label">Average Order Value</span><strong id="statAov">&#8377;0</strong></div>
                     <div class="analytic-card"><span class="analytic-label">Repeat Customer Rate</span><strong id="statRepeatRate">0%</strong></div>
                     <div class="analytic-card"><span class="analytic-label">Top Product</span><strong id="statTopProduct">-</strong></div>
                 </div>
+
+                <!-- Charts Row 1 -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h4><i class="fas fa-chart-line"></i> Revenue &amp; Orders Trend</h4>
+                            <div class="chart-period-btns">
+                                <button class="chart-period-btn active" onclick="switchChartPeriod(this,'7d')">7D</button>
+                                <button class="chart-period-btn" onclick="switchChartPeriod(this,'30d')">30D</button>
+                                <button class="chart-period-btn" onclick="switchChartPeriod(this,'90d')">90D</button>
+                            </div>
+                        </div>
+                        <div class="chart-card-body">
+                            <div class="chart-canvas-wrap" style="height:220px">
+                                <canvas id="chartRevenue"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header"><h4><i class="fas fa-chart-pie"></i> Order Status</h4></div>
+                        <div class="chart-card-body">
+                            <div class="chart-canvas-wrap" style="height:220px">
+                                <canvas id="chartOrderStatus"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 2 -->
+                <div class="charts-grid-3">
+                    <div class="chart-card">
+                        <div class="chart-card-header"><h4><i class="fas fa-tags"></i> Category Distribution</h4></div>
+                        <div class="chart-card-body">
+                            <div class="chart-canvas-wrap" style="height:180px">
+                                <canvas id="chartCategories"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header"><h4><i class="fas fa-users"></i> Customer Growth</h4></div>
+                        <div class="chart-card-body">
+                            <div class="chart-canvas-wrap" style="height:180px">
+                                <canvas id="chartCustomers"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header"><h4><i class="fas fa-warehouse"></i> Inventory Health</h4></div>
+                        <div class="chart-card-body">
+                            <div class="chart-canvas-wrap" style="height:180px">
+                                <canvas id="chartInventory"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Grid: Recent orders + Activity -->
                 <div class="dashboard-grid">
                     <div class="card">
                         <div class="card-header">
                             <h3><i class="fas fa-list-alt"></i> Recent Orders</h3>
-                            <a href="#" class="card-action" onclick="navigateTo('orders');return false;">View All ?</a>
+                            <a href="#" class="card-action" onclick="navigateTo('orders');return false;">View All →</a>
                         </div>
                         <div class="card-body" id="recentOrdersList"><p class="empty">Loading...</p></div>
                     </div>
                     <div class="card">
                         <div class="card-header">
                             <h3><i class="fas fa-exclamation-triangle"></i> Low Stock Alerts</h3>
-                            <a href="#" class="card-action" onclick="navigateTo('inventory');return false;">View All ?</a>
+                            <a href="#" class="card-action" onclick="navigateTo('inventory');return false;">View All →</a>
                         </div>
                         <div class="card-body" id="lowStockList"><p class="empty">Loading...</p></div>
                     </div>
@@ -219,6 +268,24 @@
 
             <!-- Products Page -->
             <div class="page" id="page-products">
+                <div class="products-kpi" id="productsKpi">
+                    <div class="prod-kpi">
+                        <div class="prod-kpi-icon" style="background:rgba(15,118,110,0.1);color:#0f766e;"><i class="fas fa-tshirt"></i></div>
+                        <div><span class="prod-kpi-num" id="pkpiTotal">0</span><span class="prod-kpi-label">Total Products</span></div>
+                    </div>
+                    <div class="prod-kpi">
+                        <div class="prod-kpi-icon" style="background:rgba(16,185,129,0.1);color:#10b981;"><i class="fas fa-check-circle"></i></div>
+                        <div><span class="prod-kpi-num" id="pkpiActive">0</span><span class="prod-kpi-label">Active</span></div>
+                    </div>
+                    <div class="prod-kpi">
+                        <div class="prod-kpi-icon" style="background:rgba(245,158,11,0.1);color:#d97706;"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div><span class="prod-kpi-num" id="pkpiLowStock">0</span><span class="prod-kpi-label">Low Stock</span></div>
+                    </div>
+                    <div class="prod-kpi">
+                        <div class="prod-kpi-icon" style="background:rgba(139,92,246,0.1);color:#7c3aed;"><i class="fas fa-star"></i></div>
+                        <div><span class="prod-kpi-num" id="pkpiBestSeller">-</span><span class="prod-kpi-label">Top Seller</span></div>
+                    </div>
+                </div>
                 <div class="page-toolbar">
                     <div class="toolbar-left">
                         <button class="btn-primary" onclick="openProductModal()"><i class="fas fa-plus"></i> Add Product</button>
@@ -226,6 +293,10 @@
                         <button class="btn-secondary" onclick="syncInventoryFromProducts()"><i class="fas fa-sync"></i> Sync Products</button>
                     </div>
                     <div class="toolbar-right">
+                        <div class="view-toggle">
+                            <button class="view-toggle-btn active" id="prodViewList" onclick="setProductView('list')" title="List view"><i class="fas fa-list"></i></button>
+                            <button class="view-toggle-btn" id="prodViewGrid" onclick="setProductView('grid')" title="Grid view"><i class="fas fa-th"></i></button>
+                        </div>
                         <input type="text" id="productSearch" placeholder="Search products..." class="search-input">
                     </div>
                 </div>
@@ -303,6 +374,12 @@
 
             <!-- Inventory Page -->
             <div class="page" id="page-inventory">
+                <div class="inv-kpi" id="invKpiStrip">
+                    <div class="inv-kpi-card all"><span class="inv-kpi-num" id="invKpiTotal">0</span><span class="inv-kpi-label">Total SKUs</span></div>
+                    <div class="inv-kpi-card low"><span class="inv-kpi-num" id="invKpiLow">0</span><span class="inv-kpi-label">Low Stock</span></div>
+                    <div class="inv-kpi-card out"><span class="inv-kpi-num" id="invKpiOut">0</span><span class="inv-kpi-label">Out of Stock</span></div>
+                    <div class="inv-kpi-card updated"><span class="inv-kpi-num" id="invKpiIn">0</span><span class="inv-kpi-label">In Stock</span></div>
+                </div>
                 <div class="page-toolbar">
                     <div class="toolbar-left">
                         <h3 style="margin:0;font-size:1rem;font-weight:700;">Stock Management</h3>
@@ -379,26 +456,172 @@
 
             <!-- Settings Page -->
             <div class="page" id="page-settings">
-                <div class="page-toolbar">
-                    <div class="toolbar-left"><h3 style="margin:0;font-size:1rem;font-weight:700;"><i class="fas fa-share-alt"></i> Communication Settings</h3></div>
-                    <div class="toolbar-right"></div>
-                </div>
-                <div class="settings-panel">
-                    <!-- Communication / Power Automate Webhook Settings -->
+                <!-- Security / Password -->
+                <div class="settings-panel" style="margin-bottom:20px;">
                     <div class="settings-section">
-                        <h4 class="settings-section-title"><i class="fas fa-share-alt"></i> Communication Webhooks (Power Automate)</h4>
-                        <p class="settings-section-desc">Paste Power Automate HTTP trigger URLs here. These send emails to <strong>info@sivasureshagency.onmicrosoft.com</strong> and Teams notifications automatically.</p>
-                        <div class="form-group"><label><i class="fas fa-envelope"></i> Contact Form Webhook URL</label><input type="url" id="webhookContactForm" placeholder="https://prod-xx.westus.logic.azure.com/..."></div>
-                        <div class="form-group"><label><i class="fas fa-ticket-alt"></i> Ticket Status Update Webhook URL</label><input type="url" id="webhookTicketStatus" placeholder="https://prod-xx.westus.logic.azure.com/..."></div>
-                        <div class="form-group"><label><i class="fas fa-star"></i> Rating Notification Webhook URL</label><input type="url" id="webhookRating" placeholder="https://prod-xx.westus.logic.azure.com/..."></div>
-                        <div class="form-group"><label><i class="fas fa-headset"></i> Live Agent Request Webhook URL (Teams)</label><input type="url" id="webhookLiveAgent" placeholder="https://prod-xx.westus.logic.azure.com/..."></div>
-                        <button class="btn-primary" onclick="saveWebhookSettings()"><i class="fas fa-save"></i> Save Webhook URLs</button>
+                        <h4 class="settings-section-title"><i class="fas fa-shield-alt"></i> Security &mdash; Change Password</h4>
+                        <p class="settings-section-desc">Update your admin password regularly to keep the panel secure.</p>
+                        <div class="security-card">
+                            <h4><i class="fas fa-lock"></i> Change Password</h4>
+                            <form id="settingsPasswordForm" onsubmit="handleSettingsPasswordChange(event)">
+                                <div class="form-group">
+                                    <label>Current Password *</label>
+                                    <div class="pwd-field-wrap">
+                                        <input type="password" id="spCurrentPwd" placeholder="Enter current password" required>
+                                        <button type="button" class="pwd-eye-btn" onclick="togglePwdVisibility('spCurrentPwd',this)"><i class="fas fa-eye"></i></button>
+                                    </div>
+                                    <div class="pwd-strength-bar-wrap"><div class="pwd-strength-fill" id="spCurrentBar"></div></div>
+                                </div>
+                                <div class="form-group">
+                                    <label>New Password *</label>
+                                    <div class="pwd-field-wrap">
+                                        <input type="password" id="spNewPwd" placeholder="Min 6 characters" required oninput="updatePwdStrength('spNewPwd','spNewBar','spStrengthLabel')">
+                                        <button type="button" class="pwd-eye-btn" onclick="togglePwdVisibility('spNewPwd',this)"><i class="fas fa-eye"></i></button>
+                                    </div>
+                                    <div class="pwd-strength-bar-wrap"><div class="pwd-strength-fill" id="spNewBar"></div></div>
+                                    <span id="spStrengthLabel" style="font-size:0.71rem;color:var(--text-muted);"></span>
+                                </div>
+                                <div class="form-group">
+                                    <label>Confirm New Password *</label>
+                                    <div class="pwd-field-wrap">
+                                        <input type="password" id="spConfirmPwd" placeholder="Repeat new password" required>
+                                        <button type="button" class="pwd-eye-btn" onclick="togglePwdVisibility('spConfirmPwd',this)"><i class="fas fa-eye"></i></button>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn-primary"><i class="fas fa-lock"></i> Update Password</button>
+                                <div id="spSuccessMsg" style="display:none;" class="security-success-msg"><i class="fas fa-check-circle"></i> Password updated successfully!</div>
+                                <p id="spErrorMsg" style="display:none;color:#ef4444;font-size:0.8rem;margin-top:8px;"></p>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Communication Webhooks Accordion -->
+                <div class="settings-panel">
+                    <div class="settings-section">
+                        <h4 class="settings-section-title"><i class="fas fa-share-alt"></i> Communication Settings &mdash; Power Automate</h4>
+                        <p class="settings-section-desc">Manage all Power Automate webhook URLs. Click a section to expand it. Use <strong>Test Connection</strong> to verify each URL.</p>
+                        <div class="comm-accordion" id="commAccordion">
+                            <!-- Email Automation -->
+                            <div class="comm-acc-item" id="accEmail">
+                                <button class="comm-acc-trigger" onclick="toggleAccordion('accEmail')">
+                                    <div class="comm-acc-trigger-left">
+                                        <div class="comm-acc-icon email"><i class="fas fa-envelope"></i></div>
+                                        <div>
+                                            <div class="comm-acc-title">Email Automation</div>
+                                            <div class="comm-acc-desc">Contact form submissions &rarr; admin email</div>
+                                        </div>
+                                    </div>
+                                    <div class="comm-acc-right">
+                                        <span class="comm-status-badge missing" id="badgeEmail">Not Set</span>
+                                        <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                                    </div>
+                                </button>
+                                <div class="comm-acc-body">
+                                    <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Contact Form Webhook URL</label>
+                                    <div class="comm-field-wrap">
+                                        <input type="url" id="webhookContactForm" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeEmail',this.value)">
+                                        <button class="comm-test-btn" onclick="testWebhook('webhookContactForm')">Test</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Ticket Notifications -->
+                            <div class="comm-acc-item" id="accTicket">
+                                <button class="comm-acc-trigger" onclick="toggleAccordion('accTicket')">
+                                    <div class="comm-acc-trigger-left">
+                                        <div class="comm-acc-icon ticket"><i class="fas fa-ticket-alt"></i></div>
+                                        <div>
+                                            <div class="comm-acc-title">Ticket Notifications</div>
+                                            <div class="comm-acc-desc">Ticket status updates &rarr; customer email</div>
+                                        </div>
+                                    </div>
+                                    <div class="comm-acc-right">
+                                        <span class="comm-status-badge missing" id="badgeTicket">Not Set</span>
+                                        <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                                    </div>
+                                </button>
+                                <div class="comm-acc-body">
+                                    <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Ticket Status Webhook URL</label>
+                                    <div class="comm-field-wrap">
+                                        <input type="url" id="webhookTicketStatus" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeTicket',this.value)">
+                                        <button class="comm-test-btn" onclick="testWebhook('webhookTicketStatus')">Test</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Live Agent (Teams) -->
+                            <div class="comm-acc-item" id="accAgent">
+                                <button class="comm-acc-trigger" onclick="toggleAccordion('accAgent')">
+                                    <div class="comm-acc-trigger-left">
+                                        <div class="comm-acc-icon agent"><i class="fas fa-headset"></i></div>
+                                        <div>
+                                            <div class="comm-acc-title">Live Agent &mdash; Teams Alerts</div>
+                                            <div class="comm-acc-desc">Live agent requests &rarr; Microsoft Teams</div>
+                                        </div>
+                                    </div>
+                                    <div class="comm-acc-right">
+                                        <span class="comm-status-badge missing" id="badgeAgent">Not Set</span>
+                                        <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                                    </div>
+                                </button>
+                                <div class="comm-acc-body">
+                                    <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Live Agent Webhook URL</label>
+                                    <div class="comm-field-wrap">
+                                        <input type="url" id="webhookLiveAgent" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeAgent',this.value)">
+                                        <button class="comm-test-btn" onclick="testWebhook('webhookLiveAgent')">Test</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Rating Notifications -->
+                            <div class="comm-acc-item" id="accRating">
+                                <button class="comm-acc-trigger" onclick="toggleAccordion('accRating')">
+                                    <div class="comm-acc-trigger-left">
+                                        <div class="comm-acc-icon rating"><i class="fas fa-star"></i></div>
+                                        <div>
+                                            <div class="comm-acc-title">Rating &amp; Review Alerts</div>
+                                            <div class="comm-acc-desc">New ratings &rarr; admin notification</div>
+                                        </div>
+                                    </div>
+                                    <div class="comm-acc-right">
+                                        <span class="comm-status-badge missing" id="badgeRating">Not Set</span>
+                                        <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                                    </div>
+                                </button>
+                                <div class="comm-acc-body">
+                                    <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Rating Webhook URL</label>
+                                    <div class="comm-field-wrap">
+                                        <input type="url" id="webhookRating" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeRating',this.value)">
+                                        <button class="comm-test-btn" onclick="testWebhook('webhookRating')">Test</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top:16px;">
+                            <button class="btn-primary" onclick="saveWebhookSettings()"><i class="fas fa-save"></i> Save All Webhook URLs</button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Customers Page -->
             <div class="page" id="page-customers">
+                <div class="customers-kpi" id="customersKpi">
+                    <div class="cust-kpi">
+                        <div class="cust-kpi-icon" style="background:rgba(15,118,110,0.1);color:#0f766e;"><i class="fas fa-users"></i></div>
+                        <div><span class="cust-kpi-num" id="ckpiTotal">0</span><span class="cust-kpi-label">Total Customers</span></div>
+                    </div>
+                    <div class="cust-kpi">
+                        <div class="cust-kpi-icon" style="background:rgba(16,185,129,0.1);color:#10b981;"><i class="fas fa-user-check"></i></div>
+                        <div><span class="cust-kpi-num" id="ckpiActive">0</span><span class="cust-kpi-label">With Orders</span></div>
+                    </div>
+                    <div class="cust-kpi">
+                        <div class="cust-kpi-icon" style="background:rgba(59,130,246,0.1);color:#2563eb;"><i class="fas fa-user-plus"></i></div>
+                        <div><span class="cust-kpi-num" id="ckpiNew">0</span><span class="cust-kpi-label">New (30 Days)</span></div>
+                    </div>
+                    <div class="cust-kpi">
+                        <div class="cust-kpi-icon" style="background:rgba(139,92,246,0.1);color:#7c3aed;"><i class="fas fa-redo"></i></div>
+                        <div><span class="cust-kpi-num" id="ckpiReturning">0</span><span class="cust-kpi-label">Returning</span></div>
+                    </div>
+                </div>
                 <div class="page-toolbar">
                     <div class="toolbar-left"><h3 style="margin:0;font-size:1rem;font-weight:700;">Registered Customers</h3></div>
                     <div class="toolbar-right">
@@ -733,6 +956,309 @@
     <script src="js/ssa-comm.js?v=3" defer></script>
     <script defer src="js/admin.js?v=104"></script>
     <script defer src="js/animations.js?v=5"></script>
+
+    <!-- v91 Admin UI helpers: Charts, Accordion, Password, KPI, View Toggle -->
+    <script>
+    /* ── Chart.js Dashboard Initialization ───────────────────────────── */
+    var _adminCharts = {};
+
+    function initAdminCharts(data) {
+        data = data || {};
+        var palette = ['#14b8a6','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#10b981'];
+        var defaults = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }
+        };
+
+        // 1. Revenue trend (line)
+        var ctxRev = document.getElementById('chartRevenue');
+        if (ctxRev) {
+            if (_adminCharts.revenue) _adminCharts.revenue.destroy();
+            var labels = data.revLabels || ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+            var revData = data.revData || [0,0,0,0,0,0,0];
+            var ordData = data.ordData || [0,0,0,0,0,0,0];
+            _adminCharts.revenue = new Chart(ctxRev, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Revenue (₹)', data: revData, borderColor: '#14b8a6', backgroundColor: 'rgba(20,184,166,0.08)', tension: 0.4, fill: true, pointBackgroundColor: '#14b8a6', borderWidth: 2 },
+                        { label: 'Orders', data: ordData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.06)', tension: 0.4, fill: false, pointBackgroundColor: '#3b82f6', borderWidth: 2, yAxisID: 'y2' }
+                    ]
+                },
+                options: Object.assign({}, defaults, {
+                    plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 10, font: { size: 11 } } }, tooltip: { mode: 'index', intersect: false } },
+                    scales: {
+                        y:  { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 } }, beginAtZero: true },
+                        y2: { position: 'right', grid: { drawOnChartArea: false }, ticks: { font: { size: 10 } }, beginAtZero: true },
+                        x:  { grid: { display: false }, ticks: { font: { size: 10 } } }
+                    }
+                })
+            });
+        }
+
+        // 2. Order status (donut)
+        var ctxStatus = document.getElementById('chartOrderStatus');
+        if (ctxStatus) {
+            if (_adminCharts.status) _adminCharts.status.destroy();
+            var statusLabels = data.statusLabels || ['Processing','Approved','Packed','Shipped','Delivered','Cancelled'];
+            var statusData   = data.statusData   || [0,0,0,0,0,0];
+            _adminCharts.status = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: { labels: statusLabels, datasets: [{ data: statusData, backgroundColor: palette, borderWidth: 2, borderColor: '#fff' }] },
+                options: Object.assign({}, defaults, {
+                    plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+                    cutout: '65%'
+                })
+            });
+        }
+
+        // 3. Category distribution (bar)
+        var ctxCat = document.getElementById('chartCategories');
+        if (ctxCat) {
+            if (_adminCharts.categories) _adminCharts.categories.destroy();
+            var catLabels = data.catLabels || [];
+            var catData   = data.catData   || [];
+            _adminCharts.categories = new Chart(ctxCat, {
+                type: 'bar',
+                data: {
+                    labels: catLabels,
+                    datasets: [{ label: 'Products', data: catData, backgroundColor: palette, borderRadius: 6, borderSkipped: false }]
+                },
+                options: Object.assign({}, defaults, {
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 } } },
+                        x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                    }
+                })
+            });
+        }
+
+        // 4. Customer growth (area)
+        var ctxCust = document.getElementById('chartCustomers');
+        if (ctxCust) {
+            if (_adminCharts.customers) _adminCharts.customers.destroy();
+            var custLabels = data.custLabels || ['W1','W2','W3','W4'];
+            var custData   = data.custData   || [0,0,0,0];
+            _adminCharts.customers = new Chart(ctxCust, {
+                type: 'line',
+                data: {
+                    labels: custLabels,
+                    datasets: [{ label: 'New Customers', data: custData, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#8b5cf6', borderWidth: 2 }]
+                },
+                options: Object.assign({}, defaults, {
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 } } },
+                        x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                    }
+                })
+            });
+        }
+
+        // 5. Inventory health (donut)
+        var ctxInv = document.getElementById('chartInventory');
+        if (ctxInv) {
+            if (_adminCharts.inventory) _adminCharts.inventory.destroy();
+            var invLabels = data.invLabels || ['In Stock','Low Stock','Out of Stock'];
+            var invData   = data.invData   || [0,0,0];
+            _adminCharts.inventory = new Chart(ctxInv, {
+                type: 'doughnut',
+                data: { labels: invLabels, datasets: [{ data: invData, backgroundColor: ['#10b981','#f59e0b','#ef4444'], borderWidth: 2, borderColor: '#fff' }] },
+                options: Object.assign({}, defaults, {
+                    plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+                    cutout: '60%'
+                })
+            });
+        }
+    }
+
+    // Chart period switch
+    function switchChartPeriod(btn, period) {
+        document.querySelectorAll('.chart-period-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        // Charts re-init with same placeholder data (admin.js populates real data via initAdminCharts)
+        if (typeof loadDashboard === 'function') loadDashboard();
+    }
+
+    // Expose so admin.js can call: initAdminCharts({ revLabels:[...], revData:[...], ... })
+    window.initAdminCharts = initAdminCharts;
+
+    /* ── Communication Accordion ──────────────────────────────────────── */
+    function toggleAccordion(id) {
+        var item = document.getElementById(id);
+        if (!item) return;
+        var isOpen = item.classList.contains('open');
+        // Close all
+        document.querySelectorAll('.comm-acc-item').forEach(function(i) { i.classList.remove('open'); });
+        if (!isOpen) item.classList.add('open');
+    }
+
+    function updateAccBadge(badgeId, val) {
+        var badge = document.getElementById(badgeId);
+        if (!badge) return;
+        if (val && val.trim().length > 0) {
+            badge.textContent = 'Configured';
+            badge.className = 'comm-status-badge configured';
+        } else {
+            badge.textContent = 'Not Set';
+            badge.className = 'comm-status-badge missing';
+        }
+    }
+    window.updateAccBadge = updateAccBadge;
+
+    function testWebhook(inputId) {
+        var url = (document.getElementById(inputId) || {}).value || '';
+        if (!url) { alert('Please enter a webhook URL first.'); return; }
+        // Simple ping — just opens in new tab since browser can't POST cross-origin easily without a proxy
+        if (typeof showAdminToast === 'function') {
+            showAdminToast('Sending test ping to webhook...', 'info');
+        }
+        fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ test: true, source: 'SSA Admin Panel' }) })
+            .then(function() { if (typeof showAdminToast === 'function') showAdminToast('Webhook test sent successfully!', 'success'); })
+            .catch(function() { if (typeof showAdminToast === 'function') showAdminToast('Could not reach webhook URL — check CORS/URL.', 'error'); });
+    }
+
+    // Re-sync badge status when settings page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        var fieldMap = { webhookContactForm: 'badgeEmail', webhookTicketStatus: 'badgeTicket', webhookLiveAgent: 'badgeAgent', webhookRating: 'badgeRating' };
+        // Observe value changes after admin.js populates them
+        var observer = new MutationObserver(function() {
+            Object.keys(fieldMap).forEach(function(fId) {
+                var inp = document.getElementById(fId);
+                if (inp) updateAccBadge(fieldMap[fId], inp.value);
+            });
+        });
+        Object.keys(fieldMap).forEach(function(fId) {
+            var inp = document.getElementById(fId);
+            if (inp) {
+                observer.observe(inp, { attributes: true, attributeFilter: ['value'] });
+                inp.addEventListener('input', function() { updateAccBadge(fieldMap[fId], this.value); });
+            }
+        });
+    });
+
+    /* ── Settings Password Helpers ───────────────────────────────────── */
+    function togglePwdVisibility(inputId, btn) {
+        var inp = document.getElementById(inputId);
+        if (!inp) return;
+        if (inp.type === 'password') {
+            inp.type = 'text';
+            btn.querySelector('i').className = 'fas fa-eye-slash';
+        } else {
+            inp.type = 'password';
+            btn.querySelector('i').className = 'fas fa-eye';
+        }
+    }
+
+    function updatePwdStrength(inputId, barId, labelId) {
+        var val = (document.getElementById(inputId) || {}).value || '';
+        var bar = document.getElementById(barId);
+        var lbl = document.getElementById(labelId);
+        if (!bar) return;
+        var score = 0;
+        if (val.length >= 6)  score++;
+        if (val.length >= 10) score++;
+        if (/[A-Z]/.test(val)) score++;
+        if (/[0-9]/.test(val)) score++;
+        if (/[^A-Za-z0-9]/.test(val)) score++;
+        var pct = (score / 5) * 100;
+        var color = score <= 1 ? '#ef4444' : score <= 2 ? '#f59e0b' : score <= 3 ? '#3b82f6' : '#10b981';
+        bar.style.width = pct + '%';
+        bar.style.background = color;
+        if (lbl) {
+            lbl.style.color = color;
+            lbl.textContent = score <= 1 ? 'Weak' : score <= 2 ? 'Fair' : score <= 3 ? 'Good' : score <= 4 ? 'Strong' : 'Very Strong';
+        }
+    }
+
+    // Settings page password form — delegates to existing handleResetPassword logic via shared Firebase
+    function handleSettingsPasswordChange(e) {
+        e.preventDefault();
+        var cur  = (document.getElementById('spCurrentPwd') || {}).value  || '';
+        var nw   = (document.getElementById('spNewPwd')     || {}).value  || '';
+        var conf = (document.getElementById('spConfirmPwd') || {}).value  || '';
+        var errEl = document.getElementById('spErrorMsg');
+        var sucEl = document.getElementById('spSuccessMsg');
+        if (errEl) errEl.style.display = 'none';
+        if (sucEl) sucEl.style.display = 'none';
+        if (nw.length < 6) { if (errEl) { errEl.textContent = 'New password must be at least 6 characters.'; errEl.style.display = 'block'; } return; }
+        if (nw !== conf)   { if (errEl) { errEl.textContent = 'Passwords do not match.'; errEl.style.display = 'block'; } return; }
+        // Reuse the resetPasswordModal inputs to leverage existing handleResetPassword
+        var cpEl = document.getElementById('currentPassword');
+        var npEl = document.getElementById('newPassword');
+        var cfEl = document.getElementById('confirmPassword');
+        if (cpEl) cpEl.value = cur;
+        if (npEl) npEl.value = nw;
+        if (cfEl) cfEl.value = conf;
+        var origForm = document.getElementById('resetPasswordForm');
+        if (origForm) {
+            origForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+            // Show success after short delay
+            setTimeout(function() {
+                var modalErr = document.getElementById('currentPasswordError');
+                if (!modalErr || modalErr.style.display === 'none') {
+                    if (sucEl) sucEl.style.display = 'flex';
+                    document.getElementById('settingsPasswordForm').reset();
+                    document.querySelectorAll('.pwd-strength-fill').forEach(function(b) { b.style.width = '0'; });
+                } else {
+                    if (errEl) { errEl.textContent = modalErr.textContent; errEl.style.display = 'block'; }
+                }
+            }, 800);
+        }
+    }
+
+    /* ── Products Page View Toggle ───────────────────────────────────── */
+    function setProductView(mode) {
+        var listBtn = document.getElementById('prodViewList');
+        var gridBtn = document.getElementById('prodViewGrid');
+        if (listBtn) listBtn.classList.toggle('active', mode === 'list');
+        if (gridBtn) gridBtn.classList.toggle('active', mode === 'grid');
+        // Products table already handles list; grid view is a future enhancement
+    }
+
+    /* ── Customers KPI auto-populate after table loads ───────────────── */
+    function updateCustomersKpi(customers) {
+        customers = customers || [];
+        var total = customers.length;
+        var active = customers.filter(function(c) { return c.orderCount > 0; }).length;
+        var thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        var newC = customers.filter(function(c) { return c.joinedAt && new Date(c.joinedAt).getTime() > thirtyDaysAgo; }).length;
+        var returning = customers.filter(function(c) { return c.orderCount > 1; }).length;
+        var set = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+        set('ckpiTotal', total);
+        set('ckpiActive', active);
+        set('ckpiNew', newC);
+        set('ckpiReturning', returning);
+    }
+    window.updateCustomersKpi = updateCustomersKpi;
+
+    /* ── Inventory KPI auto-populate ─────────────────────────────────── */
+    function updateInventoryKpi(items) {
+        items = items || [];
+        var total   = items.length;
+        var low     = items.filter(function(i) { return i.stock_status === 'low_stock'; }).length;
+        var out     = items.filter(function(i) { return i.stock_status === 'out_of_stock'; }).length;
+        var inStock = items.filter(function(i) { return i.stock_status === 'in_stock'; }).length;
+        var set = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+        set('invKpiTotal', total);
+        set('invKpiLow', low);
+        set('invKpiOut', out);
+        set('invKpiIn', inStock);
+    }
+    window.updateInventoryKpi = updateInventoryKpi;
+
+    /* ── Products KPI auto-populate ──────────────────────────────────── */
+    function updateProductsKpi(products) {
+        products = products || [];
+        var total   = products.length;
+        var active  = products.filter(function(p) { return !p.deleted; }).length;
+        var set = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+        set('pkpiTotal', total);
+        set('pkpiActive', active);
+    }
+    window.updateProductsKpi = updateProductsKpi;
+    </script>
 </body>
 </html>
 

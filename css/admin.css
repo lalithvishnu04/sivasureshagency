@@ -2075,6 +2075,583 @@ img{max-width:100%;display:block;}
 .admin-order-row { background: #fff; border: 1px solid var(--border); border-radius: 0; padding: 0; overflow: hidden; transition: all 0.2s ease; display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; gap: 0; border-top: none; }
 .admin-order-row:first-child { border-radius: 0; }
 .admin-order-row:last-child { border-radius: 0 0 12px 12px; }
+
+/* ================================================================
+   v91 ADMIN REDESIGN — Navy Sidebar, Teal Active, Charts, Accordion
+   ================================================================ */
+
+/* ── A1. Updated Color Tokens ─────────────────────────────────── */
+:root {
+    --primary:          #0f766e;
+    --primary-dark:     #0c5e58;
+    --primary-hover:    #14b8a6;
+    --primary-light:    #f0fdfa;
+    --sb-bg:            #0f172a;
+    --sb-active-from:   #14b8a6;
+    --sb-active-to:     #0f766e;
+    --chart-1:          #14b8a6;
+    --chart-2:          #3b82f6;
+    --chart-3:          #f59e0b;
+    --chart-4:          #8b5cf6;
+    --chart-5:          #ef4444;
+    --chart-6:          #10b981;
+}
+
+/* ── A2. KPI Cards Redesign ───────────────────────────────────── */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+}
+.kpi-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 18px 16px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+}
+.kpi-card.kpi-teal::before   { background: linear-gradient(90deg, #0f766e, #14b8a6); }
+.kpi-card.kpi-blue::before   { background: linear-gradient(90deg, #2563eb, #3b82f6); }
+.kpi-card.kpi-orange::before { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.kpi-card.kpi-purple::before { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
+.kpi-card.kpi-pink::before   { background: linear-gradient(90deg, #db2777, #ec4899); }
+.kpi-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+.kpi-teal .kpi-icon   { background: rgba(15,118,110,0.1); color: #0f766e; }
+.kpi-blue .kpi-icon   { background: rgba(59,130,246,0.1); color: #2563eb; }
+.kpi-orange .kpi-icon { background: rgba(245,158,11,0.1); color: #d97706; }
+.kpi-purple .kpi-icon { background: rgba(139,92,246,0.1); color: #7c3aed; }
+.kpi-pink .kpi-icon   { background: rgba(236,72,153,0.1); color: #db2777; }
+.kpi-value { font-size: 1.6rem; font-weight: 900; letter-spacing: -0.04em; color: var(--text); display: block; line-height: 1; }
+.kpi-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 4px; display: block; }
+.kpi-trend { font-size: 0.71rem; font-weight: 600; margin-top: 8px; display: flex; align-items: center; gap: 4px; }
+.kpi-trend.up   { color: #10b981; }
+.kpi-trend.down { color: #ef4444; }
+@media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 700px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── A3. Dashboard Charts Grid ────────────────────────────────── */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.charts-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.chart-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+.chart-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+}
+.chart-card-header h4 {
+    font-size: 0.87rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.chart-card-header h4 i { color: var(--primary); }
+.chart-period-btns { display: flex; gap: 4px; }
+.chart-period-btn {
+    font-size: 0.69rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+}
+.chart-period-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.chart-card-body { padding: 16px 18px; }
+.chart-canvas-wrap { position: relative; }
+@media (max-width: 900px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .charts-grid-3 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+    .charts-grid-3 { grid-template-columns: 1fr; }
+}
+
+/* ── A4. Recent Activity Timeline ────────────────────────────── */
+.activity-timeline { display: flex; flex-direction: column; gap: 0; }
+.activity-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-dot {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.activity-dot.order   { background: rgba(15,118,110,0.12); color: #0f766e; }
+.activity-dot.message { background: rgba(59,130,246,0.12); color: #2563eb; }
+.activity-dot.customer{ background: rgba(139,92,246,0.12); color: #7c3aed; }
+.activity-dot.warning { background: rgba(245,158,11,0.12); color: #d97706; }
+.activity-title { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+.activity-time { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ── A5. Communication Settings Accordion ────────────────────── */
+.comm-accordion { display: flex; flex-direction: column; gap: 10px; }
+.comm-acc-item {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+}
+.comm-acc-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s ease;
+}
+.comm-acc-trigger:hover { background: var(--surface-2); }
+.comm-acc-trigger-left { display: flex; align-items: center; gap: 12px; }
+.comm-acc-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+.comm-acc-icon.email    { background: rgba(15,118,110,0.1); color: #0f766e; }
+.comm-acc-icon.order    { background: rgba(59,130,246,0.1); color: #2563eb; }
+.comm-acc-icon.ticket   { background: rgba(245,158,11,0.1); color: #d97706; }
+.comm-acc-icon.agent    { background: rgba(139,92,246,0.1); color: #7c3aed; }
+.comm-acc-icon.rating   { background: rgba(236,72,153,0.1); color: #db2777; }
+.comm-acc-title { font-size: 0.87rem; font-weight: 700; color: var(--text); }
+.comm-acc-desc  { font-size: 0.74rem; color: var(--text-muted); margin-top: 1px; }
+.comm-acc-right { display: flex; align-items: center; gap: 10px; }
+.comm-acc-arrow {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+.comm-acc-item.open .comm-acc-arrow { transform: rotate(180deg); border-color: var(--primary); color: var(--primary); }
+.comm-acc-body {
+    display: none;
+    padding: 14px 18px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+}
+.comm-acc-item.open .comm-acc-body { display: block; }
+.comm-field-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 6px 6px 6px 14px;
+    transition: border-color 0.2s ease;
+}
+.comm-field-wrap:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(15,118,110,0.1); }
+.comm-field-wrap input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 0.82rem;
+    outline: none;
+    color: var(--text);
+    min-width: 0;
+}
+.comm-field-wrap input::placeholder { color: var(--text-muted); }
+.comm-test-btn {
+    padding: 6px 12px;
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid rgba(15,118,110,0.2);
+    border-radius: 7px;
+    font-size: 0.73rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.comm-test-btn:hover { background: var(--primary); color: #fff; }
+.comm-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+.comm-status-badge.configured { background: #dcfce7; color: #15803d; }
+.comm-status-badge.missing { background: #fef9c3; color: #854d0e; }
+
+/* ── A6. Security / Password Settings ─────────────────────────── */
+.security-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    padding: 22px;
+    max-width: 500px;
+}
+.security-card h4 {
+    font-size: 0.95rem;
+    font-weight: 800;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.security-card h4 i { color: var(--primary); }
+.pwd-field-wrap { position: relative; margin-bottom: 14px; }
+.pwd-field-wrap input { padding-right: 40px; width: 100%; }
+.pwd-eye-btn {
+    position: absolute;
+    right: 10px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none;
+    color: var(--text-muted); cursor: pointer;
+    font-size: 0.85rem; padding: 4px;
+}
+.pwd-strength-bar-wrap { height: 4px; border-radius: 2px; background: var(--border); margin-top: -8px; margin-bottom: 14px; overflow: hidden; }
+.pwd-strength-fill { height: 100%; border-radius: 2px; transition: width 0.3s ease, background 0.3s ease; width: 0; }
+.security-success-msg {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    color: #15803d;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-top: 12px;
+}
+
+/* ── A7. Messages Inbox Layout ───────────────────────────────── */
+.messages-inbox {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    min-height: 500px;
+}
+.inbox-sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--surface-2);
+    display: flex;
+    flex-direction: column;
+}
+.inbox-folders {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.inbox-folder-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+}
+.inbox-folder-btn.active { background: var(--primary); color: #fff; }
+.inbox-folder-btn:hover:not(.active) { background: var(--border); color: var(--text); }
+.inbox-search { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.inbox-search input { width: 100%; padding: 7px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.78rem; outline: none; }
+.inbox-search input:focus { border-color: var(--primary); }
+.inbox-list { flex: 1; overflow-y: auto; }
+.inbox-item {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s ease;
+    position: relative;
+}
+.inbox-item:hover { background: rgba(15,118,110,0.04); }
+.inbox-item.active { background: rgba(15,118,110,0.08); border-left: 3px solid var(--primary); }
+.inbox-item.unread .inbox-item-name { font-weight: 700; }
+.inbox-item-name { font-size: 0.82rem; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.inbox-item-subject { font-size: 0.74rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inbox-item-time { font-size: 0.68rem; color: var(--text-muted); }
+.inbox-unread-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--primary);
+    position: absolute;
+    right: 12px; top: 14px;
+}
+.inbox-content {
+    display: flex;
+    flex-direction: column;
+}
+.inbox-conversation-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.inbox-conversation-header h4 { font-size: 0.95rem; font-weight: 700; }
+.inbox-conversation-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
+.inbox-message-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+}
+.inbox-message-card .msg-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 6px; }
+.inbox-message-card .msg-from { font-size: 0.82rem; font-weight: 700; }
+.inbox-message-card .msg-time { font-size: 0.72rem; color: var(--text-muted); }
+.inbox-message-card .msg-body { font-size: 0.83rem; color: var(--text-mid); line-height: 1.65; }
+.inbox-reply-bar {
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+.inbox-reply-bar textarea { flex: 1; border: 1.5px solid var(--border); border-radius: 10px; padding: 9px 12px; font-size: 0.83rem; resize: none; font-family: inherit; outline: none; }
+.inbox-reply-bar textarea:focus { border-color: var(--primary); }
+@media (max-width: 768px) {
+    .messages-inbox { grid-template-columns: 1fr; }
+    .inbox-sidebar { max-height: 280px; }
+}
+
+/* ── A8. Customers KPI Strip ─────────────────────────────────── */
+.customers-kpi {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.cust-kpi {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.cust-kpi-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.cust-kpi-num { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.03em; display: block; }
+.cust-kpi-label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+@media (max-width: 700px) {
+    .customers-kpi { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── A9. Inventory KPI Strip ─────────────────────────────────── */
+.inv-kpi {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.inv-kpi-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+}
+.inv-kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+}
+.inv-kpi-card.all::before    { background: linear-gradient(90deg, #0f766e, #14b8a6); }
+.inv-kpi-card.low::before    { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.inv-kpi-card.out::before    { background: linear-gradient(90deg, #dc2626, #ef4444); }
+.inv-kpi-card.updated::before{ background: linear-gradient(90deg, #2563eb, #3b82f6); }
+.inv-kpi-num { font-size: 1.6rem; font-weight: 900; letter-spacing: -0.04em; display: block; }
+.inv-kpi-label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+@media (max-width: 700px) {
+    .inv-kpi { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── A10. Categories Grid Cards ──────────────────────────────── */
+.categories-grid-v2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+}
+.cat-grid-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+.cat-grid-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.cat-grid-img {
+    height: 100px;
+    background: var(--surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: var(--text-muted);
+    position: relative;
+    overflow: hidden;
+}
+.cat-grid-img img { width: 100%; height: 100%; object-fit: cover; }
+.cat-grid-body { padding: 12px 14px; }
+.cat-grid-name { font-size: 0.87rem; font-weight: 700; margin-bottom: 4px; }
+.cat-grid-count { font-size: 0.74rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+.cat-grid-actions { display: flex; gap: 6px; margin-top: 10px; }
+.cat-grid-btn {
+    flex: 1;
+    padding: 5px 0;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: transparent;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+}
+.cat-grid-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+.cat-grid-btn.danger:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
+.cat-status-badge {
+    position: absolute;
+    top: 6px; right: 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.9);
+    color: #15803d;
+}
+.cat-status-badge.inactive { color: #b91c1c; }
+
+/* ── A11. Products Analytics Cards ───────────────────────────── */
+.products-kpi {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.prod-kpi {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.prod-kpi-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+.prod-kpi-num { font-size: 1.2rem; font-weight: 800; display: block; }
+.prod-kpi-label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+@media (max-width: 700px) {
+    .products-kpi { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── A12. Toolbar view toggle ────────────────────────────────── */
+.view-toggle {
+    display: flex;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    overflow: hidden;
+}
+.view-toggle-btn {
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    transition: all 0.2s ease;
+}
+.view-toggle-btn.active { background: var(--primary); color: #fff; }
+
+/* ── A13. Topbar password button removal ─────────────────────── */
+.topbar-btn[title="Change Password"] { display: none !important; }
+
 .admin-order-row:hover { background: #f0fdf9; }
 .admin-order-cell { padding: 12px 12px; border-right: 1px solid var(--border); overflow: hidden; min-width: 0; text-align: center; display: flex; align-items: center; justify-content: center; }
 .admin-order-cell:last-child { border-right: none; }

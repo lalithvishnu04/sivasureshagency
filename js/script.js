@@ -4826,6 +4826,7 @@ let _chatPollInterval = null;    // Polling timer for admin replies
 let _chatShownAdminMsgs = 0;     // Admin messages already rendered
 let _chatPendingFile = null;
 let _chatMsgCount = 0;
+let _liveAgentEnabled = true;    // Cached live-agent ON/OFF from Firestore
 
 function initChatbot() {
     const toggle = document.getElementById('chatbotToggle');
@@ -4834,6 +4835,20 @@ function initChatbot() {
     const input = document.getElementById('chatInput');
     const send = document.getElementById('chatSend');
     if (!toggle) return;
+
+    // Fetch and cache live-agent enabled state so quick-reply buttons are
+    // suppressed immediately — before the user even opens the chatbot.
+    (async () => {
+        try {
+            if (window.db) {
+                const doc = await window.db.collection('settings').doc('liveAgentConfig').get();
+                if (doc.exists) {
+                    const cfg = JSON.parse(doc.data().name || '{}');
+                    _liveAgentEnabled = cfg.enabled !== false;
+                }
+            }
+        } catch (e) { /* keep default true on error */ }
+    })();
 
     // Show greeting message on first open
     toggle.addEventListener('click', () => {
@@ -5003,10 +5018,16 @@ function appendMsg(type, html) {
 function appendMsgWithQuickReplies(type, html, replies) {
     const messages = document.getElementById('chatbotMessages');
     if (!messages) return;
+    // Strip live-agent quick reply options when live agent is disabled by admin
+    const filtered = _liveAgentEnabled
+        ? replies
+        : replies.filter(r => (r.msg || r) !== 'connect live agent');
+    // If all quick replies were stripped, just render a plain message
+    if (!filtered.length) { appendMsg(type, html); return; }
     const div = document.createElement('div');
     div.className = `chat-message ${type}`;
     const icon = type === 'bot' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
-    const repliesHtml = replies.map(r => `<button class="quick-reply" data-msg="${(r.msg||r).replace(/"/g,'&quot;')}">${r.label||r}</button>`).join('');
+    const repliesHtml = filtered.map(r => `<button class="quick-reply" data-msg="${(r.msg||r).replace(/"/g,'&quot;')}">${r.label||r}</button>`).join('');
     div.innerHTML = `<div class="message-avatar">${icon}</div><div class="message-content"><p>${html}</p><div class="quick-replies">${repliesHtml}</div></div>`;
     messages.appendChild(div);
     messages.scrollTop = messages.scrollHeight;
@@ -5180,6 +5201,17 @@ async function getAIResponse(msg) {
 }
 
 function _handleLiveAgentRequest() {
+    // Synchronous short-circuit: if admin has disabled live agent, show
+    // unavailable message immediately without an async Firestore round-trip.
+    if (!_liveAgentEnabled) {
+        return {
+            text: `⚠️ <strong>Live Agent support is currently unavailable.</strong><br><br>Our team is offline right now. You can:<br>• Try again later during business hours (Mon–Sat, 9am–6pm)<br>• Send us a message and we'll respond by email`,
+            quickReplies: [
+                { label: '📧 Send Us a Message', msg: 'send message' },
+                { label: '🎫 Create a Support Ticket', msg: 'send message' }
+            ]
+        };
+    }
     const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
     if (!user) {
         return { text: `To connect with a live agent, I'll need you to <strong>sign in</strong> first so our team can identify you and give personalized support.`, quickReplies: [
