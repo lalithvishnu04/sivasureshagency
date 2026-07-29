@@ -1282,13 +1282,26 @@ function editProduct(docId) {
     if (p) openProductModal(p);
 }
 
-// Migrates any leftover base64 data-URLs in _cvData / mainImage to Supabase
-// Storage before the DB write. Runs all uploads in PARALLEL (not sequentially)
-// so large products with many color-variant images don't time out.
-// Most images are already uploaded in the background on selection, so this is
-// only a fallback for any that are still base64.
+// Uploads an image blob to the GitHub repo (images/products/) and returns the GitHub Pages URL.
+async function _uploadToGitHub(blob) {
+    const pat = localStorage.getItem('ssa_github_pat') || '';
+    if (!pat) throw new Error('GitHub PAT not set. Add it in Admin → Settings → GitHub Key.');
+    const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+    const ghPath   = `images/products/${filename}`;
+    const ghApiUrl = `https://api.github.com/repos/lalithvishnu04/sivasureshagency/contents/${ghPath}`;
+    const ghHdrs   = { 'Authorization': `Bearer ${pat}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' };
+    const ab = await blob.arrayBuffer();
+    const bytes = new Uint8Array(ab);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    const b64 = btoa(bin);
+    const resp = await fetch(ghApiUrl, { method: 'PUT', headers: ghHdrs,
+        body: JSON.stringify({ message: `chore(images): add ${filename}`, content: b64, branch: 'main' }) });
+    if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(`GitHub upload failed: ${resp.status} ${e.message || ''}`) }
+    return `https://lalithvishnu04.github.io/sivasureshagency/${ghPath}`;
+}
+// Fallback: migrates any remaining base64 data-URLs to GitHub Pages before DB write.
 async function _migrateImagesBeforeSave() {
-    if (!window.storage) return;
     const tasks = [];
     for (const cv of _cvData) {
         for (let i = 0; i < cv.images.length; i++) {
@@ -1296,9 +1309,7 @@ async function _migrateImagesBeforeSave() {
                 tasks.push((async (variant, index) => {
                     try {
                         const blob = await (await fetch(variant.images[index])).blob();
-                        const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-                        await window.storage.uploadBytes(path, blob);
-                        variant.images[index] = await window.storage.getDownloadURL(path);
+                        variant.images[index] = await _uploadToGitHub(blob);
                     } catch (e) { console.warn('[migrate-cv]', e.message); }
                 })(cv, i));
             }
@@ -1309,9 +1320,7 @@ async function _migrateImagesBeforeSave() {
         tasks.push((async () => {
             try {
                 const blob = await (await fetch(miEl.value)).blob();
-                const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-                await window.storage.uploadBytes(path, blob);
-                miEl.value = await window.storage.getDownloadURL(path);
+                miEl.value = await _uploadToGitHub(blob);
             } catch (e) { console.warn('[migrate-main]', e.message); }
         })());
     }
@@ -1330,11 +1339,9 @@ async function saveProduct(e) {
             await new Promise(r => setTimeout(r, 50)); // up to ~60s
         }
     }
-    // 2. Fallback: migrate any images still stored as base64 (parallel upload).
-    if (window.storage) {
-        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...'; }
-        await _migrateImagesBeforeSave();
-    }
+    // 2. Fallback: migrate any images still stored as base64 to GitHub Pages.
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...'; }
+    await _migrateImagesBeforeSave();
     // 3. Guard: if Storage is unavailable and large base64 images remain, the DB
     //    write would time out — warn instead of hanging.
     const _leftoverBase64 = _cvData.some(cv => (cv.images || []).some(im => im && im.startsWith('data:')));
@@ -1801,7 +1808,7 @@ function printOrderInvoice(docId) {
     const o = allOrders.find(x => x.docId === docId);
     if (!o) { showAdminToast('Order not found', 'error'); return; }
 
-    const logoUrl = new URL('images/Images/SSA Logo.png', window.location.href).href;
+    const logoUrl = new URL('images/SSA Logo.png', window.location.href).href;
     const invoiceDate = o.createdAt ? new Date(o.createdAt.seconds * 1000) : new Date();
     const rows = (o.items || []).map(i => {
         const qty = i.qty || 0;
@@ -3428,6 +3435,7 @@ async function loadWebhookSettings() {
         window.updateAccBadge('badgeAgent',  cfg.liveAgentWebhook    || '');
         window.updateAccBadge('badgeRating', cfg.ratingWebhook       || '');
     }
+    loadGithubPAT();
 }
 async function saveWebhookSettings() {
     if (!window.SSA_COMM) { showAdminToast('Comm module not loaded', 'error'); return; }
@@ -3446,6 +3454,24 @@ async function saveWebhookSettings() {
 }
 window.loadWebhookSettings = loadWebhookSettings;
 window.saveWebhookSettings = saveWebhookSettings;
+
+function saveGithubPAT() {
+    const pat = document.getElementById('githubPAT')?.value?.trim() || '';
+    localStorage.setItem('ssa_github_pat', pat);
+    showAdminToast(pat ? 'GitHub key saved to this browser.' : 'GitHub key cleared.');
+}
+function toggleApiKeyVisibility(inputId, btn) {
+    const inp = document.getElementById(inputId);
+    if (!inp) return;
+    if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'Hide'; }
+    else { inp.type = 'password'; btn.textContent = 'Show'; }
+}
+function loadGithubPAT() {
+    const el = document.getElementById('githubPAT');
+    if (el) el.value = localStorage.getItem('ssa_github_pat') || '';
+}
+window.saveGithubPAT = saveGithubPAT;
+window.toggleApiKeyVisibility = toggleApiKeyVisibility;
 
 // ── Live Agent ON/OFF Toggle ─────────────────────────────────
 async function loadLiveAgentToggle() {
@@ -3728,23 +3754,19 @@ function _compressImageToJpeg(fileOrDataUrl, maxDim = 900, quality = 0.82) {
     });
 }
 
-// Uploads a compressed blob to Storage, then replaces the matching base64
-// preview (identified by its data-URL) with the public URL in whichever
-// color variant currently holds it. Robust against index shifts.
+// Uploads a compressed blob to GitHub Pages, then replaces the matching base64
+// preview in whichever color variant currently holds it.
 async function _uploadCvBlobInBackground(blob, dataUrl) {
     _cvUploadsPending++;
     try {
-        const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-        await window.storage.uploadBytes(path, blob);
-        const url = await window.storage.getDownloadURL(path);
+        const url = await _uploadToGitHub(blob);
         for (const cv of _cvData) {
             const i = cv.images.indexOf(dataUrl);
             if (i !== -1) { cv.images[i] = url; break; }
         }
         renderColorVariantRows();
     } catch (e) {
-        // Keep the base64 preview as a fallback; _migrateImagesBeforeSave retries on save.
-        console.warn('[cv-upload] storage upload failed, will retry on save:', e.message);
+        console.warn('[cv-upload] GitHub upload failed, will retry on save:', e.message);
     } finally {
         _cvUploadsPending--;
     }

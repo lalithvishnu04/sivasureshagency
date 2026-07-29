@@ -1588,7 +1588,7 @@ function initCommon() {
             }
             results.innerHTML = matches.slice(0, 8).map(p =>
                 `<a href="categories.html?cat=${encodeURIComponent(p.category)}&q=${encodeURIComponent(p.name)}" class="search-result-item" onclick="document.getElementById('searchOverlay').classList.remove('active')">` +
-                `<img src="${p.image}" alt="${p.name}" onerror="this.src='images/Images/SSA Logo.png'" loading="lazy">` +
+                `<img src="${p.image}" alt="${p.name}" onerror="this.src='images/SSA Logo.png'" loading="lazy">` +
                 `<div><strong>${p.name}</strong><div style="color:var(--primary);font-weight:600;">₹${p.price}</div></div></a>`
             ).join('');
         });
@@ -2649,7 +2649,7 @@ function openLoginModal() {
 <div class="modal auth-modal auth-split">
   <div class="auth-panel-left">
     <div class="auth-logo">
-      <img src="images/Images/SSA Logo.png" alt="SSA Logo" width="44">
+      <img src="images/SSA Logo.png" alt="SSA Logo" width="44">
       <div class="auth-logo-text">
         <span class="auth-logo-name">Siva Suresh</span>
         <span class="auth-logo-sub">Agency</span>
@@ -2663,7 +2663,7 @@ function openLoginModal() {
       <div class="auth-trust-row"><i class="fas fa-palette"></i> Custom Colors &amp; Sizes</div>
     </div>
     <div class="auth-left-img">
-      <img src="images/Images/Male Full Sleeve.jpg" alt="Products">
+      <img src="images/products/male-doctor-uniform-full-sleeve-thumb-f48a7015.jpg" alt="Products">
     </div>
   </div>
   <div class="auth-panel-right">
@@ -4289,7 +4289,7 @@ function _bestShippingForInvoice(order) {
 
 function buildInvoiceHtml(order) {
         const shipping = _bestShippingForInvoice(order);
-        const logoUrl = new URL('images/Images/SSA Logo.png', window.location.href).href;
+        const logoUrl = new URL('images/SSA Logo.png', window.location.href).href;
         const invoiceDate = new Date(order.date || Date.now());
         const rows = (order.items || []).map(i => {
                 const qty = i.qty || 0;
@@ -4573,7 +4573,7 @@ function _openRazorpayCheckout(order, shipping) {
         currency: 'INR',
         name: rzpCfg.businessName || 'Siva Suresh Agency',
         description: rzpCfg.description || 'Hospital Linen & Medical Uniforms',
-        image: window.location.origin + '/sivasureshagency/' + (rzpCfg.logo || 'images/Images/SSA Logo.png'),
+        image: window.location.origin + '/sivasureshagency/' + (rzpCfg.logo || 'images/SSA Logo.png'),
         prefill: {
             name: (shipping.firstname + ' ' + shipping.lastname).trim(),
             email: shipping.email,

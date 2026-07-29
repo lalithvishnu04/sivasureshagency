@@ -20,5 +20,5 @@ window.SSA_RAZORPAY = {
     businessName: 'Siva Suresh Agency',
     description: 'Hospital Linen & Medical Uniforms',
     themeColor: '#0d9488',
-    logo: 'images/Images/SSA Logo.png'
+    logo: 'images/SSA Logo.png'
 };

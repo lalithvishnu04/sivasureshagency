@@ -131,7 +131,7 @@ window.SSA_COMM = (function () {
     }
 
     // ── Shared HTML email template helpers ───────────────────
-    const _LOGO = 'https://lalithvishnu04.github.io/sivasureshagency/images/Images/SSA%20Logo-480.png';
+    const _LOGO = 'https://lalithvishnu04.github.io/sivasureshagency/images/SSA%20Logo.png';
     const _SITE = 'https://lalithvishnu04.github.io/sivasureshagency/';
     const _EMAIL = 'info@sivasureshagency.onmicrosoft.com';
     const _PHONE = '+91 93666 40060';

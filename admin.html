@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="css/admin.css?v=91">
     <link rel="stylesheet" href="css/animations.css?v=6">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link rel="icon" type="image/png" href="images/Images/SSA Logo.png">
+    <link rel="icon" type="image/png" href="images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
 <body>
@@ -19,7 +19,7 @@
     <div id="loginScreen" class="login-screen">
         <!-- Left Brand Panel -->
         <div class="login-brand">
-            <img src="images/Images/SSA Logo.png" alt="SSA Logo" class="login-brand-logo">
+            <img src="images/SSA Logo.png" alt="SSA Logo" class="login-brand-logo">
             <h1>Siva Suresh Agency</h1>
             <p>Admin Dashboard</p>
             <div class="login-stats">
@@ -59,7 +59,7 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="images/Images/SSA Logo.png" alt="SSA">
+                <img src="images/SSA Logo.png" alt="SSA">
                 <div class="sidebar-header-text">
                     <span>SSA Admin</span>
                     <small>Siva Suresh Agency</small>
@@ -613,6 +613,15 @@
                             <div style="margin-top:16px;">
                                 <button class="btn-primary" onclick="saveWebhookSettings()"><i class="fas fa-save"></i> Save All Webhook URLs</button>
                             </div>
+                            <div class="comm-api-divider" style="margin:24px 0 16px;"></div>
+                            <div class="comm-sub-heading"><i class="fab fa-github"></i> GitHub Upload Key</div>
+                            <p style="margin:0 0 12px;font-size:0.85rem;color:var(--text-mid);">Required for uploading new product images to the GitHub repo. Stored only in this browser.</p>
+                            <div class="comm-field-wrap" style="max-width:520px;">
+                                <input type="password" id="githubPAT" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+                                <button type="button" class="comm-test-btn" onclick="toggleApiKeyVisibility('githubPAT',this)">Show</button>
+                            </div>
+                            <span style="display:block;margin:6px 0 12px;font-size:0.78rem;color:var(--text-mid);">GitHub → Settings → Developer Settings → Fine-grained tokens → Contents: Read &amp; Write</span>
+                            <button class="btn-primary" onclick="saveGithubPAT()"><i class="fas fa-save"></i> Save GitHub Key</button>
                         </div><!-- /comm-set-body -->
                     </div><!-- /comm-settings-outer -->
                 </div>
