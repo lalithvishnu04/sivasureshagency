@@ -5070,134 +5070,248 @@ function appendMsgWithQuickReplies(type, html, replies) {
 
 async function getAIResponse(msg) {
     const m = (msg || '').toLowerCase().trim();
+    const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
 
     // ── Greetings ──
-    if (/^(hi|hello|hey|hii|good morning|good evening|howdy|namaste|helo|hai)\b/.test(m)) {
-        const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
+    if (/^(hi|hello|hey|hii|good morning|good evening|good afternoon|howdy|namaste|helo|hai|hiya|sup|yo)\b/.test(m)) {
         const name = user?.name?.split(' ')[0] || '';
-        return { text: `Hello${name ? ', ' + name : ''}! 😊 Great to have you here. I'm SSA Assistant, your personal shopping guide. What can I help you with today?`, quickReplies: [
-            { label: '🛍️ Browse Products', msg: 'What products do you offer?' },
-            { label: '💰 Pricing Info', msg: 'Tell me about pricing' },
+        return { text: `Hello${name ? ', ' + name : ''}! 😊 I'm <strong>SSA Assistant</strong>, the official AI chatbot for <strong>Siva Suresh Agency</strong>. I can help you with products, orders, pricing, delivery, support tickets, and more!`, quickReplies: [
+            { label: '🛍️ Our Products', msg: 'What products do you offer?' },
+            { label: '💰 Pricing', msg: 'Tell me about pricing' },
             { label: '📦 My Orders', msg: 'Check my order status' },
-            { label: '🚚 Delivery', msg: 'Delivery information' }
+            { label: '🏢 About SSA', msg: 'Tell me about Siva Suresh Agency' },
+            { label: '📞 Contact', msg: 'How do I contact you?' }
         ]};
     }
 
-    // ── Products ──
-    if (/product|offer|sell|catalog|scrub|uniform|linen|bedsheet|hotel/.test(m)) {
-        return { text: `We specialize in premium healthcare & hospitality textiles:<br>🥼 <strong>Doctor Uniforms</strong> — Male & Female, Full & Half Sleeve<br>👔 <strong>Staff Uniforms</strong> — All styles, 20+ colors<br>⭐ <strong>CliniFlex™ Scrubs</strong> — Our signature scrub suit line<br>🛏️ <strong>Bedsheets</strong> — Hospital & hotel grade<br>🏥 <strong>Hospital Linen</strong> — OT aprons, caps, drapes<br>🏨 <strong>Hotel Linen</strong> — Premium hospitality textiles<br><br><a href="categories.html" style="color:var(--primary);font-weight:700;">Browse All Products →</a>`, quickReplies: [
-            { label: '💰 Pricing', msg: 'What are the prices?' },
-            { label: '🛒 How to Order', msg: 'How do I place an order?' },
-            { label: '📦 Bulk Orders', msg: 'I need bulk order pricing' }
+    // ── About Company ──
+    if (/about (company|agency|ssa|siva suresh|you|us|your)|who (are you|is ssa)|tell me about (ssa|agency|company|siva)|company.*info|company.*detail|what.*ssa/.test(m)) {
+        return { text: `🏢 <strong>Siva Suresh Agency</strong><br><br>We are a premium textile manufacturer &amp; supplier based in <strong>Erode, Tamil Nadu</strong> — India's textile capital.<br><br>📅 <strong>Founded:</strong> 2010<br>📍 <strong>HQ:</strong> PVT Towers, Selvam Nagar, Erode – 638011<br>🎯 <strong>Specialty:</strong> Healthcare &amp; Hospitality Textiles<br>🏥 <strong>Clients:</strong> 500+ Hospitals across India<br>😊 <strong>1,000+ satisfied customers</strong> Pan-India<br>✅ <strong>ISO Quality Standards</strong> — 100% tested fabrics<br>🧵 100% Premium Cotton<br><br>We supply doctor uniforms, CliniFlex™ scrubs, hospital linen, hotel textiles and more — to hospitals, clinics, hotels and institutions nationwide.`, quickReplies: [
+            { label: '🛍️ Our Products', msg: 'What products do you offer?' },
+            { label: '📞 Contact Us', msg: 'How do I contact you?' },
+            { label: '🌟 Quality', msg: 'Tell me about your quality and certifications' },
+            { label: '📅 Our History', msg: 'Tell me about your history' }
         ]};
+    }
+
+    // ── History / Founding ──
+    if (/founded|established|since|how old|history|started|when.*start|origin/.test(m)) {
+        return { text: `📅 <strong>Our Journey:</strong><br><br>Siva Suresh Agency was <strong>founded in 2010</strong> in Erode, Tamil Nadu — a city renowned as India's textile hub.<br><br>Starting as a small textile supply unit, we have grown into a trusted supplier for <strong>500+ hospitals</strong> and <strong>1,000+ clients</strong> across India over 15+ years.<br><br>🌟 <strong>Key Milestones:</strong><br>• 2010 — Founded in Erode<br>• 2015 — Expanded to Pan-India delivery<br>• 2018 — Launched <strong>CliniFlex™ Scrubs</strong> (signature line)<br>• 2020 — Online store launched<br>• 2024 — 500+ hospital clients milestone<br>• 2025 — Premium redesign &amp; digital expansion` };
+    }
+
+    // ── Quality / Certifications / Fabric ──
+    if (/quality|iso|certif|fabric|cotton|material|standard|guarantee|warranty|durable|wash/.test(m)) {
+        return { text: `🌟 <strong>Our Quality Promise:</strong><br><br>✅ <strong>ISO Quality Standards</strong> certified processes<br>🧵 <strong>100% combed cotton</strong> — breathable, skin-friendly, durable<br>💧 <strong>Colorfast</strong> — maintains color after 50+ washes<br>📏 <strong>Precision stitching</strong> — professional fit guaranteed<br>🔍 <strong>Quality-checked</strong> before every dispatch<br>🏥 Designed specifically for healthcare &amp; hospitality environments<br><br>All fabrics sourced from certified mills in Tamil Nadu's textile belt.<br><br>💡 If you receive a defective item, we offer <strong>free replacement or full refund</strong> within 7 days.` };
+    }
+
+    // ── All Products Overview ──
+    if (/product|what.*sell|what.*offer|catalog|range|collection|what.*(have|got)|items.*available/.test(m)) {
+        return { text: `🏷️ <strong>Our Complete Product Range:</strong><br><br>🥼 <strong>Doctor Uniforms</strong> — Full &amp; Half Sleeve, Male &amp; Female<br>👔 <strong>Staff Uniforms</strong> — 20+ colors, all sizes<br>⭐ <strong>CliniFlex™ Scrubs</strong> — Signature scrub line<br>🧴 <strong>OT Scrubs</strong> — Operation theater suits<br>🛏️ <strong>Hospital Bedsheets</strong> — 120–180 TC<br>🏥 <strong>Hospital Linen</strong> — OT drapes, mackintosh, draw sheets<br>🩺 <strong>Patient Gowns</strong> — Open-back, snap-close<br>🏨 <strong>Hotel Linen</strong> — Bedsheets, pillowcases, duvet covers<br>🎩 <strong>Surgical Caps &amp; Masks</strong><br>💼 <strong>Lab Coats</strong> — Doctors, pharmacists, lab technicians<br>🧤 <strong>Aprons</strong> — OT &amp; kitchen grade<br><br><a href="categories.html" style="color:var(--primary);font-weight:700;">Browse Full Catalog →</a>`, quickReplies: [
+            { label: '⭐ CliniFlex Scrubs', msg: 'Tell me about CliniFlex scrubs' },
+            { label: '🥼 Doctor Uniforms', msg: 'Tell me about doctor uniforms' },
+            { label: '🏥 Hospital Linen', msg: 'Tell me about hospital linen' },
+            { label: '💰 Pricing', msg: 'What are the prices?' }
+        ]};
+    }
+
+    // ── CliniFlex Scrubs (Signature Product) ──
+    if (/cliniflex|scrub|scrubs|ot.*suit|ot.*uniform|operation.*theater/.test(m)) {
+        return { text: `⭐ <strong>CliniFlex™ Scrubs</strong> — Our Signature Line!<br><br>Engineered for healthcare professionals who demand comfort, durability &amp; style during long shifts.<br><br>✅ <strong>Fabric:</strong> 100% premium combed cotton<br>✅ <strong>Fit:</strong> Unisex — relaxed fit for all-day comfort<br>✅ <strong>Sizes:</strong> XS, S, M, L, XL, XXL, XXXL<br>✅ <strong>Colors:</strong> Hospital Blue, Surgical Green, Navy, Grey, White + custom<br>✅ <strong>Features:</strong> Reinforced stitching, multiple pockets, drawstring waist, breathable<br>✅ <strong>Embroidery:</strong> Name &amp; logo embroidery available<br><br>💰 <strong>Price:</strong> ₹600 – ₹850 per set<br>📦 Bulk discounts for 10+ sets<br><br><a href="categories.html" style="color:var(--primary);font-weight:700;">Shop CliniFlex™ →</a>`, quickReplies: [
+            { label: '📦 Bulk Order', msg: 'I need bulk order pricing' },
+            { label: '🎨 Custom Colors', msg: 'Tell me about custom orders' },
+            { label: '🛒 Order Now', msg: 'How do I place an order?' }
+        ]};
+    }
+
+    // ── Doctor Uniforms / Lab Coats ──
+    if (/doctor.*uniform|doctor.*coat|lab.*coat|physician|white.*coat|full.*sleeve|half.*sleeve/.test(m)) {
+        return { text: `🥼 <strong>Doctor Uniforms &amp; Lab Coats:</strong><br><br>Crafted for the modern healthcare professional.<br><br>📌 <strong>Types Available:</strong><br>• Full Sleeve Doctor Coat (Male &amp; Female)<br>• Half Sleeve Doctor Coat<br>• Lab Coat (pharmacists, lab technicians)<br>• Double-breasted formal coat<br><br>✅ <strong>Fabric:</strong> 100% cotton / premium poly-cotton blend<br>✅ <strong>Sizes:</strong> S, M, L, XL, XXL, XXXL (custom available)<br>✅ <strong>Colors:</strong> White, Light Blue, custom on bulk<br>✅ <strong>Customization:</strong> Name &amp; hospital logo embroidery<br><br>💰 <strong>Price:</strong> ₹750 – ₹900 / piece<br>🏷️ Bulk (10+ pcs): <strong>10-15% discount</strong>` };
+    }
+
+    // ── Staff / Nurse Uniforms ──
+    if (/staff.*uniform|nurse.*uniform|ward.*boy|attendant.*uniform|hospital.*staff|paramedic|healthcare.*worker/.test(m)) {
+        return { text: `👔 <strong>Hospital Staff Uniforms:</strong><br><br>For nurses, ward staff, lab assistants, and all hospital support teams.<br><br>✅ <strong>Styles:</strong><br>• Top + Pant set (unisex)<br>• Salwar-Kameez style (female)<br>• Short-sleeve or full-sleeve<br><br>✅ <strong>Fabric:</strong> 100% cotton — easy wash, color-stable<br>✅ <strong>Colors:</strong> 20+ colors — departmental coding available<br>✅ <strong>Sizes:</strong> XS to XXXL<br>✅ <strong>Custom:</strong> Logo embroidery on breast pocket<br><br>💰 <strong>Price:</strong> ₹500 – ₹590 / set<br>🏥 <strong>Hospital package pricing</strong> for 50+ sets` };
+    }
+
+    // ── Hospital Linen ──
+    if (/hospital.*linen|ot.*drape|mackintosh|draw.*sheet|linen.*hospital/.test(m)) {
+        return { text: `🏥 <strong>Hospital Linen Products:</strong><br><br>Essential supplies for every healthcare facility — hygienic, durable, and easy to launder.<br><br>🛏️ <strong>Bedsheets</strong> — Hospital grade, 120–180 TC<br>🧴 <strong>Mackintosh (Rubber Sheet)</strong> — Waterproof mattress protector<br>📋 <strong>Draw Sheets</strong> — Patient positioning aid<br>🩺 <strong>Patient Gowns</strong> — Open-back, snap-close, easy access<br>🏥 <strong>OT Drapes</strong> — Sterile surgical field drapes<br>🎩 <strong>Surgical Caps</strong> — Bouffant &amp; tie-back styles<br>😷 <strong>Surgical Masks</strong> — 3-ply<br>🧤 <strong>OT Aprons</strong><br><br>All products meet standard healthcare hygiene requirements.<br><a href="categories.html" style="color:var(--primary);font-weight:700;">View Hospital Linen →</a>` };
+    }
+
+    // ── Patient Gowns ──
+    if (/patient.*gown|gown|patient.*dress|hospital.*gown/.test(m)) {
+        return { text: `🩺 <strong>Patient Gowns:</strong><br><br>Designed for patient dignity and ease of medical access.<br><br>✅ <strong>Design:</strong> Open-back with snap/tie closure<br>✅ <strong>Fabric:</strong> 100% soft cotton — comfortable for extended wear<br>✅ <strong>Size:</strong> Universal fit (adjustable ties)<br>✅ <strong>Color:</strong> Standard hospital blue/green or custom<br>✅ <strong>Easy:</strong> Full front/back access for examinations<br><br>💰 <strong>Price:</strong> ₹250 – ₹380 / piece<br>📦 Bulk orders for hospitals &amp; clinics welcome` };
+    }
+
+    // ── Bedsheets & Hotel Linen ──
+    if (/bedsheet|bed.*sheet|pillow.*case|pillowcase|duvet|hotel.*linen|hotel.*sheet|bath.*linen|towel/.test(m)) {
+        return { text: `🛏️ <strong>Bedsheets &amp; Hotel Linen:</strong><br><br>Premium linen for hospitals and hotels requiring high-quality, long-lasting textiles.<br><br>🏥 <strong>Hospital Bedsheets:</strong><br>• 60"×90" single bed — ₹150–₹250<br>• 90"×108" large bed — ₹220–₹300<br>• 120 TC cotton, colorfast<br><br>🏨 <strong>Hotel Bedsheets:</strong><br>• 180 TC premium cotton — ₹280–₹480<br>• All sizes: Single, Queen, King<br><br>✅ Pillowcases: 17"×27" standard<br>✅ Duvet covers: All standard sizes<br>✅ 100% cotton — easy-iron, soft, durable<br><a href="categories.html" style="color:var(--primary);font-weight:700;">View All Bedsheets →</a>` };
+    }
+
+    // ── Surgical Caps / Masks ──
+    if (/surgical.*cap|cap|bouffant|surgical.*mask|mask|scrub.*cap/.test(m)) {
+        return { text: `🎩 <strong>Surgical Caps &amp; Masks:</strong><br><br>🎩 <strong>Surgical Caps:</strong><br>• Bouffant style (elastic band)<br>• Tie-back surgeon's cap<br>• 100% non-woven / cotton<br>• Available in Blue, Green, White<br><br>😷 <strong>Surgical Masks:</strong><br>• 3-ply earloop masks<br>• Tie-on style<br>• Bulk packs available<br><br>These are essential OT room accessories for any healthcare setup.<br>📦 Sold in packs of 50 or 100 for bulk orders.` };
+    }
+
+    // ── Sizes ──
+    if (/size|sizing|what.*size|available.*size|size.*chart|measurement|fit|dimension/.test(m)) {
+        return { text: `📏 <strong>Size Guide:</strong><br><br>We carry sizes for all body types:<br><br>👕 <strong>Uniforms, Scrubs &amp; Coats:</strong><br>XS &nbsp;· &nbsp;S &nbsp;· &nbsp;M &nbsp;· &nbsp;L &nbsp;· &nbsp;XL &nbsp;· &nbsp;XXL &nbsp;· &nbsp;XXXL<br><br>📌 <strong>Measurement Tips:</strong><br>• <strong>Chest:</strong> Measure around the fullest part<br>• <strong>Waist:</strong> Natural waistline<br>• <strong>Length:</strong> From shoulder to desired hem<br>• When between sizes, <strong>size up</strong> for a relaxed fit<br><br>🛏️ <strong>Bedsheets:</strong> 60×90, 90×108, Queen, King<br><br>🎯 <strong>Custom sizes</strong> available for bulk orders (50+ pcs).<br>Need help? <a href="contact.html" style="color:var(--primary);font-weight:700;">Ask our team →</a>` };
+    }
+
+    // ── Colors ──
+    if (/color|colour|shade|available.*color|color.*option|what.*color/.test(m)) {
+        return { text: `🎨 <strong>Available Colors (20+):</strong><br><br>🏥 <strong>Healthcare Standards:</strong><br>Sky Blue · Surgical Green · Navy Blue · White · Grey<br><br>👔 <strong>Staff Uniforms:</strong><br>Royal Blue · Maroon · Olive Green · Peach · Lavender · Teal · Black · Beige · Pink · Bottle Green · Dark Brown<br><br>⭐ <strong>CliniFlex Scrubs:</strong> 8 standard + custom on bulk<br><br>📌 <strong>Color Coding for Departments:</strong><br>We supply different colors per department for easy staff identification — a common requirement for large hospitals.<br><br>🎯 <strong>Custom color</strong> available on orders <strong>50+ pcs</strong>. Swatches on request!` };
     }
 
     // ── Pricing ──
-    if (/price|cost|rate|how much|charges|fee/.test(m)) {
-        return { text: `Here are our approximate price ranges:<br>🥼 Doctor Uniforms: <strong>₹750 – ₹900</strong><br>👔 Staff Uniforms: <strong>₹500 – ₹590</strong><br>🛏️ Bedsheets: <strong>₹150 – ₹480</strong><br>⭐ CliniFlex™ Scrubs: <strong>₹600 – ₹850</strong><br><br>💡 <strong>Bulk discounts</strong> available for orders above 50 pcs!<br><a href="categories.html" style="color:var(--primary);font-weight:700;">See exact prices →</a>`, quickReplies: [
+    if (/price|cost|rate|how much|charges|fee|pric|quote/.test(m)) {
+        return { text: `💰 <strong>Price Guide:</strong><br><br>🥼 Doctor Uniforms: <strong>₹750 – ₹900</strong> / piece<br>👔 Staff Uniforms: <strong>₹500 – ₹590</strong> / set<br>⭐ CliniFlex™ Scrubs: <strong>₹600 – ₹850</strong> / set<br>🛏️ Hospital Bedsheets: <strong>₹150 – ₹300</strong> / piece<br>🏨 Hotel Bedsheets: <strong>₹280 – ₹480</strong> / piece<br>🩺 Patient Gowns: <strong>₹250 – ₹380</strong> / piece<br>💼 Lab Coats: <strong>₹700 – ₹900</strong> / piece<br><br>📦 <strong>Bulk Discounts:</strong><br>• 10–49 pcs: 5% off<br>• 50–99 pcs: 10% off<br>• 100+ pcs: 15–20% off<br><br><a href="categories.html" style="color:var(--primary);font-weight:700;">See live prices →</a>`, quickReplies: [
             { label: '📦 Bulk Discount', msg: 'Tell me about bulk discounts' },
-            { label: '🛒 Place Order', msg: 'How do I place an order?' }
+            { label: '🛒 Order Now', msg: 'How do I place an order?' }
         ]};
     }
 
     // ── Bulk / Wholesale ──
-    if (/bulk|wholesale|institution|hospital|large order|quantity/.test(m)) {
-        return { text: `We love bulk orders! 📦<br><br>Benefits for bulk buyers:<br>✅ Special discounted pricing<br>✅ Dedicated account manager<br>✅ Priority processing & delivery<br>✅ Custom embroidery & branding<br>✅ Easy recurring orders<br><br>Minimum order: <strong>10 pcs per item</strong><br><a href="contact.html" style="color:var(--primary);font-weight:700;">Request Bulk Quote →</a>`, quickReplies: [
+    if (/bulk|wholesale|institution|large.*order|corporate|hospital.*order|quantity.*discount/.test(m)) {
+        return { text: `📦 <strong>Bulk &amp; Institutional Orders:</strong><br><br>We supply <strong>500+ hospitals</strong> across India — bulk ordering is our strength!<br><br>💰 <strong>Volume Discounts:</strong><br>• 10–49 pcs: <strong>5% off</strong><br>• 50–99 pcs: <strong>10% off</strong><br>• 100+ pcs: <strong>15–20% off</strong><br><br>🎁 <strong>Benefits for Bulk Buyers:</strong><br>✅ Dedicated account manager<br>✅ Priority processing (2–3 days)<br>✅ Custom branding &amp; embroidery<br>✅ Departmental color coding<br>✅ Easy recurring orders<br>✅ GST invoice &amp; B2B billing<br>✅ Free delivery on orders above ₹2,000<br><br>📞 Call us: <strong>+91 93666 40060</strong><br><a href="contact.html" style="color:var(--primary);font-weight:700;">Request Bulk Quote →</a>`, quickReplies: [
             { label: '📧 Get Quote', msg: 'send message' },
             { label: '👤 Talk to Agent', msg: 'connect live agent' }
         ]};
     }
 
-    // ── Order placement ──
-    if (/how (to|do) (i |we |)order|place.*(order)|buy now|purchase|add to cart/.test(m)) {
-        return { text: `Ordering is easy! Here's how:<br>1️⃣ Browse <a href="categories.html">Categories</a><br>2️⃣ Select size, color & quantity<br>3️⃣ Add to Cart 🛒<br>4️⃣ Checkout with shipping details<br>5️⃣ Choose payment: <strong>COD, UPI, or Bank Transfer</strong><br>6️⃣ Receive confirmation & track your order<br><br>Need help? I'm here!`, quickReplies: [
+    // ── Minimum Order ──
+    if (/minimum.*order|min.*order|least.*order|how many.*order|minimum.*quantity|moq/.test(m)) {
+        return { text: `📦 <strong>Minimum Order Quantity (MOQ):</strong><br><br>✅ <strong>Regular orders:</strong> Just 1 piece — no minimum!<br>✅ <strong>Bulk pricing starts:</strong> 10 pieces<br>✅ <strong>Custom embroidery:</strong> Minimum 10 pieces per design<br>✅ <strong>Custom color:</strong> Minimum 50 pieces<br>✅ <strong>Custom size:</strong> Minimum 50 pieces<br><br>💡 Order even a single piece from our online store anytime! 🛒` };
+    }
+
+    // ── GST / Invoice / Billing ──
+    if (/gst|invoice|tax|bill|receipt|b2b|commercial.*invoice/.test(m)) {
+        return { text: `📄 <strong>GST &amp; Billing:</strong><br><br>✅ We are a <strong>GST-registered business</strong><br>✅ GST Invoice provided for all orders<br>✅ GSTIN available on request<br>✅ <strong>B2B invoicing</strong> for hospitals &amp; institutions<br>✅ TDS/TCS handling for institutional procurement<br><br>For institutional billing requirements or purchase orders, please contact us directly.<br>📞 <strong>+91 93666 40060</strong>` };
+    }
+
+    // ── How to Order ──
+    if (/how (to|do) (i |we |)order|place.*(order)|buy now|purchase|add to cart|how.*buy|ordering.*process/.test(m)) {
+        return { text: `🛒 <strong>How to Place an Order:</strong><br><br>1️⃣ <a href="categories.html">Browse Products</a> &amp; select what you need<br>2️⃣ Choose <strong>size</strong>, <strong>color</strong> &amp; <strong>quantity</strong><br>3️⃣ Click <strong>"Add to Cart"</strong><br>4️⃣ Go to <strong>Checkout</strong> — enter your shipping address<br>5️⃣ Choose payment method<br>6️⃣ Place order → receive <strong>Order Confirmation</strong> instantly<br>7️⃣ Track in <strong>My Account → Orders</strong><br><br>💡 Create a free account for faster checkout &amp; order history!`, quickReplies: [
             { label: '🛍️ Shop Now', msg: 'take me to products' },
-            { label: '💳 Payment Options', msg: 'What payment methods do you accept?' }
+            { label: '💳 Payment Options', msg: 'What payment methods do you accept?' },
+            { label: '🚚 Delivery Info', msg: 'Delivery information' }
         ]};
     }
 
     // ── Delivery / Shipping ──
-    if (/deliver|ship|dispatch|when.*arrive|how long|tracking|courier/.test(m)) {
-        return { text: `📦 <strong>Delivery Information:</strong><br><br>🚚 Pan-India delivery available<br>🎁 <strong>Free shipping</strong> on orders above ₹2,000<br>⏱️ Standard: <strong>3-5 working days</strong><br>⚡ Express: <strong>1-2 days</strong> (extra charges)<br>📍 Dispatch from Erode, Tamil Nadu<br><br>You'll get a tracking ID after your order is dispatched!`, quickReplies: [
+    if (/deliver|ship|dispatch|when.*arrive|how long|courier|transit|logistics|shipping.*time/.test(m)) {
+        return { text: `🚚 <strong>Delivery Information:</strong><br><br>🌍 <strong>Pan-India delivery</strong> to all states<br>🎁 <strong>Free shipping</strong> on orders above ₹2,000<br>⏱️ <strong>Standard:</strong> 3–5 working days<br>⚡ <strong>Express:</strong> 1–2 days (extra charges apply)<br>📍 <strong>Dispatched from:</strong> Erode, Tamil Nadu<br><br>📦 <strong>Bulk orders (50+ pcs):</strong> 5–7 working days<br>🎨 <strong>Custom/embroidery orders:</strong> 7–10 working days<br><br>📱 Tracking number sent via SMS &amp; email after dispatch.<br><br>🚫 <strong>Non-deliverable areas:</strong> Remote island regions — please confirm before ordering.`, quickReplies: [
             { label: '📦 Track Order', msg: 'track my order' },
             { label: '🛒 Place Order', msg: 'How do I place an order?' }
         ]};
     }
 
     // ── Order status / tracking ──
-    if (/track|order status|my order|where.*order|order.*id|order.*number/.test(m)) {
-        const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
+    if (/track|order status|my order|where.*order|order.*id|order.*number|check.*order|order.*update/.test(m)) {
         if (!user) {
-            return { text: `To check your order status, please <strong>sign in</strong> first. Once logged in, you can view all orders, track shipments, and get real-time updates.<br><br>Don't have an account? <a onclick="closeAuthModal && closeAuthModal(); openLoginModal && openLoginModal();" style="color:var(--primary);cursor:pointer;font-weight:700;">Create one free →</a>`, quickReplies: [
-                { label: '🔑 Sign In', msg: 'login' },
-                { label: '📧 Contact Support', msg: 'send message' }
+            return { text: `To check your order status, <strong>sign in</strong> first, then go to <strong>My Account → My Orders</strong>.<br><br>🔍 You can also use the <strong>"Track Order"</strong> button in the top bar to track by Order ID — no login needed!<br><br><strong>Order Status meanings:</strong><br>🟡 Processing → Approved → 📦 Packed → 🚚 Shipped → ✅ Delivered`, quickReplies: [
+                { label: '🔑 Sign In', msg: 'sign in now' },
+                { label: '📧 Order Support', msg: 'send message' }
             ]};
         }
-        return { text: `Hi <strong>${user.name?.split(' ')[0] || 'there'}</strong>! To track your order:<br>1. Click <a onclick="if(typeof openAccountPanel==='function')openAccountPanel();" style="color:var(--primary);cursor:pointer;font-weight:700;">My Account</a> (top right)<br>2. Go to "My Orders" tab<br>3. Click any order to see live status<br><br>Or use the <strong>Track Order</strong> button in the header.`, quickReplies: [
-            { label: '🔑 My Account', msg: 'go to my account' },
+        return { text: `Hi <strong>${user.name?.split(' ')[0] || 'there'}</strong>! Here's how to track your order:<br><br>✅ <strong>Option 1:</strong> <a onclick="if(typeof openAccountPanel==='function')openAccountPanel();" style="color:var(--primary);cursor:pointer;font-weight:700;">My Account → Orders tab</a><br>✅ <strong>Option 2:</strong> <strong>Track Order</strong> button (top bar) — enter Order ID<br><br><strong>Status meanings:</strong><br>🟡 <strong>Processing</strong> — Confirmed, being prepared<br>🟢 <strong>Approved</strong> — Verified &amp; ready<br>📦 <strong>Packed</strong> — Packed, ready to dispatch<br>🚚 <strong>Shipped</strong> — On the way! (tracking link sent)<br>✅ <strong>Delivered</strong> — Successfully delivered<br>❌ <strong>Cancelled</strong> — Order cancelled`, quickReplies: [
+            { label: '👤 My Account', msg: 'go to my account' },
             { label: '📧 Order Support', msg: 'I need help with my order' }
         ]};
     }
 
-    // ── Returns / Exchange ──
-    if (/return|exchange|refund|replace|defect|damaged|wrong/.test(m)) {
-        return { text: `We stand behind our quality! Here's our policy:<br><br>↩️ <strong>Returns accepted</strong> within 7 days of delivery<br>🔄 <strong>Exchange</strong> for size/color issues — free<br>💰 <strong>Refund</strong> processed within 5-7 business days<br><br>To raise a return request, go to <strong>My Account → My Orders → Request Return</strong><br><br>Or contact us directly for faster resolution.`, quickReplies: [
-            { label: '📧 Contact Support', msg: 'send message' },
-            { label: '👤 Talk to Agent', msg: 'connect live agent' }
+    // ── Ticket tracking / support ──
+    if (/ticket|ticket.*status|track.*ticket|support.*ticket|my.*ticket|ticket.*id|complaint|grievance/.test(m)) {
+        return { text: `🎫 <strong>Support Ticket Tracking:</strong><br><br>✅ Visit the <a href="tickets.html" style="color:var(--primary);font-weight:700;">Track Ticket</a> page<br>✅ Enter your <strong>Ticket ID</strong> (sent to your email when raised)<br>✅ Or click <strong>"Track Ticket"</strong> in the top bar<br><br><strong>Ticket Status meanings:</strong><br>🔵 <strong>Open</strong> — Received, under review<br>🟡 <strong>In Progress</strong> — Team is working on it<br>🟢 <strong>Resolved</strong> — Solution has been provided<br>⚫ <strong>Closed</strong> — Issue resolved &amp; closed<br><br>💡 You'll get <strong>email updates</strong> on every status change.<br>Average resolution time: <strong>24–48 hours</strong>`, quickReplies: [
+            { label: '🎫 Track Ticket', msg: 'go to track ticket page' },
+            { label: '📧 Raise New Ticket', msg: 'send message' }
         ]};
     }
 
-    // ── Payment ──
-    if (/payment|pay|upi|cod|cash|online|razorpay|card/.test(m)) {
-        return { text: `💳 <strong>We accept multiple payment methods:</strong><br><br>💵 Cash on Delivery (COD)<br>📱 UPI (GPay, PhonePe, Paytm)<br>💳 Debit/Credit Cards (Razorpay)<br>🏦 Bank Transfer (for bulk orders)<br><br>All online payments are secured by <strong>Razorpay</strong> — India's most trusted payment gateway.` };
+    // ── Returns / Refunds ──
+    if (/return|exchange|refund|replace|defect|damaged|wrong.*item|return.*policy|cancel.*order/.test(m)) {
+        return { text: `↩️ <strong>Return &amp; Refund Policy:</strong><br><br>We stand behind every product we make!<br><br>⏰ <strong>Return window:</strong> 7 days from delivery<br>🔄 <strong>Exchange:</strong> Free for size or color mismatch<br>💰 <strong>Refund:</strong> Processed in 5–7 business days to original payment<br>📦 <strong>Condition:</strong> Unused, in original packaging<br>❌ <strong>Non-returnable:</strong> Custom embroidered items (unless defective)<br><br><strong>How to request:</strong><br>1. <strong>My Account → My Orders</strong><br>2. Select the order → <strong>Request Return/Exchange</strong><br>3. Select reason &amp; submit photos if damaged<br>4. We arrange free pickup<br><br>📞 Urgent: <strong>+91 93666 40060</strong>`, quickReplies: [
+            { label: '📞 Call Us', msg: 'What is your phone number?' },
+            { label: '📧 Contact Support', msg: 'send message' }
+        ]};
+    }
+
+    // ── Payment methods ──
+    if (/payment|pay|upi|cod|cash.*deliver|online.*pay|razorpay|card|net.*bank|bank.*transfer|mode.*payment/.test(m)) {
+        return { text: `💳 <strong>Payment Methods:</strong><br><br>💵 <strong>Cash on Delivery (COD)</strong> — Available up to ₹5,000<br>📱 <strong>UPI</strong> — GPay, PhonePe, Paytm, BHIM, any UPI app<br>💳 <strong>Credit/Debit Cards</strong> — Visa, Mastercard, RuPay, Amex<br>🌐 <strong>Net Banking</strong> — All major banks<br>🏦 <strong>NEFT/Bank Transfer</strong> — For bulk institutional orders<br><br>🔒 All online payments processed securely via <strong>Razorpay</strong> (PCI-DSS Level 1 compliant).<br><br>💡 <em>EMI available on select cards. No extra charges for online payments.</em>` };
     }
 
     // ── Custom / Embroidery ──
-    if (/custom|embroid|logo|brand|print|design|color options/.test(m)) {
-        return { text: `✨ <strong>Yes, we do custom orders!</strong><br><br>🎨 20+ color options available<br>👕 All sizes S to XXXL<br>🏥 Custom hospital logo embroidery<br>🎯 Specific design requirements<br>📦 Minimum 10 pcs per custom design<br><br>Send us your design requirements and we'll quote within 24 hours.`, quickReplies: [
-            { label: '📧 Send Requirements', msg: 'send message' },
+    if (/custom|embroid|logo.*stitch|brand.*uniform|print|name.*uniform|personaliz|monogram/.test(m)) {
+        return { text: `✨ <strong>Custom Orders &amp; Embroidery:</strong><br><br>🎨 <strong>What we customize:</strong><br>• Hospital / clinic logo on uniform<br>• Doctor or nurse name on breast pocket<br>• Department name on collar/sleeve<br>• Custom colors (50+ pcs)<br>• Custom sizing (50+ pcs)<br>• Unique design requirements<br><br>📦 <strong>Minimum:</strong> 10 pieces per embroidery design<br>⏱️ <strong>Lead time:</strong> 7–10 working days<br>💰 <strong>Embroidery cost:</strong> ₹50–₹150/piece (based on complexity)<br><br>Send your logo file (PNG/SVG) for a free quote!`, quickReplies: [
+            { label: '📧 Send Design', msg: 'send message' },
             { label: '👤 Talk to Agent', msg: 'connect live agent' }
         ]};
     }
 
-    // ── Contact info ──
-    if (/contact|reach|phone|address|location|email|office|where are you/.test(m)) {
-        return { text: `📞 <strong>Siva:</strong> +91 93666 40060<br>📞 <strong>Suresh:</strong> +91 93666 40050<br>✉️ <a href="mailto:info@sivasureshagency.onmicrosoft.com">info@sivasureshagency.onmicrosoft.com</a><br>📍 PVT Towers, 37/10, Selvam Nagar, Erode - 638011, Tamil Nadu<br><br>Office hours: <strong>Mon-Sat, 9am - 6pm</strong>`, quickReplies: [
+    // ── Contact / Phone ──
+    if (/contact|reach|phone|call|number|address|location|email|office|where are you|head.*quarter/.test(m)) {
+        return { text: `📞 <strong>Contact Siva Suresh Agency:</strong><br><br>👤 <strong>Siva:</strong> +91 93666 40060<br>👤 <strong>Suresh:</strong> +91 93666 40050<br>✉️ <a href="mailto:info@sivasureshagency.onmicrosoft.com">info@sivasureshagency.onmicrosoft.com</a><br>📍 PVT Towers, 37/10, Selvam Nagar,<br>&nbsp;&nbsp;&nbsp;&nbsp;Erode – 638011, Tamil Nadu<br><br>🕒 <strong>Office Hours:</strong> Mon – Sat, 9 am – 6 pm IST<br><br><a href="contact.html" style="color:var(--primary);font-weight:700;">Open Contact Page →</a>`, quickReplies: [
             { label: '📧 Send Message', msg: 'send message' },
-            { label: '🗺️ Get Directions', msg: 'directions' }
+            { label: '🗺️ Get Directions', msg: 'How do I get to your office?' }
         ]};
     }
 
-    // ── Directions ──
-    if (/direction|map|location|how to reach|find you/.test(m)) {
-        return { text: `📍 <strong>Find Us:</strong><br>PVT Towers, 37/10, Selvam Nagar,<br>Erode - 638011, Tamil Nadu<br><br>🚉 Near Erode Junction Railway Station<br><a href="contact.html" style="color:var(--primary);font-weight:700;">View Map on Contact Page →</a>` };
+    // ── Directions / Location ──
+    if (/direction|map|how to reach|find you|where.*locat|navigate|gps|get.*there/.test(m)) {
+        return { text: `📍 <strong>Find Us:</strong><br><br><strong>PVT Towers, 37/10, Selvam Nagar,</strong><br><strong>Erode – 638011, Tamil Nadu, India</strong><br><br>🚉 Close to Erode Junction Railway Station<br>🚌 Well connected by road &amp; bus<br>🚗 Ample parking available<br><br><a href="contact.html" style="color:var(--primary);font-weight:700;">📍 Open Map &amp; Get Directions →</a>` };
     }
 
-    // ── My account / login navigation ──
-    if (/my account|go.*account|profile|login|sign in/.test(m)) {
-        if (typeof openAccountPanel === 'function' && JSON.parse(localStorage.getItem('ssa_user') || 'null')) {
-            openAccountPanel();
-            return { text: `Opening your account panel now! You can see your orders, addresses, and profile there.` };
-        } else {
-            return { text: `Please sign in to access your account. You can view orders, track deliveries, and manage your profile after logging in.`, quickReplies: [
-                { label: '🔑 Sign In', msg: 'sign in now' }
-            ]};
-        }
+    // ── Business hours ──
+    if (/hours|timing|when.*open|open.*time|working.*hours|business.*hour|available.*time/.test(m)) {
+        return { text: `🕒 <strong>Business Hours:</strong><br><br>📅 <strong>Monday – Saturday:</strong> 9:00 AM – 6:00 PM IST<br>❌ <strong>Sunday:</strong> Closed<br><br>📞 <strong>Phone:</strong> +91 93666 40060 / 40050<br>✉️ <strong>Email:</strong> Responses within 24 hours (working days)<br><br>💡 Orders placed outside business hours are processed the next working day.<br>🌐 Online store is available <strong>24/7</strong> — order anytime!` };
     }
-    if (/sign in now/.test(m)) {
+
+    // ── Wishlist ──
+    if (/wishlist|wish.*list|saved.*item|favorite|favourite|saved.*product/.test(m)) {
+        return { text: `❤️ <strong>Wishlist:</strong><br><br>Save products you love for later!<br><br>✅ Click the <strong>♡ heart icon</strong> on any product card to save it<br>✅ Access your wishlist via the <strong>❤️ icon</strong> in the top navigation bar<br>✅ Sign in to sync your wishlist across all devices<br><br>Your wishlist is saved automatically — never lose track of items you want!` };
+    }
+
+    // ── About website / features ──
+    if (/website|app|portal|online.*store|how.*website.*work|feature|account.*feature/.test(m)) {
+        return { text: `💻 <strong>SSA Website Features:</strong><br><br>🛒 <strong>Online Store</strong> — Browse &amp; buy 24/7<br>❤️ <strong>Wishlist</strong> — Save items for later<br>📦 <strong>Order Tracking</strong> — Real-time status updates<br>🎫 <strong>Support Tickets</strong> — Raise &amp; track support requests<br>💬 <strong>Live Chat</strong> — Connect with our team<br>👤 <strong>My Account</strong> — Profile, orders, addresses<br>📱 <strong>Mobile-friendly</strong> — Works on all devices<br>🔒 <strong>Secure checkout</strong> — Razorpay encrypted payments<br><br>Create a <strong>free account</strong> to access all features!` };
+    }
+
+    // ── Delivery charges ──
+    if (/delivery.*charge|shipping.*charge|how much.*delivery|free.*ship|free.*deliver/.test(m)) {
+        return { text: `🚚 <strong>Delivery Charges:</strong><br><br>🎁 <strong>FREE delivery</strong> on orders above <strong>₹2,000</strong><br><br>📦 <strong>For orders below ₹2,000:</strong><br>• Standard (3–5 days): ₹60 – ₹120<br>• Express (1–2 days): ₹150 – ₹250<br>(varies by location &amp; weight)<br><br>🏥 <strong>Bulk orders:</strong> Negotiable freight charges<br>Free delivery included for large institutional orders.` };
+    }
+
+    // ── Account navigation ──
+    if (/my account|go.*account|open.*account|view.*account|profile.*page/.test(m)) {
+        if (user && typeof openAccountPanel === 'function') {
+            openAccountPanel();
+            return { text: `Opening your account panel! You can view orders, addresses, and update your profile there.` };
+        }
+        return { text: `Please sign in to access your account dashboard.`, quickReplies: [{ label: '🔑 Sign In', msg: 'sign in now' }] };
+    }
+
+    // ── Sign in ──
+    if (/sign in now|log.*in.*now/.test(m)) {
         if (typeof openLoginModal === 'function') setTimeout(() => openLoginModal(), 300);
         return { text: `Opening sign in for you...` };
     }
 
-    // ── Take me to products ──
-    if (/take me.*product|shop now|browse product|go.*shop/.test(m)) {
+    // ── Navigate to products ──
+    if (/take me.*product|shop now|browse.*product|go.*shop|open.*shop|go.*categor|view.*catalog/.test(m)) {
         setTimeout(() => { window.location.href = 'categories.html'; }, 1500);
         return { text: `Taking you to our product catalog now! 🛍️` };
     }
 
-    // ── Send message (contact form) ──
-    if (/send.*(message|mail|email|us)|contact.*form|raise.*ticket|ticket/.test(m)) {
-        return { text: `📧 You can send us a message through our contact form. Your query will get a <strong>Ticket ID</strong> so you can track its status anytime.<br><br><a href="contact.html#contact-form" style="color:var(--primary);font-weight:700;">Open Contact Form →</a>`, quickReplies: [
+    // ── Navigate to ticket page ──
+    if (/go.*track.*ticket|open.*ticket.*page|ticket.*page|track.*ticket.*page/.test(m)) {
+        setTimeout(() => { window.location.href = 'tickets.html'; }, 1200);
+        return { text: `Opening the Ticket Tracking page for you... 🎫` };
+    }
+
+    // ── Send message / Contact form ──
+    if (/send.*(message|mail|email|us)|contact.*form|raise.*ticket|new.*ticket|open.*ticket|submit.*query/.test(m)) {
+        return { text: `📧 Send us a message through our contact form. You'll receive a <strong>Ticket ID</strong> to track your query anytime.<br><br><a href="contact.html#contact-form" style="color:var(--primary);font-weight:700;">Open Contact Form →</a>`, quickReplies: [
             { label: '👤 Talk to Live Agent', msg: 'connect live agent' }
         ]};
     }
@@ -5207,35 +5321,30 @@ async function getAIResponse(msg) {
         return _handleLiveAgentRequest();
     }
 
-    // ── Thank you ──
-    if (/thank|thanks|thx|ty\b/.test(m)) {
-        return { text: `You're welcome! 😊 It was a pleasure helping you. Is there anything else you'd like to know?`, quickReplies: [
+    // ── Thank you / Compliment ──
+    if (/thank|thanks|thx|ty\b|great|awesome|perfect|superb|excellent|helpful/.test(m)) {
+        return { text: `You're welcome! 😊 Happy to help! Is there anything else I can do for you?`, quickReplies: [
             { label: '🛍️ Browse Products', msg: 'What products do you offer?' },
             { label: '📧 Send Message', msg: 'send message' }
         ]};
     }
 
-    // ── Bye / exit ──
-    if (/bye|goodbye|see you|cya|take care/.test(m)) {
-        return { text: `Goodbye! 👋 Thank you for visiting Siva Suresh Agency. Have a wonderful day! Feel free to come back anytime. 😊` };
+    // ── Bye / Exit ──
+    if (/bye|goodbye|see you|cya|take care|done|that.*all|nothing else|no.*more/.test(m)) {
+        return { text: `Goodbye! 👋 Thank you for visiting Siva Suresh Agency. Have a wonderful day! Come back anytime. 😊<br><br>📞 Need urgent help? Call us: <strong>+91 93666 40060</strong>` };
     }
 
-    // ── Default fallback ──
-    const fallback = [
-        `I'm not sure I understood that, but I'd love to help! Could you rephrase, or choose one of these options?`,
-        `Hmm, let me think... I might need a bit more context. Could you tell me more about what you're looking for?`,
-        `I want to make sure I give you the right answer! Could you be more specific?`
-    ];
-    return { text: fallback[Math.floor(Math.random() * fallback.length)], quickReplies: [
+    // ── Default fallback — comprehensive ──
+    return { text: `I'm here to help! 😊 I can answer questions about our <strong>products, pricing, orders, delivery, tickets, custom orders</strong>, and more. Could you rephrase, or pick a topic below?`, quickReplies: [
         { label: '🛍️ Products', msg: 'What products do you offer?' },
         { label: '💰 Pricing', msg: 'Tell me about pricing' },
-        { label: '📦 Orders', msg: 'Check my order status' },
-        { label: '📧 Send Message', msg: 'send message' },
-        { label: '👤 Live Agent', msg: 'connect live agent' }
+        { label: '📦 My Orders', msg: 'Check my order status' },
+        { label: '🏢 About SSA', msg: 'Tell me about Siva Suresh Agency' },
+        { label: '📞 Contact', msg: 'How do I contact you?' }
     ]};
 }
 
-function _handleLiveAgentRequest() {
+
     // Synchronous short-circuit: if admin has disabled live agent, show
     // unavailable card immediately without an async Firestore round-trip.
     if (!_liveAgentEnabled) {
