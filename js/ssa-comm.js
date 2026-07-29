@@ -34,6 +34,7 @@ window.SSA_COMM = (function () {
             ratingWebhook: '',
             liveAgentWebhook: '',
             adminEmail: 'info@sivasureshagency.onmicrosoft.com',
+            razorpayKeyId: 'rzp_test_TI67q5KZaLNQgp', // fallback test key
             ...overrides
         };
     }
@@ -58,7 +59,8 @@ window.SSA_COMM = (function () {
             ticketStatusWebhook: remote?.ticketStatusWebhook || local.ticketStatusWebhook || '',
             ratingWebhook: remote?.ratingWebhook || local.ratingWebhook || '',
             liveAgentWebhook: remote?.liveAgentWebhook || local.liveAgentWebhook || '',
-            adminEmail: remote?.adminEmail || local.adminEmail || undefined
+            adminEmail: remote?.adminEmail || local.adminEmail || undefined,
+            razorpayKeyId: remote?.razorpayKeyId || local.razorpayKeyId || ''
         });
         _cfgCache = merged;
         _cfgCacheAt = now;

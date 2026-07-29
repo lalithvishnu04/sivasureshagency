@@ -924,6 +924,19 @@ window.initCardHoverCycle = initCardHoverCycle;
     }
 })();
 
+// Preload SSA_COMM config (webhooks + razorpayKeyId) so it is cached by checkout time
+(function _preloadCommConfig() {
+    function _load() {
+        if (window.SSA_COMM && typeof window.SSA_COMM.getConfig === 'function') {
+            window.SSA_COMM.getConfig().catch(() => {});
+        } else {
+            setTimeout(_load, 500);
+        }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _load);
+    else _load();
+})();
+
 // ===== Scrub Brand Name — Real-time Supabase sync (cross-device updates) =====
 (function _syncBrandName() {
     // Listen for brand name changes in real-time from Supabase
@@ -4555,7 +4568,7 @@ function _openRazorpayCheckout(order, shipping) {
     }
     const rzpCfg = window.SSA_RAZORPAY || {};
     const options = {
-        key: rzpCfg.keyId || '',
+        key: (window.SSA_COMM?.getConfigSync()?.razorpayKeyId) || rzpCfg.keyId || '',
         amount: order.total * 100,   // Razorpay expects paise (1 INR = 100 paise)
         currency: 'INR',
         name: rzpCfg.businessName || 'Siva Suresh Agency',

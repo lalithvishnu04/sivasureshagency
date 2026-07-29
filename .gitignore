@@ -8,6 +8,7 @@ Thumbs.db
 
 tools/admin_credentials.txt
 tools/serviceAccountKey.json
+rzp-test-key.csv
 emulator_export/
 
 # Service account private keys — never commit these

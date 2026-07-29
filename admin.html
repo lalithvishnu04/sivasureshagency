@@ -497,109 +497,124 @@
                     </div>
                 </div>
 
-                <!-- Communication Webhooks Accordion -->
-                <div class="settings-panel">
-                    <div class="settings-section">
-                        <h4 class="settings-section-title"><i class="fas fa-share-alt"></i> Communication Settings &mdash; Power Automate</h4>
-                        <p class="settings-section-desc">Manage all Power Automate webhook URLs. Click a section to expand it. Use <strong>Test Connection</strong> to verify each URL.</p>
-                        <div class="comm-accordion" id="commAccordion">
-                            <!-- Email Automation -->
-                            <div class="comm-acc-item" id="accEmail">
-                                <button class="comm-acc-trigger" onclick="toggleAccordion('accEmail')">
-                                    <div class="comm-acc-trigger-left">
-                                        <div class="comm-acc-icon email"><i class="fas fa-envelope"></i></div>
-                                        <div>
-                                            <div class="comm-acc-title">Email Automation</div>
-                                            <div class="comm-acc-desc">Contact form submissions &rarr; admin email</div>
+                <!-- Communication Settings — outer collapsible panel -->
+                <div class="settings-panel" style="padding:0;">
+                    <div class="comm-settings-outer open" id="commSettingsOuter">
+                        <!-- Main Toggle Header -->
+                        <button class="comm-set-header" onclick="toggleCommSettings()">
+                            <div class="comm-acc-trigger-left">
+                                <div class="comm-acc-icon" style="background:rgba(15,118,110,0.1);color:#0f766e;"><i class="fas fa-share-alt"></i></div>
+                                <div>
+                                    <div class="comm-acc-title" style="font-size:0.96rem;">Communication Settings</div>
+                                    <div class="comm-acc-desc">Power Automate, GitHub &amp; Razorpay</div>
+                                </div>
+                            </div>
+                            <div class="comm-set-arrow"><i class="fas fa-chevron-down"></i></div>
+                        </button>
+                        <!-- Body -->
+                        <div class="comm-set-body" id="commSetBody">
+                            <!-- ─ Power Automate ─ -->
+                            <div class="comm-sub-heading"><i class="fas fa-bolt"></i> Power Automate</div>
+                            <p class="settings-section-desc" style="margin:0 0 14px;">Manage all Power Automate webhook URLs. Click a section to expand it. Use <strong>Test Connection</strong> to verify each URL.</p>
+                            <div class="comm-accordion" id="commAccordion">
+                                <!-- Email Automation -->
+                                <div class="comm-acc-item" id="accEmail">
+                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accEmail')">
+                                        <div class="comm-acc-trigger-left">
+                                            <div class="comm-acc-icon email"><i class="fas fa-envelope"></i></div>
+                                            <div>
+                                                <div class="comm-acc-title">Email Automation</div>
+                                                <div class="comm-acc-desc">Contact form submissions &rarr; admin email</div>
+                                            </div>
+                                        </div>
+                                        <div class="comm-acc-right">
+                                            <span class="comm-status-badge missing" id="badgeEmail">Not Set</span>
+                                            <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                                        </div>
+                                    </button>
+                                    <div class="comm-acc-body">
+                                        <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Contact Form Webhook URL</label>
+                                        <div class="comm-field-wrap">
+                                            <input type="url" id="webhookContactForm" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeEmail',this.value)">
+                                            <button class="comm-test-btn" onclick="testWebhook('webhookContactForm')">Test</button>
                                         </div>
                                     </div>
-                                    <div class="comm-acc-right">
-                                        <span class="comm-status-badge missing" id="badgeEmail">Not Set</span>
-                                        <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                                </div>
+                                <!-- Ticket Notifications -->
+                                <div class="comm-acc-item" id="accTicket">
+                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accTicket')">
+                                        <div class="comm-acc-trigger-left">
+                                            <div class="comm-acc-icon ticket"><i class="fas fa-ticket-alt"></i></div>
+                                            <div>
+                                                <div class="comm-acc-title">Ticket Notifications</div>
+                                                <div class="comm-acc-desc">Ticket status updates &rarr; customer email</div>
+                                            </div>
+                                        </div>
+                                        <div class="comm-acc-right">
+                                            <span class="comm-status-badge missing" id="badgeTicket">Not Set</span>
+                                            <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                                        </div>
+                                    </button>
+                                    <div class="comm-acc-body">
+                                        <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Ticket Status Webhook URL</label>
+                                        <div class="comm-field-wrap">
+                                            <input type="url" id="webhookTicketStatus" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeTicket',this.value)">
+                                            <button class="comm-test-btn" onclick="testWebhook('webhookTicketStatus')">Test</button>
+                                        </div>
                                     </div>
-                                </button>
-                                <div class="comm-acc-body">
-                                    <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Contact Form Webhook URL</label>
-                                    <div class="comm-field-wrap">
-                                        <input type="url" id="webhookContactForm" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeEmail',this.value)">
-                                        <button class="comm-test-btn" onclick="testWebhook('webhookContactForm')">Test</button>
+                                </div>
+                                <!-- Live Agent (Teams) -->
+                                <div class="comm-acc-item" id="accAgent">
+                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accAgent')">
+                                        <div class="comm-acc-trigger-left">
+                                            <div class="comm-acc-icon agent"><i class="fas fa-headset"></i></div>
+                                            <div>
+                                                <div class="comm-acc-title">Live Agent &mdash; Teams Alerts</div>
+                                                <div class="comm-acc-desc">Live agent requests &rarr; Microsoft Teams</div>
+                                            </div>
+                                        </div>
+                                        <div class="comm-acc-right">
+                                            <span class="comm-status-badge missing" id="badgeAgent">Not Set</span>
+                                            <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                                        </div>
+                                    </button>
+                                    <div class="comm-acc-body">
+                                        <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Live Agent Webhook URL</label>
+                                        <div class="comm-field-wrap">
+                                            <input type="url" id="webhookLiveAgent" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeAgent',this.value)">
+                                            <button class="comm-test-btn" onclick="testWebhook('webhookLiveAgent')">Test</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Rating Notifications -->
+                                <div class="comm-acc-item" id="accRating">
+                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accRating')">
+                                        <div class="comm-acc-trigger-left">
+                                            <div class="comm-acc-icon rating"><i class="fas fa-star"></i></div>
+                                            <div>
+                                                <div class="comm-acc-title">Rating &amp; Review Alerts</div>
+                                                <div class="comm-acc-desc">New ratings &rarr; admin notification</div>
+                                            </div>
+                                        </div>
+                                        <div class="comm-acc-right">
+                                            <span class="comm-status-badge missing" id="badgeRating">Not Set</span>
+                                            <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                                        </div>
+                                    </button>
+                                    <div class="comm-acc-body">
+                                        <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Rating Webhook URL</label>
+                                        <div class="comm-field-wrap">
+                                            <input type="url" id="webhookRating" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeRating',this.value)">
+                                            <button class="comm-test-btn" onclick="testWebhook('webhookRating')">Test</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <!-- Ticket Notifications -->
-                            <div class="comm-acc-item" id="accTicket">
-                                <button class="comm-acc-trigger" onclick="toggleAccordion('accTicket')">
-                                    <div class="comm-acc-trigger-left">
-                                        <div class="comm-acc-icon ticket"><i class="fas fa-ticket-alt"></i></div>
-                                        <div>
-                                            <div class="comm-acc-title">Ticket Notifications</div>
-                                            <div class="comm-acc-desc">Ticket status updates &rarr; customer email</div>
-                                        </div>
-                                    </div>
-                                    <div class="comm-acc-right">
-                                        <span class="comm-status-badge missing" id="badgeTicket">Not Set</span>
-                                        <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
-                                    </div>
-                                </button>
-                                <div class="comm-acc-body">
-                                    <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Ticket Status Webhook URL</label>
-                                    <div class="comm-field-wrap">
-                                        <input type="url" id="webhookTicketStatus" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeTicket',this.value)">
-                                        <button class="comm-test-btn" onclick="testWebhook('webhookTicketStatus')">Test</button>
-                                    </div>
-                                </div>
+                            <div style="margin-top:16px;">
+                                <button class="btn-primary" onclick="saveWebhookSettings()"><i class="fas fa-save"></i> Save All Webhook URLs</button>
                             </div>
-                            <!-- Live Agent (Teams) -->
-                            <div class="comm-acc-item" id="accAgent">
-                                <button class="comm-acc-trigger" onclick="toggleAccordion('accAgent')">
-                                    <div class="comm-acc-trigger-left">
-                                        <div class="comm-acc-icon agent"><i class="fas fa-headset"></i></div>
-                                        <div>
-                                            <div class="comm-acc-title">Live Agent &mdash; Teams Alerts</div>
-                                            <div class="comm-acc-desc">Live agent requests &rarr; Microsoft Teams</div>
-                                        </div>
-                                    </div>
-                                    <div class="comm-acc-right">
-                                        <span class="comm-status-badge missing" id="badgeAgent">Not Set</span>
-                                        <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
-                                    </div>
-                                </button>
-                                <div class="comm-acc-body">
-                                    <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Live Agent Webhook URL</label>
-                                    <div class="comm-field-wrap">
-                                        <input type="url" id="webhookLiveAgent" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeAgent',this.value)">
-                                        <button class="comm-test-btn" onclick="testWebhook('webhookLiveAgent')">Test</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Rating Notifications -->
-                            <div class="comm-acc-item" id="accRating">
-                                <button class="comm-acc-trigger" onclick="toggleAccordion('accRating')">
-                                    <div class="comm-acc-trigger-left">
-                                        <div class="comm-acc-icon rating"><i class="fas fa-star"></i></div>
-                                        <div>
-                                            <div class="comm-acc-title">Rating &amp; Review Alerts</div>
-                                            <div class="comm-acc-desc">New ratings &rarr; admin notification</div>
-                                        </div>
-                                    </div>
-                                    <div class="comm-acc-right">
-                                        <span class="comm-status-badge missing" id="badgeRating">Not Set</span>
-                                        <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
-                                    </div>
-                                </button>
-                                <div class="comm-acc-body">
-                                    <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Rating Webhook URL</label>
-                                    <div class="comm-field-wrap">
-                                        <input type="url" id="webhookRating" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeRating',this.value)">
-                                        <button class="comm-test-btn" onclick="testWebhook('webhookRating')">Test</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="margin-top:16px;">
-                            <button class="btn-primary" onclick="saveWebhookSettings()"><i class="fas fa-save"></i> Save All Webhook URLs</button>
-                        </div>
-                    </div>
+                        </div><!-- /comm-set-body -->
+                    </div><!-- /comm-settings-outer -->
                 </div>
             </div>
 
@@ -1082,6 +1097,12 @@
     window.initAdminCharts = initAdminCharts;
 
     /* ── Communication Accordion ──────────────────────────────────────── */
+    function toggleCommSettings() {
+        var outer = document.getElementById('commSettingsOuter');
+        if (!outer) return;
+        outer.classList.toggle('open');
+    }
+
     function toggleAccordion(id) {
         var item = document.getElementById(id);
         if (!item) return;
