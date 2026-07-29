@@ -4845,6 +4845,7 @@ function initChatbot() {
                 if (doc.exists) {
                     const cfg = JSON.parse(doc.data().name || '{}');
                     _liveAgentEnabled = cfg.enabled !== false;
+                    _updateLiveAgentBanner();
                 }
             }
         } catch (e) { /* keep default true on error */ }
@@ -4872,6 +4873,19 @@ function initChatbot() {
     // Send button / Enter key
     if (send) send.addEventListener('click', _dispatchChat);
     if (input) input.addEventListener('keypress', (e) => { if (e.key === 'Enter') _dispatchChat(); });
+}
+
+function _updateLiveAgentBanner() {
+    const banner = document.getElementById('laStatusBanner');
+    if (!banner) return;
+    if (!_liveAgentEnabled) {
+        banner.style.display = 'flex';
+        // Dim the header status dot to grey/offline
+        const statusEl = document.querySelector('.chatbot-status');
+        if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle" style="color:#94a3b8;"></i> Agent Offline';
+    } else {
+        banner.style.display = 'none';
+    }
 }
 
 function _initChatGreeting() {
@@ -4978,7 +4992,9 @@ async function sendChatMessage(msg) {
     setTimeout(async () => {
         typing.remove();
         const response = await getAIResponse(msg || '');
-        if (typeof response === 'string') {
+        if (response && response.__handled) {
+            // already rendered via appendCardMsg — nothing to do
+        } else if (typeof response === 'string') {
             appendMsg('bot', response);
         } else if (response && response.text) {
             if (response.quickReplies) {
@@ -5014,6 +5030,25 @@ function appendMsg(type, html) {
     messages.appendChild(div);
     messages.scrollTop = messages.scrollHeight;
 }
+
+// appendCardMsg — renders block-level HTML (no <p> wrapper) with optional quick replies
+function appendCardMsg(type, html, replies) {
+    const messages = document.getElementById('chatbotMessages');
+    if (!messages) return;
+    const div = document.createElement('div');
+    div.className = `chat-message ${type}`;
+    const icon = type === 'bot' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
+    let qr = '';
+    if (replies && replies.length) {
+        qr = `<div class="quick-replies">${replies.map(r => `<button class="quick-reply" data-msg="${(r.msg||r).replace(/"/g,'&quot;')}">${r.label||r}</button>`).join('')}</div>`;
+    }
+    div.innerHTML = `<div class="message-avatar">${icon}</div><div class="message-content">${html}${qr}</div>`;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+// HTML card shown when live agent is offline
+const _LA_OFFLINE_CARD_HTML = `<div class="la-offline-card"><div class="la-offline-header"><span class="la-offline-dot"></span><strong class="la-offline-title">Live Support Unavailable</strong></div><p class="la-offline-body">Our agents are currently offline. You can try again during business hours, or send us a message via the contact form and we\'ll respond promptly.</p><div class="la-offline-actions"><a href="contact.html#contact-form" class="la-btn-contact"><i class="fas fa-paper-plane"></i> Send a Message</a></div><div class="la-offline-footer"><i class="fas fa-clock"></i> Mon–Sat &nbsp;·&nbsp; 9 am – 6 pm IST</div></div>`;
 
 function appendMsgWithQuickReplies(type, html, replies) {
     const messages = document.getElementById('chatbotMessages');
@@ -5202,15 +5237,12 @@ async function getAIResponse(msg) {
 
 function _handleLiveAgentRequest() {
     // Synchronous short-circuit: if admin has disabled live agent, show
-    // unavailable message immediately without an async Firestore round-trip.
+    // unavailable card immediately without an async Firestore round-trip.
     if (!_liveAgentEnabled) {
-        return {
-            text: `⚠️ <strong>Live Agent support is currently unavailable.</strong><br><br>Our team is offline right now. You can:<br>• Try again later during business hours (Mon–Sat, 9am–6pm)<br>• Send us a message and we'll respond by email`,
-            quickReplies: [
-                { label: '📧 Send Us a Message', msg: 'send message' },
-                { label: '🎫 Create a Support Ticket', msg: 'send message' }
-            ]
-        };
+        appendCardMsg('bot', _LA_OFFLINE_CARD_HTML, [
+            { label: '🔄 Try Again Later', msg: 'connect live agent' }
+        ]);
+        return { __handled: true };
     }
     const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
     if (!user) {
@@ -5229,17 +5261,13 @@ async function _checkAndActivateLiveAgent(user) {
             const doc = await window.db.collection('settings').doc('liveAgentConfig').get();
             const cfg = doc.exists ? JSON.parse(doc.data().name || '{}') : {};
             if (cfg.enabled === false) {
-                // Remove the "checking..." message and show unavailable
+                // Remove the "checking..." message and show the offline card
                 const msgs = document.getElementById('chatbotMessages');
                 const last = msgs?.querySelector('.chat-message.bot:last-child');
                 if (last) last.remove();
-                appendMsgWithQuickReplies('bot',
-                    `⚠️ <strong>Live Agent support is currently unavailable.</strong><br><br>Our team is offline right now. You can:<br>• Try again later during business hours (Mon–Sat, 9am–6pm)<br>• Send us a message and we'll respond by email`,
-                    [
-                        { label: '📧 Send Us a Message', msg: 'send message' },
-                        { label: '🎫 Create a Support Ticket', msg: 'send message' }
-                    ]
-                );
+                appendCardMsg('bot', _LA_OFFLINE_CARD_HTML, [
+                    { label: '🔄 Try Again Later', msg: 'connect live agent' }
+                ]);
                 return;
             }
         }
