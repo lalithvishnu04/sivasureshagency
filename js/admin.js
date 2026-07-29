@@ -1284,7 +1284,7 @@ function editProduct(docId) {
 
 // Uploads an image blob to the GitHub repo (images/products/) and returns the GitHub Pages URL.
 async function _uploadToGitHub(blob) {
-    const pat = localStorage.getItem('ssa_github_pat') || '';
+    const pat = window.SSA_COMM?.getConfigSync()?.githubPAT || '';
     if (!pat) throw new Error('GitHub PAT not set. Add it in Admin → Settings → GitHub Key.');
     const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
     const ghPath   = `images/products/${filename}`;
@@ -3428,6 +3428,7 @@ async function loadWebhookSettings() {
     set('webhookTicketStatus', cfg.ticketStatusWebhook);
     set('webhookRating', cfg.ratingWebhook);
     set('webhookLiveAgent', cfg.liveAgentWebhook);
+    set('githubPAT', cfg.githubPAT);
     // Refresh accordion badges
     if (typeof window.updateAccBadge === 'function') {
         window.updateAccBadge('badgeEmail',  cfg.contactFormWebhook  || '');
@@ -3435,7 +3436,6 @@ async function loadWebhookSettings() {
         window.updateAccBadge('badgeAgent',  cfg.liveAgentWebhook    || '');
         window.updateAccBadge('badgeRating', cfg.ratingWebhook       || '');
     }
-    loadGithubPAT();
 }
 async function saveWebhookSettings() {
     if (!window.SSA_COMM) { showAdminToast('Comm module not loaded', 'error'); return; }
@@ -3455,20 +3455,21 @@ async function saveWebhookSettings() {
 window.loadWebhookSettings = loadWebhookSettings;
 window.saveWebhookSettings = saveWebhookSettings;
 
-function saveGithubPAT() {
+async function saveGithubPAT() {
+    if (!window.SSA_COMM) { showAdminToast('Comm module not loaded', 'error'); return; }
     const pat = document.getElementById('githubPAT')?.value?.trim() || '';
-    localStorage.setItem('ssa_github_pat', pat);
-    showAdminToast(pat ? 'GitHub key saved to this browser.' : 'GitHub key cleared.');
+    try {
+        await window.SSA_COMM.saveConfig({ githubPAT: pat });
+        showAdminToast(pat ? 'GitHub key saved.' : 'GitHub key cleared.');
+    } catch (err) {
+        showAdminToast('Error saving GitHub key: ' + err.message, 'error');
+    }
 }
 function toggleApiKeyVisibility(inputId, btn) {
     const inp = document.getElementById(inputId);
     if (!inp) return;
     if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'Hide'; }
     else { inp.type = 'password'; btn.textContent = 'Show'; }
-}
-function loadGithubPAT() {
-    const el = document.getElementById('githubPAT');
-    if (el) el.value = localStorage.getItem('ssa_github_pat') || '';
 }
 window.saveGithubPAT = saveGithubPAT;
 window.toggleApiKeyVisibility = toggleApiKeyVisibility;

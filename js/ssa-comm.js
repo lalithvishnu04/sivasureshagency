@@ -35,6 +35,7 @@ window.SSA_COMM = (function () {
             liveAgentWebhook: '',
             adminEmail: 'info@sivasureshagency.onmicrosoft.com',
             razorpayKeyId: 'rzp_test_TI67q5KZaLNQgp', // fallback test key
+            githubPAT: '',
             ...overrides
         };
     }
@@ -60,7 +61,8 @@ window.SSA_COMM = (function () {
             ratingWebhook: remote?.ratingWebhook || local.ratingWebhook || '',
             liveAgentWebhook: remote?.liveAgentWebhook || local.liveAgentWebhook || '',
             adminEmail: remote?.adminEmail || local.adminEmail || undefined,
-            razorpayKeyId: remote?.razorpayKeyId || local.razorpayKeyId || ''
+            razorpayKeyId: remote?.razorpayKeyId || local.razorpayKeyId || '',
+            githubPAT: remote?.githubPAT || ''
         });
         _cfgCache = merged;
         _cfgCacheAt = now;
