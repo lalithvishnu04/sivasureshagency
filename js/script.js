@@ -1410,7 +1410,9 @@ function initCommon() {
     const header = document.getElementById('header');
     const backToTop = document.getElementById('backToTop');
     window.addEventListener('scroll', () => {
-        if (window.scrollY > 50) header.classList.add('scrolled'); else header.classList.remove('scrolled');
+        // Hysteresis: add at 50px going down, remove only at 10px going up — prevents top-bar flicker
+        if (window.scrollY > 50) header.classList.add('scrolled');
+        else if (window.scrollY < 10) header.classList.remove('scrolled');
         if (backToTop) { if (window.scrollY > 500) backToTop.classList.add('visible'); else backToTop.classList.remove('visible'); }
         revealElements();
     });

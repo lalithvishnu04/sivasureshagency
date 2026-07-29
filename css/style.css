@@ -100,7 +100,7 @@ button { cursor: pointer; font-family: var(--font); }
 a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 4px; }
 
 /* ── 5. Top Bar ───────────────────────────────────────────────── */
-.top-bar { background: var(--navy); color: rgba(255,255,255,0.8); padding: 8px 0; font-size: 0.77rem; font-weight: 500; }
+.top-bar { background: var(--navy); color: rgba(255,255,255,0.8); padding: 8px 0; font-size: 0.77rem; font-weight: 500; max-height: 60px; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease; opacity: 1; }
 .top-bar-content { display: flex; justify-content: space-between; align-items: center; }
 .top-info { display: flex; gap: 18px; flex-wrap: wrap; }
 .top-info span { display: flex; align-items: center; gap: 6px; }
@@ -114,7 +114,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outli
 /* While mobile nav is open, raise header above all floating elements (backdrops,
    chatbot, WhatsApp z-8000/9000) so nav-links text isn't painted over */
 #header.nav-active { z-index: 99999; }
-#header.scrolled .top-bar { display: none; }
+#header.scrolled .top-bar { max-height: 0; opacity: 0; padding: 0; }
 #header.scrolled .navbar { background: rgba(255,255,255,0.96); backdrop-filter: blur(20px); box-shadow: 0 1px 0 var(--border), var(--shadow-md); }
 .navbar { background: #fff; padding: 13px 0; border-bottom: 1px solid var(--border); transition: var(--transition); }
 .navbar .container { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
