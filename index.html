@@ -424,7 +424,7 @@
                     </div>
                 </div>
                 <div class="bento-card bento-card--stat">
-                    <span class="bento-stat-num" data-target="500">0</span>
+                    <span class="bento-stat-num" data-target="500" data-suffix="+">0</span>
                     <span class="bento-stat-label">Hospitals Served</span>
                     <i class="fas fa-hospital" style="font-size:1.2rem;opacity:0.5;margin-top:8px;"></i>
                 </div>
@@ -714,7 +714,7 @@
                 var progress = Math.min((ts - start) / duration, 1);
                 el.textContent = Math.floor(progress * target);
                 if (progress < 1) requestAnimationFrame(step);
-                else el.textContent = target;
+                else el.textContent = target + (el.getAttribute('data-suffix') || '');
             }
             var observer = new IntersectionObserver(function(entries) {
                 if (entries[0].isIntersecting) { requestAnimationFrame(step); observer.disconnect(); }
