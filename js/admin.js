@@ -497,7 +497,7 @@ async function loadOrders() {
 
 function _updateOrderStats() {
     const total = allOrders.length;
-    const pending = allOrders.filter(o => ['processing','approved','packed'].includes((o.status||'').toLowerCase())).length;
+    const pending = allOrders.filter(o => ['processing','approved','packed','shipped'].includes((o.status||'').toLowerCase())).length;
     const delivered = allOrders.filter(o => (o.status||'').toLowerCase() === 'delivered').length;
     const revenue = allOrders.filter(o => (o.status||'').toLowerCase() !== 'cancelled').reduce((s, o) => s + (o.total || 0), 0);
     const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
