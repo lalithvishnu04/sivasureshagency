@@ -4880,14 +4880,14 @@ function initChatbot() {
 
 function _updateLiveAgentBanner() {
     const banner = document.getElementById('laStatusBanner');
+    const statusEl = document.querySelector('.chatbot-status');
     if (!banner) return;
     if (!_liveAgentEnabled) {
         banner.style.display = 'flex';
-        // Dim the header status dot to grey/offline
-        const statusEl = document.querySelector('.chatbot-status');
         if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle" style="color:#94a3b8;"></i> Agent Offline';
     } else {
         banner.style.display = 'none';
+        if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle"></i> Online';
     }
 }
 
