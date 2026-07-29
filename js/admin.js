@@ -507,10 +507,64 @@ function _updateOrderStats() {
     el('statOrderRevenue', '₹' + revenue.toLocaleString('en-IN'));
 }
 
+function _buildSingleOrderRowHTML(o) {
+        const statusKey = (o.status || 'processing').toLowerCase().replace(/\s+/g, '-');
+        const initials = (o.customerName || 'G').split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || 'G';
+        const dateStr = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+        const rr = o.returnRequest;
+        const rrType = rr ? (rr.type === 'Exchange' ? 'Exch' : 'Ret') : '';
+        const rrSt = rr ? (rr.status || 'Pending') : '';
+        const returnBadge = rr
+            ? `<span class="aob-flag aob-return ${rrSt.toLowerCase()}" title="${_escHtmlCat(rr.type||'Return')}: ${_escHtmlCat(rrSt)}"><i class="fas fa-rotate-left"></i> ${_escHtmlCat(rrType)} · ${_escHtmlCat(rrSt)}</span>`
+            : '';
+        const cr = o.cancellation;
+        const crSt = cr ? (cr.status || 'Pending') : '';
+        const crRefund = cr ? (cr.refundStatus || '') : '';
+        const cancelBadge = cr
+            ? (crRefund === 'Processed'
+                ? `<span class="aob-flag aob-cancel processed" style="background:#dcfce7;color:#15803d;border-color:#86efac;"><i class="fas fa-check-circle"></i> Refund · Processed</span>`
+                : crRefund === 'Initiated'
+                ? `<span class="aob-flag aob-cancel initiated" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;"><i class="fas fa-clock"></i> Refund · Initiated</span>`
+                : crRefund === 'Failed'
+                ? `<span class="aob-flag aob-cancel failed" style="background:#fef2f2;color:#dc2626;border-color:#fca5a5;"><i class="fas fa-exclamation-circle"></i> Refund · Failed</span>`
+                : `<span class="aob-flag aob-cancel ${crSt.toLowerCase()}"><i class="fas fa-times-circle"></i> Cancel · ${_escHtmlCat(crSt)}</span>`)
+            : (o.status === 'Cancelled' ? `<span class="aob-flag aob-cancel cancelled"><i class="fas fa-ban"></i> Cancelled</span>` : '');
+        const refundCell = (returnBadge || cancelBadge) ? `${returnBadge}${cancelBadge}` : `<span style="font-size:0.75rem;color:var(--text-light);">—</span>`;
+        return `
+            <div class="admin-order-row">
+                <div class="admin-order-cell"><span class="admin-order-id" title="#${_escHtmlCat(o.orderId || o.docId)}">#${_escHtmlCat(o.orderId || o.docId.slice(0, 14))}</span></div>
+                <div class="admin-order-cell">
+                    <div class="admin-order-customer"><div class="admin-order-avatar">${_escHtmlCat(initials)}</div>
+                        <div style="min-width:0;overflow:hidden;"><span class="admin-order-cust-name">${_escHtmlCat(o.customerName || 'Guest')}</span><span class="admin-order-cust-email">${_escHtmlCat(o.customerEmail || '')}</span></div>
+                    </div>
+                </div>
+                <div class="admin-order-cell" style="text-align:center;"><span class="admin-order-items-count">${(o.items || []).length}</span></div>
+                <div class="admin-order-cell"><span class="admin-order-total-val">₹${(o.total || 0).toLocaleString('en-IN')}</span></div>
+                <div class="admin-order-cell"><span class="admin-order-status-badge ${statusKey}">${_escHtmlCat(o.status || 'Processing')}</span></div>
+                <div class="admin-order-cell">${refundCell}</div>
+                <div class="admin-order-cell"><span style="font-size:0.8rem;color:var(--text-mid);">${dateStr}</span></div>
+                <div class="admin-order-cell admin-order-actions-cell">
+                    <button class="admin-order-view-btn" onclick="showAdminOrderDetail('${o.docId}')"><i class="fas fa-eye"></i> View</button>
+                    <button class="admin-order-inv-btn" onclick="printOrderInvoice('${o.docId}')" title="Invoice"><i class="fas fa-file-invoice"></i></button>
+                </div>
+            </div>`;
+}
+
 function renderOrders() {
-    let filtered = currentOrderFilter === 'all' ? allOrders : allOrders.filter(o => o.status === currentOrderFilter);
+    const ACTIVE_STATUSES = ['processing','approved','packed','shipped'];
+    let filtered;
+    if (currentOrderFilter === 'active') {
+        filtered = allOrders.filter(o => ACTIVE_STATUSES.includes((o.status||'').toLowerCase()));
+    } else if (currentOrderFilter === 'all') {
+        filtered = allOrders;
+    } else {
+        filtered = allOrders.filter(o => (o.status||'') === currentOrderFilter);
+    }
     const search = (document.getElementById('orderSearch')?.value || '').toLowerCase();
-    if (search) filtered = filtered.filter(o => (o.orderId || '').toLowerCase().includes(search) || (o.customerName || '').toLowerCase().includes(search) || (o.customerEmail || '').toLowerCase().includes(search));
+    if (search) filtered = filtered.filter(o =>
+        (o.orderId||'').toLowerCase().includes(search) ||
+        (o.customerName||'').toLowerCase().includes(search) ||
+        (o.customerEmail||'').toLowerCase().includes(search));
 
     const grid = document.getElementById('adminOrdersGrid');
     if (!grid) return;
@@ -519,71 +573,27 @@ function renderOrders() {
         return;
     }
 
-    grid.innerHTML = filtered.map(o => {
-        const statusKey = (o.status || 'processing').toLowerCase().replace(/\s+/g, '-');
-        const initials = (o.customerName || 'G').split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || 'G';
-        const dateStr = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
-
-        // Compact Return/Exchange notification badge (for refund column)
-        const rr = o.returnRequest;
-        const rrType = rr ? (rr.type === 'Exchange' ? 'Exch' : 'Ret') : '';
-        const rrSt = rr ? (rr.status || 'Pending') : '';
-        const returnBadge = rr
-            ? `<span class="aob-flag aob-return ${rrSt.toLowerCase()}" title="${_escHtmlCat(rr.type||'Return')}: ${_escHtmlCat(rrSt)}"><i class="fas fa-rotate-left"></i> ${_escHtmlCat(rrType)} · ${_escHtmlCat(rrSt)}</span>`
-            : '';
-
-        // Compact Cancellation notification badge (for refund column)
-        const cr = o.cancellation;
-        const crSt = cr ? (cr.status || 'Pending') : '';
-        const crRefund = cr ? (cr.refundStatus || '') : '';
-        const cancelBadge = cr
-            ? (crRefund === 'Processed'
-                ? `<span class="aob-flag aob-cancel processed" title="Refund Processed" style="background:#dcfce7;color:#15803d;border-color:#86efac;"><i class="fas fa-check-circle"></i> Refund · Processed</span>`
-                : crRefund === 'Initiated'
-                ? `<span class="aob-flag aob-cancel initiated" title="Refund Initiated" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;"><i class="fas fa-clock"></i> Refund · Initiated</span>`
-                : crRefund === 'Failed'
-                ? `<span class="aob-flag aob-cancel failed" title="Refund Failed" style="background:#fef2f2;color:#dc2626;border-color:#fca5a5;"><i class="fas fa-exclamation-circle"></i> Refund · Failed</span>`
-                : `<span class="aob-flag aob-cancel ${crSt.toLowerCase()}" title="Cancellation: ${_escHtmlCat(crSt)}"><i class="fas fa-times-circle"></i> Cancel · ${_escHtmlCat(crSt)}</span>`)
-            : (o.status === 'Cancelled' ? `<span class="aob-flag aob-cancel cancelled" title="Order Cancelled"><i class="fas fa-ban"></i> Cancelled</span>` : '');
-
-        const refundCell = (returnBadge || cancelBadge)
-            ? `${returnBadge}${cancelBadge}`
-            : `<span style="font-size:0.75rem;color:var(--text-light);">—</span>`;
-
-        return `
-            <div class="admin-order-row">
-                <div class="admin-order-cell">
-                    <span class="admin-order-id" title="#${_escHtmlCat(o.orderId || o.docId)}">#${_escHtmlCat(o.orderId || o.docId.slice(0, 14))}</span>
-                </div>
-                <div class="admin-order-cell">
-                    <div class="admin-order-customer" title="${_escHtmlCat(o.customerEmail || '')}">
-                        <div class="admin-order-avatar">${_escHtmlCat(initials)}</div>
-                        <div style="min-width:0;overflow:hidden;">
-                            <span class="admin-order-cust-name">${_escHtmlCat(o.customerName || 'Guest')}</span>
-                            <span class="admin-order-cust-email">${_escHtmlCat(o.customerEmail || '')}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="admin-order-cell" style="text-align:center;">
-                    <span class="admin-order-items-count">${(o.items || []).length}</span>
-                </div>
-                <div class="admin-order-cell">
-                    <span class="admin-order-total-val">₹${(o.total || 0).toLocaleString('en-IN')}</span>
-                </div>
-                <div class="admin-order-cell">
-                    <span class="admin-order-status-badge ${statusKey}">${_escHtmlCat(o.status || 'Processing')}</span>
-                </div>
-                <div class="admin-order-cell">${refundCell}</div>
-                <div class="admin-order-cell">
-                    <span style="font-size:0.8rem;color:var(--text-mid);">${dateStr}</span>
-                </div>
-                <div class="admin-order-cell admin-order-actions-cell">
-                    <button class="admin-order-view-btn" onclick="showAdminOrderDetail('${o.docId}')"><i class="fas fa-eye"></i> View</button>
-                    <button class="admin-order-inv-btn" onclick="printOrderInvoice('${o.docId}')" title="Invoice"><i class="fas fa-file-invoice"></i></button>
-                </div>
-            </div>
-        `;
-    }).join('');
+    // Grouped view only when showing "all" without a search term
+    if (currentOrderFilter === 'all' && !search) {
+        const STATUS_ORDER = ['Processing','Approved','Packed','Shipped','Delivered','Cancelled'];
+        const STATUS_COLORS = { Processing:'#f59e0b', Approved:'#6366f1', Packed:'#8b5cf6', Shipped:'#3b82f6', Delivered:'#10b981', Cancelled:'#ef4444' };
+        const groups = {};
+        STATUS_ORDER.forEach(s => groups[s] = []);
+        filtered.forEach(o => { const s = o.status || 'Processing'; if (groups[s]) groups[s].push(o); else groups['Processing'].push(o); });
+        let html = '';
+        for (const s of STATUS_ORDER) {
+            if (!groups[s] || !groups[s].length) continue;
+            const c = STATUS_COLORS[s] || '#64748b';
+            html += `<div style="grid-column:1/-1;padding:8px 16px;background:${c}14;border-left:3px solid ${c};display:flex;align-items:center;gap:8px;">
+                <span style="font-size:0.75rem;font-weight:800;color:${c};">${s}</span>
+                <span style="background:${c};color:#fff;border-radius:20px;padding:1px 9px;font-size:0.69rem;font-weight:700;">${groups[s].length}</span>
+            </div>`;
+            html += groups[s].map(o => _buildSingleOrderRowHTML(o)).join('');
+        }
+        grid.innerHTML = html;
+    } else {
+        grid.innerHTML = filtered.map(o => _buildSingleOrderRowHTML(o)).join('');
+    }
 }
 
 // Order filter buttons
@@ -4034,7 +4044,29 @@ function renderMessages() {
         }
         container.innerHTML = html;
     } else {
-        container.innerHTML = msgs.map(m => _buildTicketCardHTML(m)).join('');
+        // Group tickets by status when no filter applied
+        if (!statusFilter) {
+            const STATUS_ORDER = ['Open', 'In Progress', 'Resolved', 'Closed'];
+            const STATUS_COLORS = { Open: '#3b82f6', 'In Progress': '#f59e0b', Resolved: '#10b981', Closed: '#94a3b8' };
+            const STATUS_ICONS  = { Open: 'fa-folder-open', 'In Progress': 'fa-spinner', Resolved: 'fa-check-circle', Closed: 'fa-archive' };
+            const groups = {};
+            STATUS_ORDER.forEach(s => groups[s] = []);
+            msgs.forEach(m => { const st = m.status || 'Open'; if (groups[st]) groups[st].push(m); else { groups['Open'] = groups['Open'] || []; groups['Open'].push(m); } });
+            let html = '';
+            for (const s of STATUS_ORDER) {
+                if (!groups[s] || !groups[s].length) continue;
+                const c = STATUS_COLORS[s];
+                html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;margin:10px 0 6px;background:${c}12;border-radius:10px;border-left:3px solid ${c};">
+                    <i class="fas ${STATUS_ICONS[s]}" style="color:${c};font-size:0.82rem;"></i>
+                    <span style="font-size:0.78rem;font-weight:800;color:${c};">${s}</span>
+                    <span style="background:${c};color:#fff;border-radius:20px;padding:1px 9px;font-size:0.69rem;font-weight:700;margin-left:auto;">${groups[s].length}</span>
+                </div>`;
+                html += groups[s].map(m => _buildTicketCardHTML(m)).join('');
+            }
+            container.innerHTML = html || '<p class="empty"><i class="fas fa-ticket-alt"></i>No tickets found</p>';
+        } else {
+            container.innerHTML = msgs.map(m => _buildTicketCardHTML(m)).join('');
+        }
     }
 }
 
