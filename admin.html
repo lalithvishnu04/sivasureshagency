@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=93">
+    <link rel="stylesheet" href="css/admin.css?v=94">
     <link rel="stylesheet" href="css/animations.css?v=6">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="icon" type="image/png" href="images/SSA Logo.png">
@@ -519,7 +519,7 @@
                 <div class="settings-panel settings-comm-block" style="padding:0;">
                     <div class="comm-settings-outer open" id="commSettingsOuter">
                         <!-- Main Toggle Header -->
-                        <button class="comm-set-header" onclick="toggleCommSettings()">
+                        <button class="comm-set-header" onclick="toggleCommSettings()" aria-expanded="true">
                             <div class="comm-acc-trigger-left">
                                 <div class="comm-acc-icon" style="background:rgba(15,118,110,0.1);color:#0f766e;"><i class="fas fa-share-alt"></i></div>
                                 <div>
@@ -538,7 +538,7 @@
                             <div class="comm-accordion" id="commAccordion">
                                 <!-- Email Automation -->
                                 <div class="comm-acc-item" id="accEmail">
-                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accEmail')">
+                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accEmail')" aria-expanded="false">
                                         <div class="comm-acc-trigger-left">
                                             <div class="comm-acc-icon email"><i class="fas fa-envelope"></i></div>
                                             <div>
@@ -562,7 +562,7 @@
                                 </div>
                                 <!-- Ticket Notifications -->
                                 <div class="comm-acc-item" id="accTicket">
-                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accTicket')">
+                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accTicket')" aria-expanded="false">
                                         <div class="comm-acc-trigger-left">
                                             <div class="comm-acc-icon ticket"><i class="fas fa-ticket-alt"></i></div>
                                             <div>
@@ -586,7 +586,7 @@
                                 </div>
                                 <!-- Live Agent (Teams) -->
                                 <div class="comm-acc-item" id="accAgent">
-                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accAgent')">
+                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accAgent')" aria-expanded="false">
                                         <div class="comm-acc-trigger-left">
                                             <div class="comm-acc-icon agent"><i class="fas fa-headset"></i></div>
                                             <div>
@@ -610,7 +610,7 @@
                                 </div>
                                 <!-- Rating Notifications -->
                                 <div class="comm-acc-item" id="accRating">
-                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accRating')">
+                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accRating')" aria-expanded="false">
                                         <div class="comm-acc-trigger-left">
                                             <div class="comm-acc-icon rating"><i class="fas fa-star"></i></div>
                                             <div>
@@ -634,7 +634,7 @@
                                 </div>
                                 <!-- Mail Inbox & Reply -->
                                 <div class="comm-acc-item" id="accMailReply">
-                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accMailReply')">
+                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accMailReply')" aria-expanded="false">
                                         <div class="comm-acc-trigger-left">
                                             <div class="comm-acc-icon" style="background:rgba(99,102,241,0.1);color:#6366f1;"><i class="fas fa-inbox"></i></div>
                                             <div>
@@ -1157,19 +1157,63 @@
     window.initAdminCharts = initAdminCharts;
 
     /* ── Communication Accordion ──────────────────────────────────────── */
+    function _setCommSettingsState(isOpen) {
+        var outer = document.getElementById('commSettingsOuter');
+        var body = document.getElementById('commSetBody');
+        var trigger = outer ? outer.querySelector('.comm-set-header') : null;
+        if (!outer || !body) return;
+
+        outer.classList.toggle('open', !!isOpen);
+        if (trigger) trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+
+        if (isOpen) {
+            body.hidden = false;
+            body.style.maxHeight = body.scrollHeight + 'px';
+        } else {
+            body.style.maxHeight = body.scrollHeight + 'px';
+            requestAnimationFrame(function() { body.style.maxHeight = '0px'; });
+            setTimeout(function() { if (!outer.classList.contains('open')) body.hidden = true; }, 340);
+        }
+    }
+
     function toggleCommSettings() {
         var outer = document.getElementById('commSettingsOuter');
         if (!outer) return;
-        outer.classList.toggle('open');
+        _setCommSettingsState(!outer.classList.contains('open'));
+    }
+
+    function _setAccordionState(item, isOpen) {
+        if (!item) return;
+        var body = item.querySelector('.comm-acc-body');
+        var trigger = item.querySelector('.comm-acc-trigger');
+        item.classList.toggle('open', !!isOpen);
+        if (trigger) trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        if (!body) return;
+
+        if (isOpen) {
+            body.hidden = false;
+            body.style.maxHeight = body.scrollHeight + 'px';
+        } else {
+            body.style.maxHeight = body.scrollHeight + 'px';
+            requestAnimationFrame(function() { body.style.maxHeight = '0px'; });
+            setTimeout(function() { if (!item.classList.contains('open')) body.hidden = true; }, 300);
+        }
     }
 
     function toggleAccordion(id) {
         var item = document.getElementById(id);
         if (!item) return;
-        var isOpen = item.classList.contains('open');
-        // Close all
-        document.querySelectorAll('.comm-acc-item').forEach(function(i) { i.classList.remove('open'); });
-        if (!isOpen) item.classList.add('open');
+        var willOpen = !item.classList.contains('open');
+        document.querySelectorAll('.comm-acc-item').forEach(function(i) {
+            if (i !== item) _setAccordionState(i, false);
+        });
+        _setAccordionState(item, willOpen);
+
+        if (willOpen) {
+            setTimeout(function() {
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 120);
+        }
     }
 
     function updateAccBadge(badgeId, val) {
@@ -1199,6 +1243,17 @@
 
     // Re-sync badge status when settings page loads
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize proper collapsed/expanded state for settings accordions.
+        var outer = document.getElementById('commSettingsOuter');
+        var commOpen = outer ? outer.classList.contains('open') : false;
+        _setCommSettingsState(commOpen);
+
+        var items = document.querySelectorAll('.comm-acc-item');
+        var openedItem = null;
+        items.forEach(function(i) { if (i.classList.contains('open') && !openedItem) openedItem = i; });
+        if (!openedItem && items.length) openedItem = items[0];
+        items.forEach(function(i) { _setAccordionState(i, i === openedItem); });
+
         var fieldMap = { webhookContactForm: 'badgeEmail', webhookTicketStatus: 'badgeTicket', webhookLiveAgent: 'badgeAgent', webhookRating: 'badgeRating', webhookMailReply: 'badgeMailReply' };
         // Observe value changes after admin.js populates them
         var observer = new MutationObserver(function() {
@@ -1213,6 +1268,17 @@
                 observer.observe(inp, { attributes: true, attributeFilter: ['value'] });
                 inp.addEventListener('input', function() { updateAccBadge(fieldMap[fId], this.value); });
             }
+        });
+
+        // Keep max-height values accurate when viewport size changes.
+        window.addEventListener('resize', function() {
+            var body = document.getElementById('commSetBody');
+            if (body && outer && outer.classList.contains('open')) {
+                body.style.maxHeight = body.scrollHeight + 'px';
+            }
+            document.querySelectorAll('.comm-acc-item.open .comm-acc-body').forEach(function(el) {
+                el.style.maxHeight = el.scrollHeight + 'px';
+            });
         });
     });
 
