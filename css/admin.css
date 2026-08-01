@@ -1013,7 +1013,13 @@ img{max-width:100%;display:block;}
 .ticket-view-tabs{display:flex;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:4px;}
 .ticket-view-tab{border:none;background:transparent;padding:8px 14px;border-radius:9px;font-size:0.82rem;font-weight:700;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:6px;transition:var(--transition);}
 .ticket-view-tab.active{background:var(--surface);color:var(--primary-teal);box-shadow:var(--shadow-sm);}
+.ticket-view-tab[data-view="mail"].active{color:#6366f1;}
 .ticket-view-badge{background:#ef4444;color:#fff;border-radius:20px;padding:1px 7px;font-size:0.68rem;font-weight:800;display:inline-flex;}
+
+/* Mail Inbox card */
+.mail-inbox-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:14px 18px;margin-bottom:8px;transition:var(--transition);}
+.mail-inbox-card:hover{box-shadow:var(--shadow-md);border-color:#6366f1;transform:translateX(2px);}
+.mail-inbox-card.unread{border-left:3px solid #6366f1;}
 
 .ticket-thread{margin:12px 0;display:flex;flex-direction:column;gap:8px;}
 .ticket-thread-item{background:#fff;border:1px solid var(--border);border-left:3px solid #94a3b8;border-radius:8px;padding:9px 12px;font-size:0.82rem;}

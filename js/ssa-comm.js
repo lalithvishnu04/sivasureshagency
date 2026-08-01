@@ -33,6 +33,7 @@ window.SSA_COMM = (function () {
             ticketStatusWebhook: '',
             ratingWebhook: '',
             liveAgentWebhook: '',
+            adminEmailReplyWebhook: '',
             adminEmail: 'info@sivasureshagency.onmicrosoft.com',
             razorpayKeyId: 'rzp_test_TI67q5KZaLNQgp', // fallback test key
             githubPAT: '',
@@ -60,6 +61,7 @@ window.SSA_COMM = (function () {
             ticketStatusWebhook: remote?.ticketStatusWebhook || local.ticketStatusWebhook || '',
             ratingWebhook: remote?.ratingWebhook || local.ratingWebhook || '',
             liveAgentWebhook: remote?.liveAgentWebhook || local.liveAgentWebhook || '',
+            adminEmailReplyWebhook: remote?.adminEmailReplyWebhook || local.adminEmailReplyWebhook || '',
             adminEmail: remote?.adminEmail || local.adminEmail || undefined,
             razorpayKeyId: remote?.razorpayKeyId || local.razorpayKeyId || '',
             githubPAT: remote?.githubPAT || ''
@@ -221,6 +223,7 @@ window.SSA_COMM = (function () {
         const ctaHtml = `<div style="text-align:center;margin:28px 0 0;"><a href="https://lalithvishnu04.github.io/sivasureshagency/admin.html" style="display:inline-block;background:linear-gradient(135deg,#0d9488,#1e3a5f);color:#fff;font-family:'Times New Roman',Times,serif;font-size:15px;font-weight:bold;padding:13px 32px;border-radius:30px;text-decoration:none;letter-spacing:0.3px;">Open Admin Panel →</a></div>`;
         return postWebhook(cfg.contactFormWebhook, {
             type: 'contact_form',
+            fromEmail: _EMAIL,
             adminEmail: cfg.adminEmail,
             ticketId: data.ticketId,
             customerName: data.name,
@@ -268,6 +271,7 @@ window.SSA_COMM = (function () {
         const ctaHtml = `<div style="text-align:center;margin:28px 0 0;"><a href="${trackUrl}" style="display:inline-block;background:linear-gradient(135deg,#0d9488,#1e3a5f);color:#fff;font-family:'Times New Roman',Times,serif;font-size:15px;font-weight:bold;padding:13px 32px;border-radius:30px;text-decoration:none;letter-spacing:0.3px;">Track My Ticket →</a></div>`;
         return postWebhook(cfg.ticketStatusWebhook, {
             type: isNew ? 'ticket_created' : 'ticket_status',
+            fromEmail: _EMAIL,
             customerEmail: data.customerEmail,
             adminEmail: cfg.adminEmail,
             ticketId: data.ticketId,
@@ -307,6 +311,7 @@ window.SSA_COMM = (function () {
         const ctaHtml = `<div style="text-align:center;margin:28px 0 0;"><a href="https://lalithvishnu04.github.io/sivasureshagency/admin.html" style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#b45309);color:#fff;font-family:'Times New Roman',Times,serif;font-size:15px;font-weight:bold;padding:13px 32px;border-radius:30px;text-decoration:none;">View in Admin →</a></div>`;
         return postWebhook(cfg.ratingWebhook, {
             type: 'rating',
+            fromEmail: _EMAIL,
             adminEmail: cfg.adminEmail,
             orderId: data.orderId,
             productName: data.productName,
@@ -339,6 +344,7 @@ window.SSA_COMM = (function () {
         const ctaHtml = `<div style="text-align:center;margin:28px 0 0;"><a href="https://lalithvishnu04.github.io/sivasureshagency/admin.html" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#1e3a5f);color:#fff;font-family:'Times New Roman',Times,serif;font-size:15px;font-weight:bold;padding:13px 32px;border-radius:30px;text-decoration:none;">Open Chat in Admin →</a></div>`;
         return postWebhook(cfg.liveAgentWebhook, {
             type: 'live_agent_request',
+            fromEmail: _EMAIL,
             adminEmail: cfg.adminEmail,
             customerName: data.customerName,
             customerEmail: data.customerEmail,
@@ -352,6 +358,40 @@ window.SSA_COMM = (function () {
         });
     }
 
+    // ── Admin Mail Reply (send email from info@ via Power Automate) ────────────
+    async function sendAdminMailReply(data) {
+        const cfg = await _cfg();
+        if (!cfg.adminEmailReplyWebhook) {
+            console.warn('[SSA-COMM] adminEmailReplyWebhook not configured');
+            return false;
+        }
+        const signatureHtml = `
+<table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #0d948820;margin-top:20px;padding-top:14px;font-family:'Times New Roman',Times,serif;">
+  <tr>
+    <td>
+      <img src="${_LOGO}" alt="Siva Suresh Agency" height="40" style="margin-bottom:6px;">
+      <p style="margin:0 0 2px;font-size:14px;font-weight:bold;color:#0f172a;">Siva Suresh Agency</p>
+      <p style="margin:0 0 2px;font-size:12px;color:#64748b;font-style:italic;">Premium Healthcare &amp; Medical Uniforms Since 2010</p>
+      <p style="margin:0 0 2px;font-size:12px;color:#475569;">📞 ${_PHONE} &nbsp;|&nbsp; 📧 <a href="mailto:${_EMAIL}" style="color:#0d9488;">${_EMAIL}</a></p>
+      <p style="margin:0;font-size:11px;color:#94a3b8;">📍 PVT Towers, 37/10, Selvam Nagar, Erode – 638011, Tamil Nadu</p>
+    </td>
+  </tr>
+</table>`;
+        const safeBody = (data.body || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#f0f4f8;font-family:'Times New Roman',Times,serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:32px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);max-width:600px;"><tr><td style="background:linear-gradient(135deg,#0d9488 0%,#1e3a5f 100%);padding:28px 40px;text-align:center;"><img src="${_LOGO}" alt="Siva Suresh Agency" height="48" style="margin-bottom:10px;"><h2 style="margin:0;font-family:'Times New Roman',Times,serif;font-size:18px;font-weight:bold;color:#ffffff;">Reply from Siva Suresh Agency</h2></td></tr><tr><td style="padding:32px 40px;"><div style="font-family:'Times New Roman',Times,serif;font-size:15px;color:#1e293b;line-height:1.8;white-space:pre-wrap;">${safeBody}</div>${signatureHtml}</td></tr></table></td></tr></table></body></html>`;
+        return postWebhook(cfg.adminEmailReplyWebhook, {
+            type: 'admin_email_reply',
+            fromEmail: _EMAIL,
+            fromName: 'Siva Suresh Agency',
+            to: data.to,
+            toName: data.toName || '',
+            subject: data.subject || 'Reply from Siva Suresh Agency',
+            emailBody: fullHtml,
+            plainBody: data.body || '',
+            timestamp: new Date().toISOString()
+        });
+    }
+
     // ── Public API ───────────────────────────────────────────
     return {
         generateTicketId,
@@ -359,6 +399,7 @@ window.SSA_COMM = (function () {
         sendTicketStatusUpdate,
         sendRatingNotification,
         requestLiveAgent,
+        sendAdminMailReply,
         getConfig: _cfg,
         getConfigSync: _cfgSync,
         saveConfig

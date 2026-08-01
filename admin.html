@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=91">
+    <link rel="stylesheet" href="css/admin.css?v=92">
     <link rel="stylesheet" href="css/animations.css?v=6">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="icon" type="image/png" href="images/SSA Logo.png">
@@ -427,6 +427,7 @@
                         <div class="ticket-view-tabs">
                             <button type="button" class="ticket-view-tab active" data-view="tickets" onclick="setTicketView('tickets')"><i class="fas fa-ticket-alt"></i> Tickets</button>
                             <button type="button" class="ticket-view-tab" data-view="chats" onclick="setTicketView('chats')"><i class="fas fa-comment-dots"></i> Chat Requests <span class="ticket-view-badge" id="chatReqBadge" style="display:none;">0</span></button>
+                            <button type="button" class="ticket-view-tab" data-view="mail" onclick="setTicketView('mail')"><i class="fas fa-inbox"></i> Mail <span class="ticket-view-badge" id="mailInboxBadge" style="display:none;">0</span></button>
                         </div>
                         <div style="display:flex;align-items:center;gap:10px;margin-left:16px;padding:7px 16px;background:linear-gradient(135deg,#f0fdfa,#f8fafc);border-radius:24px;border:1.5px solid #ccfbf1;box-shadow:0 1px 4px rgba(13,148,136,0.08);">
                             <div style="width:8px;height:8px;border-radius:50%;background:#94a3b8;transition:background 0.3s;flex-shrink:0;" id="liveAgentDot"></div>
@@ -447,6 +448,9 @@
                             <option value="Resolved">Resolved</option>
                             <option value="Closed">Closed</option>
                         </select>
+                        <div id="mailInboxToolbar" style="display:none;align-items:center;gap:8px;">
+                            <span style="font-size:0.78rem;font-weight:700;color:#6366f1;"><i class="fas fa-inbox"></i> info@sivasureshagency.onmicrosoft.com</span>
+                        </div>
                         <button class="btn-primary" onclick="openCreateTicketModal()"><i class="fas fa-plus"></i> Create Ticket</button>
                         <button class="btn-secondary" onclick="markAllRead()"><i class="fas fa-check-double"></i> Mark All Read</button>
                         <input type="text" id="messageSearch" placeholder="Search tickets..." class="search-input" oninput="renderMessages()">
@@ -606,6 +610,36 @@
                                         <div class="comm-field-wrap">
                                             <input type="url" id="webhookRating" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeRating',this.value)">
                                             <button class="comm-test-btn" onclick="testWebhook('webhookRating')">Test</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Mail Inbox & Reply -->
+                                <div class="comm-acc-item" id="accMailReply">
+                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accMailReply')">
+                                        <div class="comm-acc-trigger-left">
+                                            <div class="comm-acc-icon" style="background:rgba(99,102,241,0.1);color:#6366f1;"><i class="fas fa-inbox"></i></div>
+                                            <div>
+                                                <div class="comm-acc-title">Mail Inbox &amp; Reply</div>
+                                                <div class="comm-acc-desc">Admin replies to info@ inbox emails &rarr; customer</div>
+                                            </div>
+                                        </div>
+                                        <div class="comm-acc-right">
+                                            <span class="comm-status-badge missing" id="badgeMailReply">Not Set</span>
+                                            <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                                        </div>
+                                    </button>
+                                    <div class="comm-acc-body">
+                                        <div class="info-banner" style="margin-bottom:12px;background:#ede9fe;border-color:#c4b5fd;"><i class="fas fa-info-circle" style="color:#6366f1;"></i><div style="font-size:0.78rem;"><b>Two Power Automate flows needed:</b><br>
+                                            <b>1. Receive:</b> Trigger: "When a new email arrives (V3)" on info@ &rarr; Action: HTTP POST to Supabase REST API<br>
+                                            &nbsp;&nbsp;&nbsp;URL: <code style="font-size:0.72rem;">https://kyzlxhncnqahlpfhtoky.supabase.co/rest/v1/messages</code><br>
+                                            &nbsp;&nbsp;&nbsp;Headers: <code style="font-size:0.72rem;">apikey: sb_publishable_0hcswuIONUUJPdBl7RRIHw_JH7MsGeK</code><br>
+                                            &nbsp;&nbsp;&nbsp;Body: <code style="font-size:0.72rem;">{"name":"@{triggerBody()?['from']}","email":"@{triggerBody()?['from']}","subject":"@{triggerBody()?['subject']}","message":"@{triggerBody()?['body']}","type":"inbound_email","status":"Unread","read":false}</code><br>
+                                            <b>2. Reply:</b> Trigger: HTTP Request &rarr; Action: "Send an email (V2)" from info@ using <code>emailBody</code> field
+                                        </div></div>
+                                        <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Mail Reply Webhook URL (Flow 2)</label>
+                                        <div class="comm-field-wrap">
+                                            <input type="url" id="webhookMailReply" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeMailReply',this.value)">
+                                            <button class="comm-test-btn" onclick="testWebhook('webhookMailReply')">Test</button>
                                         </div>
                                     </div>
                                 </div>
@@ -974,8 +1008,8 @@
     <script src="js/backend-config.js?v=75" defer></script>
     <script src="js/db-init.js?v=81" defer></script>
     <script src="js/product-helpers.js" defer></script>
-    <script src="js/ssa-comm.js?v=3" defer></script>
-    <script defer src="js/admin.js?v=104"></script>
+    <script src="js/ssa-comm.js?v=4" defer></script>
+    <script defer src="js/admin.js?v=105"></script>
     <script defer src="js/animations.js?v=5"></script>
 
     <!-- v91 Admin UI helpers: Charts, Accordion, Password, KPI, View Toggle -->
@@ -1148,7 +1182,7 @@
 
     // Re-sync badge status when settings page loads
     document.addEventListener('DOMContentLoaded', function() {
-        var fieldMap = { webhookContactForm: 'badgeEmail', webhookTicketStatus: 'badgeTicket', webhookLiveAgent: 'badgeAgent', webhookRating: 'badgeRating' };
+        var fieldMap = { webhookContactForm: 'badgeEmail', webhookTicketStatus: 'badgeTicket', webhookLiveAgent: 'badgeAgent', webhookRating: 'badgeRating', webhookMailReply: 'badgeMailReply' };
         // Observe value changes after admin.js populates them
         var observer = new MutationObserver(function() {
             Object.keys(fieldMap).forEach(function(fId) {

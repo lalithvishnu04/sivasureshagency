@@ -1,4 +1,4 @@
-﻿// SSA Admin v67 — Dashboard, categories, products, inventory, orders, customers
+﻿// SSA Admin v68 — Dashboard, categories, products, inventory, orders, customers, mail-inbox
 // db, auth, fsServerTimestamp, fsIncrement are set by js/db-init.js
 
 // ===== Help Panel Toggle =====
@@ -110,6 +110,8 @@ function waitForDbThenLoad(attempts) {
     if (window.db && window._dbReady) {
         console.log('[admin.js] Supabase ready — loading dashboard');
         loadDashboard();
+        // Pre-load inventory in the background so Inventory tab is instant on first click
+        setTimeout(() => { try { loadInventory(); } catch(e) { console.warn('[preload-inv]', e); } }, 800);
         // Refresh the category list from Supabase up-front so the product
         // category dropdown reflects live categories even before the Categories
         // tab is opened.
@@ -2070,6 +2072,17 @@ async function saveStock(e) {
 async function loadCustomers() {
     const tbody = document.getElementById('customersTableBody');
     try {
+        // Ensure orders are loaded so per-customer order counts are accurate
+        if (!allOrders.length) {
+            try {
+                const od = await _adminApiOr('adminOrders',
+                    () => _cachedGet('orders', () => db.collection('orders').get()).then(snap =>
+                        snap.docs.map(d => ({ docId: d.id, ...d.data() }))
+                    )
+                );
+                allOrders = Array.isArray(od) ? od : od.docs.map(d => ({ docId: d.id, ...d.data() }));
+            } catch(e) { console.warn('[customers] orders fetch failed:', e.message); }
+        }
         const data = await _adminApiOr('adminCustomers',
             () => _cachedGet('customers', () => db.collection('customers').get()).then(snap => {
                 const docs = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
@@ -3428,13 +3441,15 @@ async function loadWebhookSettings() {
     set('webhookTicketStatus', cfg.ticketStatusWebhook);
     set('webhookRating', cfg.ratingWebhook);
     set('webhookLiveAgent', cfg.liveAgentWebhook);
+    set('webhookMailReply', cfg.adminEmailReplyWebhook);
     set('githubPAT', cfg.githubPAT);
     // Refresh accordion badges
     if (typeof window.updateAccBadge === 'function') {
-        window.updateAccBadge('badgeEmail',  cfg.contactFormWebhook  || '');
-        window.updateAccBadge('badgeTicket', cfg.ticketStatusWebhook || '');
-        window.updateAccBadge('badgeAgent',  cfg.liveAgentWebhook    || '');
-        window.updateAccBadge('badgeRating', cfg.ratingWebhook       || '');
+        window.updateAccBadge('badgeEmail',     cfg.contactFormWebhook    || '');
+        window.updateAccBadge('badgeTicket',    cfg.ticketStatusWebhook   || '');
+        window.updateAccBadge('badgeAgent',     cfg.liveAgentWebhook      || '');
+        window.updateAccBadge('badgeRating',    cfg.ratingWebhook         || '');
+        window.updateAccBadge('badgeMailReply', cfg.adminEmailReplyWebhook || '');
     }
 }
 async function saveWebhookSettings() {
@@ -3442,10 +3457,11 @@ async function saveWebhookSettings() {
     const get = id => document.getElementById(id)?.value?.trim() || '';
     try {
         await window.SSA_COMM.saveConfig({
-            contactFormWebhook: get('webhookContactForm'),
-            ticketStatusWebhook: get('webhookTicketStatus'),
-            ratingWebhook: get('webhookRating'),
-            liveAgentWebhook: get('webhookLiveAgent')
+            contactFormWebhook:   get('webhookContactForm'),
+            ticketStatusWebhook:  get('webhookTicketStatus'),
+            ratingWebhook:        get('webhookRating'),
+            liveAgentWebhook:     get('webhookLiveAgent'),
+            adminEmailReplyWebhook: get('webhookMailReply')
         });
         showAdminToast('Webhook URLs saved for every visitor (stored in Supabase). Communication flows are now active.');
     } catch (err) {
@@ -3946,7 +3962,7 @@ function handleProductImageUpload(event) {
 
 // ===== Messages / Support Tickets =====
 let allMessages = [];
-let _ticketView = 'tickets'; // 'tickets' | 'chats'
+let _ticketView = 'tickets'; // 'tickets' | 'chats' | 'mail'
 const TICKET_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
 const TICKET_STATUS_COLORS = { 'Open': '#6366f1', 'In Progress': '#f59e0b', 'Resolved': '#10b981', 'Closed': '#94a3b8', 'Unassigned': '#94a3b8' };
 
@@ -4014,16 +4030,20 @@ function _restoreMessagesUIState(state) {
 function _renderTicketHeroStats() {
     const el = document.getElementById('ticketHeroStats');
     if (!el) return;
-    const tickets = allMessages.filter(m => m.ticketId);
-    const chats = allMessages.filter(m => !m.ticketId);
+    const tickets = allMessages.filter(m => m.ticketId && m.type !== 'inbound_email');
+    const chats = allMessages.filter(m => !m.ticketId && m.type !== 'inbound_email');
+    const mails = allMessages.filter(m => m.type === 'inbound_email');
     const open = tickets.filter(m => !['Closed'].includes(m.status || 'Open')).length;
     const unreadChats = chats.filter(m => !m.read).length;
-    // Remove tab badge — counts live on the banner only
+    const unreadMails = mails.filter(m => !m.read).length;
     const badge = document.getElementById('chatReqBadge');
     if (badge) badge.style.display = 'none';
+    const mailBadge = document.getElementById('mailInboxBadge');
+    if (mailBadge) { mailBadge.textContent = unreadMails; mailBadge.style.display = unreadMails > 0 ? 'inline' : 'none'; }
     el.innerHTML = `
         <div class="ticket-stat"><span class="ticket-stat-num">${open}</span><span class="ticket-stat-label">Open Tickets</span></div>
         <div class="ticket-stat"><span class="ticket-stat-num">${unreadChats}</span><span class="ticket-stat-label">Unread Chats</span></div>
+        <div class="ticket-stat"><span class="ticket-stat-num">${unreadMails}</span><span class="ticket-stat-label">New Mails</span></div>
     `;
 }
 
@@ -4031,17 +4051,23 @@ function setTicketView(view) {
     _ticketView = view;
     document.querySelectorAll('.ticket-view-tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
     const statusFilter = document.getElementById('ticketStatusFilter');
-    if (statusFilter) statusFilter.style.display = view === 'chats' ? 'none' : '';
+    const mailToolbar = document.getElementById('mailInboxToolbar');
+    if (statusFilter) statusFilter.style.display = (view === 'chats' || view === 'mail') ? 'none' : '';
+    if (mailToolbar) mailToolbar.style.display = view === 'mail' ? '' : 'none';
+    const searchEl = document.getElementById('messageSearch');
+    if (searchEl) searchEl.placeholder = view === 'mail' ? 'Search emails...' : 'Search tickets...';
     renderMessages();
 }
 window.setTicketView = setTicketView;
 
 function renderMessages() {
+    if (_ticketView === 'mail') { renderMailInbox(); return; }
     const container = document.getElementById('messagesList');
     if (!container) return;
     const search = (document.getElementById('messageSearch')?.value || '').toLowerCase();
     const statusFilter = document.getElementById('ticketStatusFilter')?.value || '';
-    let msgs = allMessages.filter(m => _ticketView === 'chats' ? !m.ticketId : !!m.ticketId);
+    // Exclude inbound emails from tickets/chats views
+    let msgs = allMessages.filter(m => m.type !== 'inbound_email' && (_ticketView === 'chats' ? !m.ticketId : !!m.ticketId));
     if (search) msgs = msgs.filter(m => (m.name||'').toLowerCase().includes(search) || (m.email||'').toLowerCase().includes(search) || (m.message||'').toLowerCase().includes(search) || (m.ticketId||'').toLowerCase().includes(search));
     if (statusFilter && _ticketView !== 'chats') msgs = msgs.filter(m => (m.status || 'Open') === statusFilter);
 
@@ -4395,8 +4421,25 @@ window.updateTicketStatus = updateTicketStatus;
 
 function replyToCustomer(email, ticketId) {
     if (!email) return;
-    const subject = encodeURIComponent(`[${ticketId || 'SSA Ticket'}] Response from Siva Suresh Agency`);
-    window.open(`mailto:${email}?subject=${subject}`, '_blank');
+    // Use mail reply webhook when configured; fallback to mailto with info@ in subject
+    if (window.SSA_COMM) {
+        const subject = `[${ticketId || 'SSA Ticket'}] Response from Siva Suresh Agency`;
+        const body = `Dear Customer,\n\nThank you for contacting Siva Suresh Agency.\n\n`;
+        window.SSA_COMM.sendAdminMailReply({ to: email, toName: email, subject, body }).then(ok => {
+            if (ok === false) {
+                // Webhook not set — open mail client pre-filled
+                window.open(`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}`, '_blank');
+                showAdminToast('Configure Mail Reply webhook in Settings for direct send from info@', 'warning');
+            } else if (ok) {
+                showAdminToast('Reply sent via info@sivasureshagency.onmicrosoft.com');
+            }
+        }).catch(() => {
+            window.open(`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}`, '_blank');
+        });
+    } else {
+        const subject = encodeURIComponent(`[${ticketId || 'SSA Ticket'}] Response from Siva Suresh Agency`);
+        window.open(`mailto:${email}?subject=${subject}`, '_blank');
+    }
 }
 window.replyToCustomer = replyToCustomer;
 
@@ -4460,6 +4503,136 @@ async function endLiveChat(docId, customerName) {
     }
 }
 window.endLiveChat = endLiveChat;
+
+// ── Mail Inbox (inbound emails received at info@) ─────────────────────────
+// Inbound emails are stored in the messages table with type='inbound_email'
+// by a Power Automate flow connected to the info@ inbox.
+
+function renderMailInbox() {
+    const container = document.getElementById('messagesList');
+    if (!container) return;
+    const search = (document.getElementById('messageSearch')?.value || '').toLowerCase();
+    let mails = allMessages.filter(m => m.type === 'inbound_email')
+        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    if (search) mails = mails.filter(m =>
+        (m.name||'').toLowerCase().includes(search) ||
+        (m.email||'').toLowerCase().includes(search) ||
+        (m.subject||'').toLowerCase().includes(search) ||
+        (m.message||'').toLowerCase().includes(search)
+    );
+    if (!mails.length) {
+        container.innerHTML = '<p class="empty"><i class="fas fa-inbox"></i>&nbsp;No emails yet. Set up the Power Automate inbox flow — see Settings → Communications → Mail Inbox &amp; Reply.</p>';
+        return;
+    }
+    const unread = mails.filter(m => !m.read).length;
+    container.innerHTML = (unread ? `<div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#6366f1;padding:6px 4px 8px;border-bottom:1px solid var(--border);margin-bottom:8px;"><i class="fas fa-inbox"></i> Inbox &mdash; ${unread} unread</div>` : '') + mails.map(m => _buildMailCardHTML(m)).join('');
+}
+
+function _buildMailCardHTML(m) {
+    const ts = m.createdAt ? new Date(m.createdAt.seconds ? m.createdAt.seconds * 1000 : m.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+    const isUnread = !m.read;
+    const statusLabel = m.status === 'Replied' ? '<span style="background:#dcfce7;color:#16a34a;border-radius:20px;padding:2px 9px;font-size:0.69rem;font-weight:700;">Replied</span>' : (isUnread ? '<span style="background:#ede9fe;color:#6366f1;border-radius:20px;padding:2px 9px;font-size:0.69rem;font-weight:700;">New</span>' : '');
+    return `<div class="msg-card mail-inbox-card ${isUnread ? 'unread' : ''}" id="mail-card-${m.docId}">
+        <div class="msg-header" onclick="toggleMailCard('${m.docId}')" style="cursor:pointer;">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.9rem;font-weight:700;color:#fff;text-transform:uppercase;">${_escHtmlCat((m.name||m.email||'?').charAt(0))}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:${isUnread?'700':'500'};color:var(--text-dark);font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_escHtmlCat(m.name||m.email||'Unknown')}</div>
+                    <div style="font-size:0.73rem;color:var(--text-muted);">${_escHtmlCat(m.email||'')}</div>
+                </div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+                <span style="font-size:0.72rem;color:var(--text-muted);">${ts}</span>
+                ${statusLabel}
+            </div>
+        </div>
+        <div style="font-size:0.85rem;font-weight:${isUnread?'700':'500'};color:var(--text);margin:6px 0 0;padding:0 4px;" onclick="toggleMailCard('${m.docId}')" style="cursor:pointer;">
+            ${_escHtmlCat(m.subject || '(No Subject)')}
+        </div>
+        <div id="mail-full-${m.docId}" style="display:none;">
+            <div style="background:#f8fafc;border-radius:8px;padding:14px;font-size:0.85rem;color:#334155;line-height:1.7;max-height:320px;overflow-y:auto;white-space:pre-wrap;margin:10px 0;">${_escHtmlCat(m.message||'(empty)')}</div>
+            <div id="mail-reply-area-${m.docId}" style="display:none;border-top:1.5px solid var(--border);padding-top:12px;margin-top:4px;">
+                <div style="font-size:0.75rem;font-weight:700;color:var(--text-mid);margin-bottom:6px;"><i class="fas fa-reply" style="color:#6366f1;margin-right:4px;"></i>Reply to: <b>${_escHtmlCat(m.email||'')}</b> &nbsp;\u2022&nbsp; From: <b>info@sivasureshagency.onmicrosoft.com</b></div>
+                <textarea id="mail-reply-body-${m.docId}" placeholder="Type your reply here..." style="width:100%;min-height:100px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:0.84rem;resize:vertical;box-sizing:border-box;"></textarea>
+                <div style="font-size:0.72rem;color:#94a3b8;margin:4px 0 8px;">Signature will be auto-appended (Siva Suresh Agency branding).</div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-primary" style="padding:7px 18px;font-size:0.82rem;" onclick="sendMailReply('${m.docId}')"><i class="fas fa-paper-plane"></i> Send</button>
+                    <button style="padding:7px 14px;font-size:0.82rem;background:#f1f5f9;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;" onclick="cancelMailReply('${m.docId}')"><i class="fas fa-times"></i> Cancel</button>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                <button class="btn-primary" style="padding:6px 16px;font-size:0.8rem;" onclick="event.stopPropagation();showMailReply('${m.docId}')"><i class="fas fa-reply"></i> Reply</button>
+                ${!m.read ? `<button style="padding:6px 14px;font-size:0.8rem;background:#f0fdf4;color:#16a34a;border:1.5px solid #bbf7d0;border-radius:8px;cursor:pointer;" onclick="event.stopPropagation();markMailRead('${m.docId}')"><i class="fas fa-check"></i> Mark Read</button>` : ''}
+            </div>
+        </div>
+    </div>`;
+}
+
+function toggleMailCard(docId) {
+    const full = document.getElementById('mail-full-' + docId);
+    if (!full) return;
+    const isVisible = full.style.display !== 'none';
+    full.style.display = isVisible ? 'none' : 'block';
+    if (!isVisible) markMailRead(docId);
+}
+
+function showMailReply(docId) {
+    const area = document.getElementById('mail-reply-area-' + docId);
+    if (area) { area.style.display = 'block'; document.getElementById('mail-reply-body-' + docId)?.focus(); }
+}
+
+function cancelMailReply(docId) {
+    const area = document.getElementById('mail-reply-area-' + docId);
+    if (area) area.style.display = 'none';
+}
+
+async function markMailRead(docId) {
+    const m = allMessages.find(x => x.docId === docId);
+    if (!m || m.read) return;
+    try {
+        await db.collection('messages').doc(docId).update({ read: true });
+        m.read = true;
+        const card = document.getElementById('mail-card-' + docId);
+        if (card) card.classList.remove('unread');
+        _updateSidebarMsgBadge();
+    } catch(err) { console.warn('[mail-read]', err.message); }
+}
+
+async function sendMailReply(docId) {
+    const m = allMessages.find(x => x.docId === docId);
+    if (!m) return;
+    const bodyEl = document.getElementById('mail-reply-body-' + docId);
+    const body = bodyEl?.value?.trim();
+    if (!body) { showAdminToast('Reply cannot be empty', 'error'); return; }
+    const sendBtn = bodyEl?.closest('[id^="mail-reply-area-"]')?.querySelector('button');
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...'; }
+    try {
+        if (!window.SSA_COMM) throw new Error('Comm module not loaded');
+        const subject = m.subject ? 'Re: ' + m.subject : 'Reply from Siva Suresh Agency';
+        const ok = await window.SSA_COMM.sendAdminMailReply({ to: m.email, toName: m.name || m.email, subject, body });
+        if (!ok) {
+            showAdminToast('Mail Reply webhook not configured — add it in Settings \u2192 Communications \u2192 Mail Inbox & Reply', 'warning');
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send'; }
+            return;
+        }
+        await db.collection('messages').doc(docId).update({ read: true, status: 'Replied', updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date().toISOString() });
+        m.read = true; m.status = 'Replied';
+        cancelMailReply(docId);
+        showAdminToast(`Reply sent to ${m.name || m.email}`);
+        _updateSidebarMsgBadge();
+        if (_ticketView === 'mail') renderMailInbox();
+    } catch(err) {
+        showAdminToast('Error: ' + err.message, 'error');
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send'; }
+    }
+}
+
+window.renderMailInbox = renderMailInbox;
+window.toggleMailCard = toggleMailCard;
+window.showMailReply = showMailReply;
+window.cancelMailReply = cancelMailReply;
+window.markMailRead = markMailRead;
+window.sendMailReply = sendMailReply;
 
 // ── Supabase Realtime for admin Messages section ────────────
 // Instant push updates via WebSocket — no polling, no page refresh
@@ -4553,6 +4726,16 @@ function _onMsgInsert(row) {
     if (allMessages.find(m => m.docId === msg.docId)) { _onMsgUpdate(row); return; }
     allMessages.unshift(msg);
     _updateSidebarMsgBadge();
+
+    // Inbound email: notify admin and re-render mail tab if active
+    if (msg.type === 'inbound_email') {
+        if (_ticketView === 'mail') {
+            renderMailInbox();
+        } else {
+            _showChatNotification(msg.name || msg.email || 'Visitor', `📧 New email: ${msg.subject || '(No Subject)'}`);
+        }
+        return;
+    }
 
     // Only inject card if we are on the matching view tab
     const isChat = !msg.ticketId;
