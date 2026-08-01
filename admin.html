@@ -1186,11 +1186,28 @@
         if (isOpen) {
             body.hidden = false;
             body.style.maxHeight = body.scrollHeight + 'px';
+            setTimeout(function() {
+                if (outer.classList.contains('open')) body.style.maxHeight = 'none';
+            }, 340);
         } else {
+            if (body.style.maxHeight === 'none') {
+                body.style.maxHeight = body.scrollHeight + 'px';
+            }
             body.style.maxHeight = body.scrollHeight + 'px';
             requestAnimationFrame(function() { body.style.maxHeight = '0px'; });
             setTimeout(function() { if (!outer.classList.contains('open')) body.hidden = true; }, 340);
         }
+    }
+
+    function _refreshCommSettingsHeight() {
+        var outer = document.getElementById('commSettingsOuter');
+        var body = document.getElementById('commSetBody');
+        if (!outer || !body || !outer.classList.contains('open')) return;
+        body.hidden = false;
+        body.style.maxHeight = body.scrollHeight + 'px';
+        setTimeout(function() {
+            if (outer.classList.contains('open')) body.style.maxHeight = 'none';
+        }, 320);
     }
 
     function toggleCommSettings() {
@@ -1215,6 +1232,9 @@
             requestAnimationFrame(function() { body.style.maxHeight = '0px'; });
             setTimeout(function() { if (!item.classList.contains('open')) body.hidden = true; }, 300);
         }
+
+        // Nested expansion changes page height; keep outer comm panel in sync.
+        setTimeout(_refreshCommSettingsHeight, 40);
     }
 
     function toggleAccordion(id) {
@@ -1295,7 +1315,7 @@
         window.addEventListener('resize', function() {
             var body = document.getElementById('commSetBody');
             if (body && outer && outer.classList.contains('open')) {
-                body.style.maxHeight = body.scrollHeight + 'px';
+                body.style.maxHeight = 'none';
             }
             document.querySelectorAll('.comm-acc-item.open .comm-acc-body').forEach(function(el) {
                 el.style.maxHeight = el.scrollHeight + 'px';
