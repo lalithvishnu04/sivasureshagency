@@ -1,4 +1,4 @@
-﻿// SSA Admin v68 — Dashboard, categories, products, inventory, orders, customers, mail-inbox
+﻿// SSA Admin v69 — Dashboard, categories, products, inventory, orders, customers, mail-inbox
 // db, auth, fsServerTimestamp, fsIncrement are set by js/db-init.js
 
 // ===== Help Panel Toggle =====
@@ -1668,6 +1668,21 @@ function getLocalProductsData() {
 // ===== Inventory =====
 async function loadInventory() {
     try {
+        // Ensure allProducts is populated so inventory filtering works correctly.
+        // allProducts is only set when the Products tab is visited; pre-loading inventory
+        // on login runs before that, so we must fetch products ourselves if not yet loaded.
+        if (!allProducts.length) {
+            try {
+                const prodData = await _adminApiOr('adminProducts',
+                    () => _cachedGet('products', () => db.collection('products').get()).then(snap => {
+                        return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+                    })
+                );
+                const rawProds = Array.isArray(prodData) ? prodData : prodData.docs.map(d => ({ docId: d.id, ...d.data() }));
+                allProducts = (window.ssaProductHelpers?.getVisibleProducts || ((list) => list || []))(rawProds);
+            } catch (e) { console.warn('[inventory] products pre-fetch failed:', e.message); }
+        }
+
         const data = await _adminApiOr('adminInventory',
             () => _cachedGet('inventory', () => db.collection('inventory').get()).then(snap => {
                 const docs = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
