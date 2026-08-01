@@ -1760,7 +1760,14 @@ a:focus-visible {
    22. HERO PRODUCT IMAGE — FLOATING 3D DEPTH ORBS
        Decorative gradient orbs behind the hero product image
        add visual depth and a modern editorial look.
+       Uses isolation:isolate to self-contain the stacking context
+       so the orbs NEVER paint over the hero text column.
    ═══════════════════════════════════════════════════════════════ */
+
+/* Isolate the hero-prod-img stacking context so orbs stay inside it */
+.hero-prod-img {
+    isolation: isolate;
+}
 
 .hero-prod-img::before {
     content: '';
@@ -1775,7 +1782,7 @@ a:focus-visible {
     filter: blur(30px);
     animation: orb-pulse 5s ease-in-out infinite;
     pointer-events: none;
-    z-index: 0;
+    z-index: -1;
 }
 
 .hero-prod-img::after {
@@ -1788,25 +1795,14 @@ a:focus-visible {
     bottom: 30px;
     right: 20px;
     filter: blur(20px);
-    animation: orb-pulse 4s ease-in-out infinite 1.5s;
+    animation: orb-drift 4s ease-in-out infinite 1.5s;
     pointer-events: none;
-    z-index: 0;
-}
-
-.hero-prod-img img {
-    position: relative;
-    z-index: 1;
+    z-index: -1;
 }
 
 @keyframes orb-pulse {
     0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
     50%       { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
-}
-
-/* Fix for ::after on hero-prod-img (no transform needed — it's bottom/right positioned) */
-.hero-prod-img::after {
-    transform: none;
-    animation: orb-drift 4s ease-in-out infinite 1.5s;
 }
 
 @keyframes orb-drift {
@@ -1867,5 +1863,5 @@ a:focus-visible {
         transition: none !important;
     }
     .hero-scroll-indicator { display: none; }
-    .section-title::after { width: 60% !important; }
+    .section-title::after { width: 55% !important; }
 }
