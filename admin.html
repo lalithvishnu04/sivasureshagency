@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=94">
+    <link rel="stylesheet" href="css/admin.css?v=95">
     <link rel="stylesheet" href="css/animations.css?v=6">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="icon" type="image/png" href="images/SSA Logo.png">
@@ -477,49 +477,60 @@
 
                 <!-- Security / Password -->
                 <div class="settings-panel settings-security-block" style="margin-bottom:20px;">
-                    <div class="settings-section">
-                        <h4 class="settings-section-title"><i class="fas fa-shield-alt"></i> Security &mdash; Change Password</h4>
-                        <p class="settings-section-desc">Update your admin password regularly to keep the panel secure.</p>
-                        <div class="security-card">
-                            <h4><i class="fas fa-lock"></i> Change Password</h4>
-                            <form id="settingsPasswordForm" onsubmit="handleSettingsPasswordChange(event)">
-                                <div class="form-group">
-                                    <label>Current Password *</label>
-                                    <div class="pwd-field-wrap">
-                                        <input type="password" id="spCurrentPwd" placeholder="Enter current password" required>
-                                        <button type="button" class="pwd-eye-btn" onclick="togglePwdVisibility('spCurrentPwd',this)"><i class="fas fa-eye"></i></button>
-                                    </div>
-                                    <div class="pwd-strength-bar-wrap"><div class="pwd-strength-fill" id="spCurrentBar"></div></div>
+                    <div class="comm-acc-item settings-collapsible-item" id="accPassword">
+                        <button class="comm-acc-trigger" onclick="toggleSettingsCard('accPassword')" aria-expanded="false">
+                            <div class="comm-acc-trigger-left">
+                                <div class="comm-acc-icon" style="background:rgba(15,118,110,0.1);color:#0f766e;"><i class="fas fa-lock"></i></div>
+                                <div>
+                                    <div class="comm-acc-title">Password Settings</div>
+                                    <div class="comm-acc-desc">Change admin password</div>
                                 </div>
-                                <div class="form-group">
-                                    <label>New Password *</label>
-                                    <div class="pwd-field-wrap">
-                                        <input type="password" id="spNewPwd" placeholder="Min 6 characters" required oninput="updatePwdStrength('spNewPwd','spNewBar','spStrengthLabel')">
-                                        <button type="button" class="pwd-eye-btn" onclick="togglePwdVisibility('spNewPwd',this)"><i class="fas fa-eye"></i></button>
+                            </div>
+                            <div class="comm-acc-right">
+                                <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </div>
+                        </button>
+                        <div class="comm-acc-body settings-collapsible-body">
+                            <div class="security-card">
+                                <form id="settingsPasswordForm" onsubmit="handleSettingsPasswordChange(event)">
+                                    <div class="form-group">
+                                        <label>Current Password *</label>
+                                        <div class="pwd-field-wrap">
+                                            <input type="password" id="spCurrentPwd" placeholder="Enter current password" required>
+                                            <button type="button" class="pwd-eye-btn" onclick="togglePwdVisibility('spCurrentPwd',this)"><i class="fas fa-eye"></i></button>
+                                        </div>
+                                        <div class="pwd-strength-bar-wrap"><div class="pwd-strength-fill" id="spCurrentBar"></div></div>
                                     </div>
-                                    <div class="pwd-strength-bar-wrap"><div class="pwd-strength-fill" id="spNewBar"></div></div>
-                                    <span id="spStrengthLabel" style="font-size:0.71rem;color:var(--text-muted);"></span>
-                                </div>
-                                <div class="form-group">
-                                    <label>Confirm New Password *</label>
-                                    <div class="pwd-field-wrap">
-                                        <input type="password" id="spConfirmPwd" placeholder="Repeat new password" required>
-                                        <button type="button" class="pwd-eye-btn" onclick="togglePwdVisibility('spConfirmPwd',this)"><i class="fas fa-eye"></i></button>
+                                    <div class="form-group">
+                                        <label>New Password *</label>
+                                        <div class="pwd-field-wrap">
+                                            <input type="password" id="spNewPwd" placeholder="Min 6 characters" required oninput="updatePwdStrength('spNewPwd','spNewBar','spStrengthLabel')">
+                                            <button type="button" class="pwd-eye-btn" onclick="togglePwdVisibility('spNewPwd',this)"><i class="fas fa-eye"></i></button>
+                                        </div>
+                                        <div class="pwd-strength-bar-wrap"><div class="pwd-strength-fill" id="spNewBar"></div></div>
+                                        <span id="spStrengthLabel" style="font-size:0.71rem;color:var(--text-muted);"></span>
                                     </div>
-                                </div>
-                                <button type="submit" class="btn-primary"><i class="fas fa-lock"></i> Update Password</button>
-                                <div id="spSuccessMsg" style="display:none;" class="security-success-msg"><i class="fas fa-check-circle"></i> Password updated successfully!</div>
-                                <p id="spErrorMsg" style="display:none;color:#ef4444;font-size:0.8rem;margin-top:8px;"></p>
-                            </form>
+                                    <div class="form-group">
+                                        <label>Confirm New Password *</label>
+                                        <div class="pwd-field-wrap">
+                                            <input type="password" id="spConfirmPwd" placeholder="Repeat new password" required>
+                                            <button type="button" class="pwd-eye-btn" onclick="togglePwdVisibility('spConfirmPwd',this)"><i class="fas fa-eye"></i></button>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn-primary"><i class="fas fa-lock"></i> Update Password</button>
+                                    <div id="spSuccessMsg" style="display:none;" class="security-success-msg"><i class="fas fa-check-circle"></i> Password updated successfully!</div>
+                                    <p id="spErrorMsg" style="display:none;color:#ef4444;font-size:0.8rem;margin-top:8px;"></p>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Communication Settings — outer collapsible panel -->
                 <div class="settings-panel settings-comm-block" style="padding:0;">
-                    <div class="comm-settings-outer open" id="commSettingsOuter">
+                    <div class="comm-settings-outer" id="commSettingsOuter">
                         <!-- Main Toggle Header -->
-                        <button class="comm-set-header" onclick="toggleCommSettings()" aria-expanded="true">
+                        <button class="comm-set-header" onclick="toggleCommSettings()" aria-expanded="false">
                             <div class="comm-acc-trigger-left">
                                 <div class="comm-acc-icon" style="background:rgba(15,118,110,0.1);color:#0f766e;"><i class="fas fa-share-alt"></i></div>
                                 <div>
@@ -533,8 +544,6 @@
                         <div class="comm-set-body" id="commSetBody">
                             <!-- ─ Power Automate ─ -->
                             <div class="comm-sub-heading"><i class="fas fa-bolt"></i> Power Automate</div>
-                            <p class="settings-section-desc" style="margin:0 0 14px;">Manage all Power Automate webhook URLs. Click a section to expand it. Use <strong>Test Connection</strong> to verify each URL.</p>
-                            <div class="info-banner" style="margin-bottom:18px;background:#f0fdf4;border-color:#bbf7d0;"><i class="fas fa-user-circle" style="color:#16a34a;"></i><div style="font-size:0.78rem;"><b>All flows must be created in the <code>info@sivasureshagency.onmicrosoft.com</code> account.</b><br>Sign in at <a href="https://make.powerautomate.com" target="_blank" style="color:#0d9488;">make.powerautomate.com</a> with info@ &rarr; <b>My flows &rarr; New flow &rarr; Automated cloud flow from blank</b>.<br>For flows 1–5: Trigger = <b>"When an HTTP request is received"</b> (Request connector) &rarr; add <b>"Send an email (V2)"</b> (Office 365 Outlook) &rarr; Save &rarr; copy the HTTP URL here.<br>For flow 6 (Receive): Trigger = <b>"When a new email arrives (V3)"</b> (Outlook) &rarr; add <b>HTTP POST</b> to Supabase (no URL needed here).</div></div>
                             <div class="comm-accordion" id="commAccordion">
                                 <!-- Email Automation -->
                                 <div class="comm-acc-item" id="accEmail">
@@ -552,7 +561,6 @@
                                         </div>
                                     </button>
                                     <div class="comm-acc-body">
-                                        <div class="info-banner" style="margin-bottom:10px;background:#f0f9ff;border-color:#bae6fd;"><i class="fas fa-bolt" style="color:#0ea5e9;"></i><div style="font-size:0.75rem;"><b>Flow: SSA Contact Form Email</b> &nbsp;(info@ account)<br><b>Trigger:</b> When an HTTP request is received &rarr; <b>Action:</b> Send an email (V2)<br>To: <code>@{triggerBody()?['adminEmail']}</code> &nbsp; Subject: <code>@{triggerBody()?['emailSubject']}</code><br>Body: <code>@{triggerBody()?['emailBody']}</code> &nbsp; <i>Is HTML = Yes</i></div></div>
                                         <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Contact Form Webhook URL</label>
                                         <div class="comm-field-wrap">
                                             <input type="url" id="webhookContactForm" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeEmail',this.value)">
@@ -576,7 +584,6 @@
                                         </div>
                                     </button>
                                     <div class="comm-acc-body">
-                                        <div class="info-banner" style="margin-bottom:10px;background:#f0f9ff;border-color:#bae6fd;"><i class="fas fa-bolt" style="color:#0ea5e9;"></i><div style="font-size:0.75rem;"><b>Flow: SSA Ticket Status Email</b> &nbsp;(info@ account)<br><b>Trigger:</b> When an HTTP request is received &rarr; <b>Action:</b> Send an email (V2)<br>To: <code>@{triggerBody()?['customerEmail']}</code> &nbsp; Subject: <code>@{triggerBody()?['emailSubject']}</code><br>Body: <code>@{triggerBody()?['emailBody']}</code> &nbsp; <i>Is HTML = Yes</i></div></div>
                                         <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Ticket Status Webhook URL</label>
                                         <div class="comm-field-wrap">
                                             <input type="url" id="webhookTicketStatus" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeTicket',this.value)">
@@ -600,7 +607,6 @@
                                         </div>
                                     </button>
                                     <div class="comm-acc-body">
-                                        <div class="info-banner" style="margin-bottom:10px;background:#f0f9ff;border-color:#bae6fd;"><i class="fas fa-bolt" style="color:#0ea5e9;"></i><div style="font-size:0.75rem;"><b>Flow: SSA Live Agent Alert</b> &nbsp;(info@ account)<br><b>Trigger:</b> When an HTTP request is received &rarr; <b>Action:</b> Send an email (V2)<br>To: <code>@{triggerBody()?['adminEmail']}</code> &nbsp; Subject: <code>@{triggerBody()?['emailSubject']}</code><br>Body: <code>@{triggerBody()?['emailBody']}</code> &nbsp; <i>Is HTML = Yes</i><br><span style="color:#7c3aed;">Optional: also add a Teams &rarr; Post message action using <code>@{triggerBody()?['teamsMessage']}</code></span></div></div>
                                         <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Live Agent Webhook URL</label>
                                         <div class="comm-field-wrap">
                                             <input type="url" id="webhookLiveAgent" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeAgent',this.value)">
@@ -624,7 +630,6 @@
                                         </div>
                                     </button>
                                     <div class="comm-acc-body">
-                                        <div class="info-banner" style="margin-bottom:10px;background:#f0f9ff;border-color:#bae6fd;"><i class="fas fa-bolt" style="color:#0ea5e9;"></i><div style="font-size:0.75rem;"><b>Flow: SSA Rating Alert</b> &nbsp;(info@ account)<br><b>Trigger:</b> When an HTTP request is received &rarr; <b>Action:</b> Send an email (V2)<br>To: <code>@{triggerBody()?['adminEmail']}</code> &nbsp; Subject: <code>@{triggerBody()?['emailSubject']}</code><br>Body: <code>@{triggerBody()?['emailBody']}</code> &nbsp; <i>Is HTML = Yes</i></div></div>
                                         <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Rating Webhook URL</label>
                                         <div class="comm-field-wrap">
                                             <input type="url" id="webhookRating" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeRating',this.value)">
@@ -648,10 +653,6 @@
                                         </div>
                                     </button>
                                     <div class="comm-acc-body">
-                                        <!-- Flow 6: Receive (auto, no URL needed here) -->
-                                        <div class="info-banner" style="margin-bottom:10px;background:#ede9fe;border-color:#c4b5fd;"><i class="fas fa-inbox" style="color:#6366f1;"></i><div style="font-size:0.75rem;"><b>Flow 6: SSA Mail Inbox Receive</b> &nbsp;&mdash;&nbsp; Runs automatically, no URL required here.<br><b>Trigger:</b> "When a new email arrives (V3)" (Office 365 Outlook) &rarr; Inbox of <code>info@sivasureshagency.onmicrosoft.com</code><br><b>Action:</b> HTTP &rarr; POST<br>&nbsp;&nbsp;URI: <code>https://kyzlxhncnqahlpfhtoky.supabase.co/rest/v1/messages</code><br>&nbsp;&nbsp;Headers (4 rows):<br>&nbsp;&nbsp;<code>apikey</code> : <code>sb_publishable_0hcswuIONUUJPdBl7RRIHw_JH7MsGeK</code><br>&nbsp;&nbsp;<code>Authorization</code> : <code>Bearer sb_publishable_0hcswuIONUUJPdBl7RRIHw_JH7MsGeK</code><br>&nbsp;&nbsp;<code>Content-Type</code> : <code>application/json</code><br>&nbsp;&nbsp;<code>Prefer</code> : <code>return=minimal</code> &nbsp;<span style="color:#dc2626;font-weight:bold;">⚠ Must be return=minimal (not return=representation)</span><br>&nbsp;&nbsp;Body (raw JSON — use exact field names from V3 trigger):<br><code style="font-size:0.69rem;word-break:break-all;">{"name":"@{triggerBody()?['from']}","email":"@{triggerBody()?['from']}","subject":"@{triggerBody()?['subject']}","message":"@{triggerBody()?['bodyPreview']}","type":"inbound_email","status":"Open","read":false}</code><br><span style="color:#475569;font-size:0.68rem;"><b>Field note:</b> <code>from</code> = sender email (V3 trigger). <code>bodyPreview</code> = first 255 chars plain text (use this, NOT <code>body</code> which is full HTML and breaks JSON). <code>status</code> must be <code>"Open"</code> not "Unread".</span></div></div>
-                                        <!-- Flow 5: Reply (HTTP trigger → send from info@) -->
-                                        <div class="info-banner" style="margin-bottom:12px;background:#f0fdf4;border-color:#bbf7d0;"><i class="fas fa-paper-plane" style="color:#16a34a;"></i><div style="font-size:0.75rem;"><b>Flow 5: SSA Mail Reply</b> &nbsp;&mdash;&nbsp; Paste the HTTP URL below after creating this flow.<br><b>Trigger:</b> When an HTTP request is received (Method: POST)<br><b>Action:</b> Office 365 Outlook &rarr; Send an email (V2)<br>&nbsp;&nbsp;From: <code>info@sivasureshagency.onmicrosoft.com</code> (select account)<br>&nbsp;&nbsp;To: <code>@{triggerBody()?['to']}</code><br>&nbsp;&nbsp;Subject: <code>@{triggerBody()?['subject']}</code><br>&nbsp;&nbsp;Body: <code>@{triggerBody()?['emailBody']}</code> &nbsp; <b>Is HTML = Yes</b><br><span style="color:#475569;"><i>The emailBody field contains the full SSA-branded HTML email with signature &mdash; sent as-is.</i></span></div></div>
                                         <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Mail Reply Webhook URL (Flow 5 &mdash; SSA Mail Reply)</label>
                                         <div class="comm-field-wrap">
                                             <input type="url" id="webhookMailReply" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeMailReply',this.value)">
@@ -664,14 +665,30 @@
                                 <button class="btn-primary" onclick="saveWebhookSettings()"><i class="fas fa-save"></i> Save All Webhook URLs</button>
                             </div>
                             <div class="comm-api-divider" style="margin:24px 0 16px;"></div>
-                            <div class="comm-sub-heading"><i class="fab fa-github"></i> GitHub Upload Key</div>
-                            <p style="margin:0 0 12px;font-size:0.85rem;color:var(--text-mid);">Required for uploading new product images to the GitHub repo. Stored only in this browser.</p>
-                            <div class="comm-field-wrap" style="max-width:520px;">
-                                <input type="password" id="githubPAT" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
-                                <button type="button" class="comm-test-btn" onclick="toggleApiKeyVisibility('githubPAT',this)">Show</button>
+                            <div class="comm-sub-heading"><i class="fab fa-github"></i> Integrations</div>
+                            <div class="comm-acc-item settings-collapsible-item" id="accGithubKey" style="margin-top:8px;">
+                                <button class="comm-acc-trigger" onclick="toggleSettingsCard('accGithubKey')" aria-expanded="false">
+                                    <div class="comm-acc-trigger-left">
+                                        <div class="comm-acc-icon github"><i class="fab fa-github"></i></div>
+                                        <div>
+                                            <div class="comm-acc-title">GitHub Upload Key</div>
+                                            <div class="comm-acc-desc">Token for product image upload</div>
+                                        </div>
+                                    </div>
+                                    <div class="comm-acc-right">
+                                        <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                                    </div>
+                                </button>
+                                <div class="comm-acc-body settings-collapsible-body">
+                                    <div class="comm-field-wrap" style="max-width:520px;">
+                                        <input type="password" id="githubPAT" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+                                        <button type="button" class="comm-test-btn" onclick="toggleApiKeyVisibility('githubPAT',this)">Show</button>
+                                    </div>
+                                    <div style="margin-top:10px;">
+                                        <button class="btn-primary" onclick="saveGithubPAT()"><i class="fas fa-save"></i> Save GitHub Key</button>
+                                    </div>
+                                </div>
                             </div>
-                            <span style="display:block;margin:6px 0 12px;font-size:0.78rem;color:var(--text-mid);">GitHub → Settings → Developer Settings → Fine-grained tokens → Contents: Read &amp; Write</span>
-                            <button class="btn-primary" onclick="saveGithubPAT()"><i class="fas fa-save"></i> Save GitHub Key</button>
                         </div><!-- /comm-set-body -->
                     </div><!-- /comm-settings-outer -->
                 </div>
@@ -1204,7 +1221,7 @@
         var item = document.getElementById(id);
         if (!item) return;
         var willOpen = !item.classList.contains('open');
-        document.querySelectorAll('.comm-acc-item').forEach(function(i) {
+        document.querySelectorAll('#commAccordion .comm-acc-item').forEach(function(i) {
             if (i !== item) _setAccordionState(i, false);
         });
         _setAccordionState(item, willOpen);
@@ -1214,6 +1231,13 @@
                 item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 120);
         }
+    }
+
+    function toggleSettingsCard(id) {
+        var item = document.getElementById(id);
+        if (!item) return;
+        var willOpen = !item.classList.contains('open');
+        _setAccordionState(item, willOpen);
     }
 
     function updateAccBadge(badgeId, val) {
@@ -1249,10 +1273,7 @@
         _setCommSettingsState(commOpen);
 
         var items = document.querySelectorAll('.comm-acc-item');
-        var openedItem = null;
-        items.forEach(function(i) { if (i.classList.contains('open') && !openedItem) openedItem = i; });
-        if (!openedItem && items.length) openedItem = items[0];
-        items.forEach(function(i) { _setAccordionState(i, i === openedItem); });
+        items.forEach(function(i) { _setAccordionState(i, false); });
 
         var fieldMap = { webhookContactForm: 'badgeEmail', webhookTicketStatus: 'badgeTicket', webhookLiveAgent: 'badgeAgent', webhookRating: 'badgeRating', webhookMailReply: 'badgeMailReply' };
         // Observe value changes after admin.js populates them
