@@ -4042,10 +4042,11 @@ function _restoreMessagesUIState(state) {
     });
 }
 
-// Detect inbound emails: explicit type OR (no ticket, no session, has subject, not admin-created)
-// Fallback handles PA flows that omit the type field in the HTTP POST body.
+// Detect inbound emails: explicit type OR fallback heuristic (no ticket, no session, has subject).
+// Fallback handles cases where the Supabase type column is missing or PA omits the field.
+// Note: source defaults to 'contact-form' so we do NOT use !m.source as a discriminator.
 function _isInboundEmail(m) {
-    return m.type === 'inbound_email' || (!m.ticketId && !m.sessionId && !!m.subject && !m.source);
+    return m.type === 'inbound_email' || (!m.ticketId && !m.sessionId && !!m.subject);
 }
 
 function _renderTicketHeroStats() {

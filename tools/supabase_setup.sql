@@ -102,6 +102,7 @@ create table if not exists public.messages (
   subject text,
   message text not null,
   read boolean not null default false,
+  "type" text,
   "createdAt" timestamptz not null default now()
 );
 

@@ -5,6 +5,7 @@
 alter table public.customers add column if not exists "customerId" text;
 
 -- ── messages table: add all columns used by the app ─────────────
+alter table public.messages add column if not exists "type" text;
 alter table public.messages add column if not exists "ticketId" text;
 alter table public.messages add column if not exists "status" text not null default 'Open';
 alter table public.messages add column if not exists "source" text not null default 'contact-form';
