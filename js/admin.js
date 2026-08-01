@@ -4042,12 +4042,18 @@ function _restoreMessagesUIState(state) {
     });
 }
 
+// Detect inbound emails: explicit type OR (no ticket, no session, has subject, not admin-created)
+// Fallback handles PA flows that omit the type field in the HTTP POST body.
+function _isInboundEmail(m) {
+    return m.type === 'inbound_email' || (!m.ticketId && !m.sessionId && !!m.subject && !m.source);
+}
+
 function _renderTicketHeroStats() {
     const el = document.getElementById('ticketHeroStats');
     if (!el) return;
     const tickets = allMessages.filter(m => m.ticketId && m.type !== 'inbound_email');
-    const chats = allMessages.filter(m => !m.ticketId && m.type !== 'inbound_email');
-    const mails = allMessages.filter(m => m.type === 'inbound_email');
+    const chats = allMessages.filter(m => !_isInboundEmail(m) && !m.ticketId);
+    const mails = allMessages.filter(m => _isInboundEmail(m));
     const open = tickets.filter(m => !['Closed'].includes(m.status || 'Open')).length;
     const unreadChats = chats.filter(m => !m.read).length;
     const unreadMails = mails.filter(m => !m.read).length;
@@ -4082,7 +4088,7 @@ function renderMessages() {
     const search = (document.getElementById('messageSearch')?.value || '').toLowerCase();
     const statusFilter = document.getElementById('ticketStatusFilter')?.value || '';
     // Exclude inbound emails from tickets/chats views
-    let msgs = allMessages.filter(m => m.type !== 'inbound_email' && (_ticketView === 'chats' ? !m.ticketId : !!m.ticketId));
+    let msgs = allMessages.filter(m => !_isInboundEmail(m) && (_ticketView === 'chats' ? !m.ticketId : !!m.ticketId));
     if (search) msgs = msgs.filter(m => (m.name||'').toLowerCase().includes(search) || (m.email||'').toLowerCase().includes(search) || (m.message||'').toLowerCase().includes(search) || (m.ticketId||'').toLowerCase().includes(search));
     if (statusFilter && _ticketView !== 'chats') msgs = msgs.filter(m => (m.status || 'Open') === statusFilter);
 
@@ -4527,7 +4533,7 @@ function renderMailInbox() {
     const container = document.getElementById('messagesList');
     if (!container) return;
     const search = (document.getElementById('messageSearch')?.value || '').toLowerCase();
-    let mails = allMessages.filter(m => m.type === 'inbound_email')
+    let mails = allMessages.filter(m => _isInboundEmail(m))
         .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     if (search) mails = mails.filter(m =>
         (m.name||'').toLowerCase().includes(search) ||
@@ -4743,7 +4749,7 @@ function _onMsgInsert(row) {
     _updateSidebarMsgBadge();
 
     // Inbound email: notify admin and re-render mail tab if active
-    if (msg.type === 'inbound_email') {
+    if (_isInboundEmail(msg)) {
         if (_ticketView === 'mail') {
             renderMailInbox();
         } else {
