@@ -1622,7 +1622,7 @@ function initCommon() {
             if (q.length < 2) { results.innerHTML = ''; return; }
             const matches = productsData.filter(p => p.name.toLowerCase().includes(q) || (p.category || '').includes(q));
             if (!matches.length) {
-                results.innerHTML = `<div class="search-no-results">No products found for "<strong>${q}</strong>"</div>`;
+                results.innerHTML = `<div class="search-no-results">No products found for "<strong>${escapeRichText(q)}</strong>"</div>`;
                 return;
             }
             results.innerHTML = matches.slice(0, 8).map(p =>

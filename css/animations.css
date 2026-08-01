@@ -1433,3 +1433,439 @@ input:focus, textarea:focus, select:focus {
     from { background-position: 200% center; }
     to   { background-position: -200% center; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   12. SECTION TITLE ANIMATED GRADIENT UNDERLINE
+       A teal gradient bar sweeps in from left when the section
+       enters the viewport (relies on .active class added by
+       the existing revealElements() in script.js).
+   ═══════════════════════════════════════════════════════════════ */
+
+.section-title {
+    position: relative;
+    display: inline-block;
+}
+
+/* Default: centered underline (most section headers are text-center) */
+.section-title::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    width: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary) 0%, #14b8a6 50%, #5eead4 100%);
+    border-radius: 4px;
+    transform: translateX(-50%);
+    transition: width 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.2s;
+}
+
+/* Trigger: parent .reveal gets .active when in viewport */
+.reveal.active .section-title::after,
+.section-header.active .section-title::after {
+    width: 55%;
+}
+
+/* Left-aligned headings (why-us section, about page) */
+.why-us-content .section-title::after,
+.about-text-col .section-title::after {
+    left: 0;
+    transform: none;
+}
+
+.why-us-content .reveal.active .section-title::after,
+.about-text-col .reveal.active .section-title::after {
+    width: 60%;
+}
+
+/* On dark backgrounds (testimonials) */
+.testimonials-v2 .section-title::after {
+    background: linear-gradient(90deg, #5eead4 0%, rgba(94,234,212,0.4) 100%);
+}
+
+/* Ensure inline section-title keeps relative positioning correctly */
+.section-title .gradient-text { position: relative; z-index: 1; }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   13. WHATSAPP FLOATING BUTTON — MULTI-RING RIPPLE
+       Three expanding rings pulse out from the button to draw
+       attention without being distracting.
+   ═══════════════════════════════════════════════════════════════ */
+
+.whatsapp-float {
+    position: relative;
+}
+
+.whatsapp-float::before,
+.whatsapp-float::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(37, 211, 102, 0.55);
+    animation: wa-ripple 2.2s ease-out infinite;
+    z-index: -1;
+}
+
+.whatsapp-float::after {
+    background: rgba(37, 211, 102, 0.35);
+    animation-delay: 0.7s;
+}
+
+@keyframes wa-ripple {
+    0%   { transform: scale(1); opacity: 0.7; }
+    100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Chatbot toggle rings */
+.chatbot-toggle {
+    position: relative;
+}
+
+.chatbot-toggle::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(13, 148, 136, 0.45);
+    animation: wa-ripple 2.8s ease-out infinite 1.1s;
+    z-index: -1;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   14. STATS SECTION — GRADIENT NUMBER FILL
+       Numbers in the stats strip get a gradient color when they
+       are counted up (JS adds .counting class during animation).
+   ═══════════════════════════════════════════════════════════════ */
+
+.stat-number {
+    background: linear-gradient(135deg, #ffffff 0%, #a7f3d0 60%, #5eead4 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+}
+
+/* Subtle scale-up during counting */
+.stat-number.counting {
+    animation: stat-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes stat-pop {
+    0%   { transform: scale(0.92); }
+    60%  { transform: scale(1.06); }
+    100% { transform: scale(1); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   15. HERO SCROLL-DOWN INDICATOR
+       An animated bouncing chevron appears at the bottom of the
+       hero section to invite users to scroll.
+   ═══════════════════════════════════════════════════════════════ */
+
+.hero-scroll-indicator {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.72;
+    animation: scroll-fade-in 1s ease 2s both;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.hero-scroll-indicator span {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.hero-scroll-indicator i {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.7);
+    animation: scroll-bounce 1.5s ease-in-out infinite;
+}
+
+@keyframes scroll-bounce {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(7px); }
+}
+
+@keyframes scroll-fade-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+    to   { opacity: 0.72; transform: translateX(-50%) translateY(0); }
+}
+
+@media (max-width: 768px) {
+    .hero-scroll-indicator { display: none; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   16. PRODUCT CARD — AURORA GLOW ON HOVER
+       A soft rainbow-tinted halo appears around the card on
+       hover, giving a premium "aurora borealis" depth effect.
+   ═══════════════════════════════════════════════════════════════ */
+
+.shop-card::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: conic-gradient(
+        from 180deg at 50% 50%,
+        rgba(13, 148, 136, 0) 0deg,
+        rgba(13, 148, 136, 0.18) 60deg,
+        rgba(94, 234, 212, 0.25) 120deg,
+        rgba(99, 102, 241, 0.15) 180deg,
+        rgba(13, 148, 136, 0.18) 240deg,
+        rgba(13, 148, 136, 0) 360deg
+    );
+    opacity: 0;
+    transition: opacity 0.45s ease;
+    z-index: -1;
+    filter: blur(6px);
+    pointer-events: none;
+}
+
+.shop-card:hover::after {
+    opacity: 1;
+    animation: aurora-rotate 4s linear infinite;
+}
+
+@keyframes aurora-rotate {
+    from { filter: blur(6px) hue-rotate(0deg); }
+    to   { filter: blur(6px) hue-rotate(60deg); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   17. HERO TRUST BADGE — STAGGERED FLOAT
+       Each trust badge item floats at a different rate for a
+       lively, depth-filled feeling.
+   ═══════════════════════════════════════════════════════════════ */
+
+.hero-trust .trust-item {
+    animation: trust-float 3.5s ease-in-out infinite;
+}
+
+.hero-trust .trust-item:nth-child(2) { animation-delay: 0.5s; }
+.hero-trust .trust-item:nth-child(3) { animation-delay: 1.0s; }
+
+@keyframes trust-float {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-4px); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   18. TESTIMONIAL SWIPER CARDS — GLASS DEPTH EFFECT
+       Cards in the dark testimonials section get a multi-layer
+       glass appearance with a glowing accent edge on the active
+       slide.
+   ═══════════════════════════════════════════════════════════════ */
+
+.testimonials-v2 .swiper-slide-active .testimonial-card {
+    border-color: rgba(94, 234, 212, 0.4) !important;
+    box-shadow:
+        0 0 0 1px rgba(94, 234, 212, 0.2),
+        0 16px 48px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transform: scale(1.02);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.4s ease,
+                border-color 0.4s ease;
+}
+
+.testimonials-v2 .swiper-slide:not(.swiper-slide-active) .testimonial-card {
+    opacity: 0.78;
+    transform: scale(0.97);
+    transition: transform 0.4s ease, opacity 0.4s ease;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   19. SCROLL PROGRESS BAR — GRADIENT UPGRADE
+       Replace the existing monochrome bar with a flowing
+       gradient that shifts as the user scrolls.
+   ═══════════════════════════════════════════════════════════════ */
+
+.scroll-progress {
+    background: linear-gradient(90deg,
+        #0d9488 0%,
+        #14b8a6 40%,
+        #5eead4 70%,
+        #6366f1 100%) !important;
+    box-shadow: 0 0 8px rgba(13, 148, 136, 0.5) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   20. MEGA MENU — ENHANCED GLASS BACKDROP + STAGGER
+       Categories dropdown menu gets a very subtle frosted-glass
+       look on the background and staggered children entrance.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (min-width: 769px) {
+    .nav-dropdown:hover .mega-menu {
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* Stagger the columns when mega menu appears */
+    .mega-menu-inner > .mega-col {
+        opacity: 0;
+        transform: translateY(8px);
+        transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .nav-dropdown:hover .mega-menu-inner > .mega-col:nth-child(1) { opacity: 1; transform: none; transition-delay: 0.06s; }
+    .nav-dropdown:hover .mega-menu-inner > .mega-col:nth-child(2) { opacity: 1; transform: none; transition-delay: 0.12s; }
+    .nav-dropdown:hover .mega-menu-inner > .mega-col:nth-child(3) { opacity: 1; transform: none; transition-delay: 0.18s; }
+    .nav-dropdown:hover .mega-menu-inner > .mega-col:nth-child(4) { opacity: 1; transform: none; transition-delay: 0.24s; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   21. FOCUS-VISIBLE RING — ACCESSIBILITY + MODERN LOOK
+       Modern browsers support :focus-visible for keyboard
+       navigation. Add a teal ring that only shows on keyboard.
+   ═══════════════════════════════════════════════════════════════ */
+
+:focus-visible {
+    outline: 2px solid rgba(13, 148, 136, 0.7) !important;
+    outline-offset: 3px !important;
+    border-radius: var(--radius-sm) !important;
+}
+
+button:focus-visible,
+a:focus-visible {
+    outline: 2px solid rgba(13, 148, 136, 0.7) !important;
+    outline-offset: 3px !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   22. HERO PRODUCT IMAGE — FLOATING 3D DEPTH ORBS
+       Decorative gradient orbs behind the hero product image
+       add visual depth and a modern editorial look.
+   ═══════════════════════════════════════════════════════════════ */
+
+.hero-prod-img::before {
+    content: '';
+    position: absolute;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(13, 148, 136, 0.22) 0%, transparent 70%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    filter: blur(30px);
+    animation: orb-pulse 5s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.hero-prod-img::after {
+    content: '';
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+    bottom: 30px;
+    right: 20px;
+    filter: blur(20px);
+    animation: orb-pulse 4s ease-in-out infinite 1.5s;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.hero-prod-img img {
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes orb-pulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+    50%       { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+}
+
+/* Fix for ::after on hero-prod-img (no transform needed — it's bottom/right positioned) */
+.hero-prod-img::after {
+    transform: none;
+    animation: orb-drift 4s ease-in-out infinite 1.5s;
+}
+
+@keyframes orb-drift {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.7; }
+    50%       { transform: translateY(-12px) scale(1.1); opacity: 1; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   23. CART DRAWER — GLASSMORPHISM HEADER
+       The cart header gets a frosted glass look that feels
+       premium and modern.
+   ═══════════════════════════════════════════════════════════════ */
+
+.cart-header {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   24. BADGE / STOCK STATUS — PULSE GLOW
+       NEW and SALE badges emit a gentle pulse glow to catch
+       the eye without being jarring.
+   ═══════════════════════════════════════════════════════════════ */
+
+.product-badge,
+.badge-new,
+.badge-sale,
+.shop-badge {
+    animation: badge-glow 2.5s ease-in-out infinite !important;
+}
+
+@keyframes badge-glow {
+    0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+    50%       { box-shadow: 0 0 8px 2px currentColor; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   25. REDUCE-MOTION ADDITIONS — safety for new animations
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-scroll-indicator i,
+    .hero-trust .trust-item,
+    .hero-prod-img::before,
+    .hero-prod-img::after,
+    .whatsapp-float::before,
+    .whatsapp-float::after,
+    .chatbot-toggle::before,
+    .shop-card::after,
+    .stat-number,
+    .section-title::after,
+    .testimonials-v2 .swiper-slide-active .testimonial-card,
+    .product-badge, .badge-new, .badge-sale, .shop-badge {
+        animation: none !important;
+        transition: none !important;
+    }
+    .hero-scroll-indicator { display: none; }
+    .section-title::after { width: 60% !important; }
+}

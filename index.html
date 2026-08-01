@@ -3,6 +3,8 @@
 <head>
     <noscript><div class="noscript-banner">JavaScript is required to use this site. Please enable it in your browser settings.</div></noscript>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://checkout.razorpay.com https://*.supabase.co https://fonts.googleapis.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; frame-src https://checkout.razorpay.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self' https:;">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Siva Suresh Agency | Premium Hospital Linen & Uniforms</title>
     <meta name="description" content="Siva Suresh Agency - Leading suppliers of hospital linen, uniforms, doctor coats, scrub suits, and hotel linen in Erode, Tamil Nadu.">
@@ -12,7 +14,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
     <link rel="stylesheet" href="css/style.css?v=93">
-    <link rel="stylesheet" href="css/animations.css?v=6">
+    <link rel="stylesheet" href="css/animations.css?v=7">
     <link rel="preload" as="image" href="images/products/ssa-cliniflex-scrub-round-neck-thumb-9f69cdc3.jpg">
     <link rel="icon" type="image/png" href="images/SSA Logo.png">    <link rel="apple-touch-icon" href="images/SSA Logo.png">
     <meta name="theme-color" content="#0d9488">
@@ -279,9 +281,14 @@
             <div class="hero-dots"><span class="dot active" data-slide="1"></span><span class="dot" data-slide="2"></span><span class="dot" data-slide="3"></span><span class="dot" data-slide="4"></span></div>
             <button class="hero-next" aria-label="Next"><i class="fas fa-chevron-right"></i></button>
         </div>
+        <!-- Scroll down indicator -->
+        <a href="#trust-strip" class="hero-scroll-indicator" aria-label="Scroll down">
+            <span>Scroll</span>
+            <i class="fas fa-chevron-down"></i>
+        </a>
     </section>
     <!-- Trust Strip -->
-    <div class="trust-strip">
+    <div class="trust-strip" id="trust-strip">
         <div class="container">
             <div class="trust-strip-inner">
                 <div class="trust-strip-item"><div class="ts-icon"><i class="fas fa-shipping-fast"></i></div><div><span class="ts-label">Free Delivery</span><span class="ts-sub">On bulk orders &#8377;2000+</span></div></div>

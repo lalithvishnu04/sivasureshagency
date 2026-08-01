@@ -1,6 +1,10 @@
 ﻿// SSA Admin v69 — Dashboard, categories, products, inventory, orders, customers, mail-inbox
 // db, auth, fsServerTimestamp, fsIncrement are set by js/db-init.js
 
+// ── Security: HTML escape helper (prevents XSS in dynamic innerHTML) ─────
+const escHtml = s => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 // ===== Help Panel Toggle =====
 function toggleHelpPanel() {
     const panel = document.getElementById('helpPanel');
@@ -493,7 +497,7 @@ async function loadOrders() {
         renderOrders();
     } catch (err) {
         console.error('Orders error:', err);
-        if (grid) grid.innerHTML = '<div class="admin-orders-empty" style="color:red"><i class="fas fa-exclamation-triangle"></i><p>Failed to load orders.<br><small>' + err.message + '</small></p></div>';
+        if (grid) grid.innerHTML = '<div class="admin-orders-empty" style="color:red"><i class="fas fa-exclamation-triangle"></i><p>Failed to load orders.<br><small>' + escHtml(err.message) + '</small></p></div>';
     }
 }
 
@@ -2110,7 +2114,7 @@ async function loadCustomers() {
         renderCustomers();
     } catch (err) {
         console.error('Customers error:', err);
-        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty" style="color:red">Error: ' + err.message + '</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty" style="color:red">Error: ' + escHtml(err.message) + '</td></tr>';
     }
 }
 
@@ -4012,7 +4016,7 @@ async function loadMessages() {
         _restoreMessagesUIState(uiState);
 
     } catch (err) {
-        if (isFirstLoad) container.innerHTML = '<p class="empty" style="color:red">Error loading tickets: ' + err.message + '</p>';
+        if (isFirstLoad) container.innerHTML = '<p class="empty" style="color:red">Error loading tickets: ' + escHtml(err.message) + '</p>';
     }
 }
 
