@@ -520,6 +520,7 @@
                             <!-- ─ Power Automate ─ -->
                             <div class="comm-sub-heading"><i class="fas fa-bolt"></i> Power Automate</div>
                             <p class="settings-section-desc" style="margin:0 0 14px;">Manage all Power Automate webhook URLs. Click a section to expand it. Use <strong>Test Connection</strong> to verify each URL.</p>
+                            <div class="info-banner" style="margin-bottom:18px;background:#f0fdf4;border-color:#bbf7d0;"><i class="fas fa-user-circle" style="color:#16a34a;"></i><div style="font-size:0.78rem;"><b>All flows must be created in the <code>info@sivasureshagency.onmicrosoft.com</code> account.</b><br>Sign in at <a href="https://make.powerautomate.com" target="_blank" style="color:#0d9488;">make.powerautomate.com</a> with info@ &rarr; <b>My flows &rarr; New flow &rarr; Automated cloud flow from blank</b>.<br>For flows 1–5: Trigger = <b>"When an HTTP request is received"</b> (Request connector) &rarr; add <b>"Send an email (V2)"</b> (Office 365 Outlook) &rarr; Save &rarr; copy the HTTP URL here.<br>For flow 6 (Receive): Trigger = <b>"When a new email arrives (V3)"</b> (Outlook) &rarr; add <b>HTTP POST</b> to Supabase (no URL needed here).</div></div>
                             <div class="comm-accordion" id="commAccordion">
                                 <!-- Email Automation -->
                                 <div class="comm-acc-item" id="accEmail">
@@ -537,6 +538,7 @@
                                         </div>
                                     </button>
                                     <div class="comm-acc-body">
+                                        <div class="info-banner" style="margin-bottom:10px;background:#f0f9ff;border-color:#bae6fd;"><i class="fas fa-bolt" style="color:#0ea5e9;"></i><div style="font-size:0.75rem;"><b>Flow: SSA Contact Form Email</b> &nbsp;(info@ account)<br><b>Trigger:</b> When an HTTP request is received &rarr; <b>Action:</b> Send an email (V2)<br>To: <code>@{triggerBody()?['adminEmail']}</code> &nbsp; Subject: <code>@{triggerBody()?['emailSubject']}</code><br>Body: <code>@{triggerBody()?['emailBody']}</code> &nbsp; <i>Is HTML = Yes</i></div></div>
                                         <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Contact Form Webhook URL</label>
                                         <div class="comm-field-wrap">
                                             <input type="url" id="webhookContactForm" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeEmail',this.value)">
@@ -560,6 +562,7 @@
                                         </div>
                                     </button>
                                     <div class="comm-acc-body">
+                                        <div class="info-banner" style="margin-bottom:10px;background:#f0f9ff;border-color:#bae6fd;"><i class="fas fa-bolt" style="color:#0ea5e9;"></i><div style="font-size:0.75rem;"><b>Flow: SSA Ticket Status Email</b> &nbsp;(info@ account)<br><b>Trigger:</b> When an HTTP request is received &rarr; <b>Action:</b> Send an email (V2)<br>To: <code>@{triggerBody()?['customerEmail']}</code> &nbsp; Subject: <code>@{triggerBody()?['emailSubject']}</code><br>Body: <code>@{triggerBody()?['emailBody']}</code> &nbsp; <i>Is HTML = Yes</i></div></div>
                                         <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Ticket Status Webhook URL</label>
                                         <div class="comm-field-wrap">
                                             <input type="url" id="webhookTicketStatus" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeTicket',this.value)">
@@ -583,6 +586,7 @@
                                         </div>
                                     </button>
                                     <div class="comm-acc-body">
+                                        <div class="info-banner" style="margin-bottom:10px;background:#f0f9ff;border-color:#bae6fd;"><i class="fas fa-bolt" style="color:#0ea5e9;"></i><div style="font-size:0.75rem;"><b>Flow: SSA Live Agent Alert</b> &nbsp;(info@ account)<br><b>Trigger:</b> When an HTTP request is received &rarr; <b>Action:</b> Send an email (V2)<br>To: <code>@{triggerBody()?['adminEmail']}</code> &nbsp; Subject: <code>@{triggerBody()?['emailSubject']}</code><br>Body: <code>@{triggerBody()?['emailBody']}</code> &nbsp; <i>Is HTML = Yes</i><br><span style="color:#7c3aed;">Optional: also add a Teams &rarr; Post message action using <code>@{triggerBody()?['teamsMessage']}</code></span></div></div>
                                         <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Live Agent Webhook URL</label>
                                         <div class="comm-field-wrap">
                                             <input type="url" id="webhookLiveAgent" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeAgent',this.value)">
@@ -606,6 +610,7 @@
                                         </div>
                                     </button>
                                     <div class="comm-acc-body">
+                                        <div class="info-banner" style="margin-bottom:10px;background:#f0f9ff;border-color:#bae6fd;"><i class="fas fa-bolt" style="color:#0ea5e9;"></i><div style="font-size:0.75rem;"><b>Flow: SSA Rating Alert</b> &nbsp;(info@ account)<br><b>Trigger:</b> When an HTTP request is received &rarr; <b>Action:</b> Send an email (V2)<br>To: <code>@{triggerBody()?['adminEmail']}</code> &nbsp; Subject: <code>@{triggerBody()?['emailSubject']}</code><br>Body: <code>@{triggerBody()?['emailBody']}</code> &nbsp; <i>Is HTML = Yes</i></div></div>
                                         <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Rating Webhook URL</label>
                                         <div class="comm-field-wrap">
                                             <input type="url" id="webhookRating" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeRating',this.value)">
@@ -629,14 +634,11 @@
                                         </div>
                                     </button>
                                     <div class="comm-acc-body">
-                                        <div class="info-banner" style="margin-bottom:12px;background:#ede9fe;border-color:#c4b5fd;"><i class="fas fa-info-circle" style="color:#6366f1;"></i><div style="font-size:0.78rem;"><b>Two Power Automate flows needed:</b><br>
-                                            <b>1. Receive:</b> Trigger: "When a new email arrives (V3)" on info@ &rarr; Action: HTTP POST to Supabase REST API<br>
-                                            &nbsp;&nbsp;&nbsp;URL: <code style="font-size:0.72rem;">https://kyzlxhncnqahlpfhtoky.supabase.co/rest/v1/messages</code><br>
-                                            &nbsp;&nbsp;&nbsp;Headers: <code style="font-size:0.72rem;">apikey: sb_publishable_0hcswuIONUUJPdBl7RRIHw_JH7MsGeK</code><br>
-                                            &nbsp;&nbsp;&nbsp;Body: <code style="font-size:0.72rem;">{"name":"@{triggerBody()?['from']}","email":"@{triggerBody()?['from']}","subject":"@{triggerBody()?['subject']}","message":"@{triggerBody()?['body']}","type":"inbound_email","status":"Unread","read":false}</code><br>
-                                            <b>2. Reply:</b> Trigger: HTTP Request &rarr; Action: "Send an email (V2)" from info@ using <code>emailBody</code> field
-                                        </div></div>
-                                        <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Mail Reply Webhook URL (Flow 2)</label>
+                                        <!-- Flow 6: Receive (auto, no URL needed here) -->
+                                        <div class="info-banner" style="margin-bottom:10px;background:#ede9fe;border-color:#c4b5fd;"><i class="fas fa-inbox" style="color:#6366f1;"></i><div style="font-size:0.75rem;"><b>Flow 6: SSA Mail Inbox Receive</b> &nbsp;&mdash;&nbsp; Runs automatically, no URL required here.<br><b>Trigger:</b> "When a new email arrives (V3)" (Office 365 Outlook) &rarr; Inbox of <code>info@sivasureshagency.onmicrosoft.com</code><br><b>Action:</b> HTTP &rarr; POST<br>&nbsp;&nbsp;URI: <code>https://kyzlxhncnqahlpfhtoky.supabase.co/rest/v1/messages</code><br>&nbsp;&nbsp;Headers: <code>apikey: sb_publishable_0hcswuIONUUJPdBl7RRIHw_JH7MsGeK</code> &nbsp; <code>Content-Type: application/json</code> &nbsp; <code>Prefer: return=minimal</code><br>&nbsp;&nbsp;Body (raw JSON):<br><code style="font-size:0.69rem;word-break:break-all;">{"name":"@{triggerBody()?['sender']?['emailAddress']?['name']}","email":"@{triggerBody()?['sender']?['emailAddress']?['address']}","subject":"@{triggerBody()?['subject']}","message":"@{triggerBody()?['bodyPreview']}","type":"inbound_email","status":"Unread","read":false}</code></div></div>
+                                        <!-- Flow 5: Reply (HTTP trigger → send from info@) -->
+                                        <div class="info-banner" style="margin-bottom:12px;background:#f0fdf4;border-color:#bbf7d0;"><i class="fas fa-paper-plane" style="color:#16a34a;"></i><div style="font-size:0.75rem;"><b>Flow 5: SSA Mail Reply</b> &nbsp;&mdash;&nbsp; Paste the HTTP URL below after creating this flow.<br><b>Trigger:</b> When an HTTP request is received (Method: POST)<br><b>Action:</b> Office 365 Outlook &rarr; Send an email (V2)<br>&nbsp;&nbsp;From: <code>info@sivasureshagency.onmicrosoft.com</code> (select account)<br>&nbsp;&nbsp;To: <code>@{triggerBody()?['to']}</code><br>&nbsp;&nbsp;Subject: <code>@{triggerBody()?['subject']}</code><br>&nbsp;&nbsp;Body: <code>@{triggerBody()?['emailBody']}</code> &nbsp; <b>Is HTML = Yes</b><br><span style="color:#475569;"><i>The emailBody field contains the full SSA-branded HTML email with signature &mdash; sent as-is.</i></span></div></div>
+                                        <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Mail Reply Webhook URL (Flow 5 &mdash; SSA Mail Reply)</label>
                                         <div class="comm-field-wrap">
                                             <input type="url" id="webhookMailReply" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgeMailReply',this.value)">
                                             <button class="comm-test-btn" onclick="testWebhook('webhookMailReply')">Test</button>
