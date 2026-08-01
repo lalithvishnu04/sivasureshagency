@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css?v=92">
+    <link rel="stylesheet" href="css/admin.css?v=93">
     <link rel="stylesheet" href="css/animations.css?v=6">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="icon" type="image/png" href="images/SSA Logo.png">
@@ -461,8 +461,22 @@
 
             <!-- Settings Page -->
             <div class="page" id="page-settings">
+                <div class="settings-redesign-shell">
+                <div class="settings-hero-card">
+                    <div class="settings-hero-main">
+                        <span class="settings-kicker">Admin Controls</span>
+                        <h3><i class="fas fa-sliders-h"></i> Settings & Integrations</h3>
+                        <p>Manage security, Power Automate webhooks, and integration keys from one clean workspace.</p>
+                    </div>
+                    <div class="settings-hero-pills">
+                        <span class="settings-pill"><i class="fas fa-shield-alt"></i> Security</span>
+                        <span class="settings-pill"><i class="fas fa-bolt"></i> Automations</span>
+                        <span class="settings-pill"><i class="fab fa-github"></i> Media Uploads</span>
+                    </div>
+                </div>
+
                 <!-- Security / Password -->
-                <div class="settings-panel" style="margin-bottom:20px;">
+                <div class="settings-panel settings-security-block" style="margin-bottom:20px;">
                     <div class="settings-section">
                         <h4 class="settings-section-title"><i class="fas fa-shield-alt"></i> Security &mdash; Change Password</h4>
                         <p class="settings-section-desc">Update your admin password regularly to keep the panel secure.</p>
@@ -502,7 +516,7 @@
                 </div>
 
                 <!-- Communication Settings — outer collapsible panel -->
-                <div class="settings-panel" style="padding:0;">
+                <div class="settings-panel settings-comm-block" style="padding:0;">
                     <div class="comm-settings-outer open" id="commSettingsOuter">
                         <!-- Main Toggle Header -->
                         <button class="comm-set-header" onclick="toggleCommSettings()">
@@ -660,6 +674,7 @@
                             <button class="btn-primary" onclick="saveGithubPAT()"><i class="fas fa-save"></i> Save GitHub Key</button>
                         </div><!-- /comm-set-body -->
                     </div><!-- /comm-settings-outer -->
+                </div>
                 </div>
             </div>
 
