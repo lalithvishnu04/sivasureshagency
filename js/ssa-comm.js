@@ -218,7 +218,6 @@ window.SSA_COMM = (function () {
           )}
           <p style="font-family:'Times New Roman',Times,serif;font-size:13px;font-weight:bold;font-style:italic;color:#475569;margin:20px 0 8px;">Message:</p>
           <div style="background:#f8fafc;border-left:4px solid #0d9488;border-radius:0 8px 8px 0;padding:14px 18px;font-family:'Times New Roman',Times,serif;font-size:14px;color:#1e293b;line-height:1.7;white-space:pre-wrap;">${data.message}</div>
-          ${data.attachmentUrls && data.attachmentUrls.length ? `<p style="font-family:'Times New Roman',Times,serif;font-size:13px;color:#64748b;margin:12px 0 0;">📎 <i>Attachments:</i> ${data.attachmentUrls.map(u=>`<a href="${u}" style="color:#0d9488;">${u}</a>`).join(', ')}</p>` : ''}
         `;
         const ctaHtml = `<div style="text-align:center;margin:28px 0 0;"><a href="https://lalithvishnu04.github.io/sivasureshagency/admin.html" style="display:inline-block;background:linear-gradient(135deg,#0d9488,#1e3a5f);color:#fff;font-family:'Times New Roman',Times,serif;font-size:15px;font-weight:bold;padding:13px 32px;border-radius:30px;text-decoration:none;letter-spacing:0.3px;">Open Admin Panel →</a></div>`;
         return postWebhook(cfg.contactFormWebhook, {
@@ -231,7 +230,7 @@ window.SSA_COMM = (function () {
             customerPhone: data.phone,
             subject: data.subject || 'General Inquiry',
             message: data.message,
-            attachmentUrls: data.attachmentUrls || [],
+            attachmentUrls: [],
             customerId: data.customerId || '',
             timestamp: new Date().toISOString(),
             emailSubject: `[${data.ticketId}] New Query: ${data.subject || 'General Inquiry'}`,
@@ -256,7 +255,7 @@ window.SSA_COMM = (function () {
               _fieldRow('Created', new Date().toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'}))
           )}
           <div style="background:#f0fdfa;border:1.5px solid #ccfbf1;border-radius:10px;padding:14px 18px;margin:20px 0;font-family:'Times New Roman',Times,serif;font-size:13px;color:#0f766e;">
-            💡 <b>Save your Ticket ID</b> <code style="background:#fff;border:1px solid #ccfbf1;padding:2px 8px;border-radius:4px;font-size:14px;">${data.ticketId}</code> — you can track your ticket without logging in.
+                        💡 <b>Save your Ticket ID</b> <code style="background:#fff;border:1px solid #ccfbf1;padding:2px 8px;border-radius:4px;font-size:14px;">${data.ticketId}</code> — sign in to your account, then track it on our Tickets page.
           </div>
         ` : `
           <p style="font-family:'Times New Roman',Times,serif;font-size:16px;color:#0f172a;margin:0 0 4px;"><b>Dear ${data.customerName},</b></p>

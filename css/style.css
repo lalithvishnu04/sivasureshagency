@@ -997,8 +997,6 @@ body.modal-open { overflow: hidden; touch-action: none; }
 .contact-social { margin-top: 20px; }
 .contact-social h4 { font-size: 0.87rem; margin-bottom: 8px; font-weight: 700; }
 .contact-form-wrapper { background: #fff; border-radius: var(--radius-lg); padding: 26px; border: 1px solid var(--border); box-shadow: var(--shadow); }
-.file-drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; transition: var(--transition); background: var(--bg-off); }
-.file-drop-zone:hover { border-color: var(--primary); background: #f0fdfa; }
 .map-section { margin-top: -4px; }
 .map-section iframe { display: block; width: 100%; }
 

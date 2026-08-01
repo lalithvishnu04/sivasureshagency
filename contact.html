@@ -166,17 +166,6 @@
                             <label>Message *</label>
                             <textarea id="ctMessage" name="message" rows="5" placeholder="Tell us about your requirements..." required></textarea>
                         </div>
-                        <!-- File Attachment -->
-                        <div class="form-group">
-                            <label><i class="fas fa-paperclip" style="color:var(--primary)"></i> Attach Files <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;">(Images/PDF, max 5MB each, up to 3 files)</span></label>
-                            <div class="file-drop-zone" id="contactFileDrop" onclick="document.getElementById('ctFiles').click()">
-                                <i class="fas fa-cloud-upload-alt" style="font-size:1.5rem;color:var(--primary);margin-bottom:6px;"></i>
-                                <p style="margin:0;font-size:0.83rem;color:var(--text-muted);">Click to upload or drag &amp; drop</p>
-                                <p style="margin:0;font-size:0.75rem;color:var(--text-muted);">Images, PDF supported</p>
-                            </div>
-                            <input type="file" id="ctFiles" multiple accept="image/*,.pdf" style="display:none" onchange="handleContactFiles(this)">
-                            <div id="ctFilePreviews" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
-                        </div>
                         <button type="submit" class="btn btn-gradient btn-lg btn-full" id="ctSubmitBtn">
                             <i class="fas fa-paper-plane"></i> Send Message
                         </button>
@@ -276,7 +265,7 @@
     <button id="backToTop" class="back-to-top"><i class="fas fa-chevron-up"></i></button>
     <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
     <script src="js/product-helpers.js" defer></script>
-    <script src="js/script.js?v=111" defer></script>
+    <script src="js/script.js?v=117" defer></script>
     <script src="js/animations.js?v=5" defer></script>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
@@ -284,33 +273,10 @@
     <script src="js/api.js?v=80" defer></script>
     <script src="js/backend-config.js?v=75" defer></script>
     <script src="js/db-init.js?v=81" defer></script>
-    <script src="js/ssa-comm.js?v=3" defer></script>
+    <script src="js/ssa-comm.js?v=5" defer></script>
     <script defer src="js/db-integration.js?v=84"></script>
     <script>
-    // -- Contact form: file handling --
-    let _ctAttachedFiles = [];
-    function handleContactFiles(input) {
-        const previews = document.getElementById('ctFilePreviews');
-        Array.from(input.files).slice(0, 3).forEach(file => {
-            if (_ctAttachedFiles.length >= 3) return;
-            if (file.size > 5 * 1024 * 1024) { alert(file.name + ' exceeds 5MB limit'); return; }
-            _ctAttachedFiles.push(file);
-            const wrap = document.createElement('div');
-            wrap.style.cssText = 'display:flex;align-items:center;gap:6px;background:var(--bg-off);border-radius:8px;padding:6px 10px;font-size:0.78rem;color:var(--text-muted);';
-            wrap.innerHTML = `<i class="fas fa-file" style="color:var(--primary)"></i><span style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${file.name}</span><button type="button" onclick="this.parentElement.remove();_ctAttachedFiles=_ctAttachedFiles.filter(f=>f.name!=='${file.name.replace(/'/g,'\\\'')}')" style="background:none;border:none;cursor:pointer;color:#ef4444;padding:0;margin-left:4px;"><i class="fas fa-times"></i></button>`;
-            previews.appendChild(wrap);
-        });
-        input.value = '';
-    }
-
-    // -- Drag & drop on file zone --
     document.addEventListener('DOMContentLoaded', function() {
-        const zone = document.getElementById('contactFileDrop');
-        if (!zone) return;
-        zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = 'var(--primary)'; zone.style.background = '#f0fdfa'; });
-        zone.addEventListener('dragleave', () => { zone.style.borderColor = ''; zone.style.background = ''; });
-        zone.addEventListener('drop', e => { e.preventDefault(); zone.style.borderColor = ''; zone.style.background = ''; const dt = { files: e.dataTransfer.files }; handleContactFiles({ files: dt.files, value: '' }); });
-
         // Pre-fill from logged-in user
         prefillContactFromLogin();
     });
@@ -367,21 +333,6 @@
             const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
             const customerId = user?.customerId || '';
 
-            // Upload files to Supabase Storage if available
-            const attachmentUrls = [];
-            if (_ctAttachedFiles.length && window.supabase) {
-                for (const file of _ctAttachedFiles) {
-                    try {
-                        const path = 'tickets/' + ticketId + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-                        const { data } = await window.supabase.storage.from('assets').upload(path, file, { upsert: true });
-                        if (data) {
-                            const { data: urlData } = window.supabase.storage.from('assets').getPublicUrl(path);
-                            if (urlData?.publicUrl) attachmentUrls.push(urlData.publicUrl);
-                        }
-                    } catch (fe) { console.warn('File upload failed:', fe.message); }
-                }
-            }
-
             // Save to Supabase (messages collection)
             if (window.db) {
                 const msgDoc = {
@@ -392,13 +343,12 @@
                     updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date(),
                     read: false, source: 'contact-form'
                 };
-                if (attachmentUrls.length) msgDoc.attachmentUrls = attachmentUrls;
                 await window.db.collection('messages').add(msgDoc);
             }
 
             // Send via Power Automate webhook — email to Admin
             if (window.SSA_COMM && window.SSA_COMM.sendContactFormEmail) {
-                await window.SSA_COMM.sendContactFormEmail({ ticketId, name, email, phone, subject, message, attachmentUrls, customerId });
+                await window.SSA_COMM.sendContactFormEmail({ ticketId, name, email, phone, subject, message, customerId });
             }
 
             // Send confirmation email to the customer via PA ticket-status webhook
@@ -417,7 +367,6 @@
             document.getElementById('contactForm').style.display = 'none';
             document.getElementById('contactSuccess').style.display = 'block';
             document.getElementById('contactTicketId').textContent = ticketId;
-            _ctAttachedFiles = [];
 
         } catch (err) {
             btn.disabled = false;
@@ -432,14 +381,11 @@
         document.getElementById('contactSuccess').style.display = 'none';
         document.getElementById('ctSubmitBtn').disabled = false;
         document.getElementById('ctSubmitBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Send Message';
-        document.getElementById('ctFilePreviews').innerHTML = '';
-        _ctAttachedFiles = [];
         // Re-populate name/email/phone from logged-in user session
         prefillContactFromLogin();
     }
     window.submitContactForm = submitContactForm;
     window.resetContactForm = resetContactForm;
-    window.handleContactFiles = handleContactFiles;
     </script>
     <!-- Mobile Bottom Navigation -->
 </html>

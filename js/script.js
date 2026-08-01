@@ -1389,6 +1389,43 @@ window.addEventListener('popstate', () => {
     }
 });
 
+function initImageProtection() {
+    const markImages = (root = document) => {
+        root.querySelectorAll('img').forEach(img => {
+            img.setAttribute('draggable', 'false');
+            img.style.webkitUserDrag = 'none';
+            img.style.userSelect = 'none';
+        });
+    };
+
+    markImages(document);
+
+    document.addEventListener('contextmenu', e => {
+        if (e.target && e.target.closest && e.target.closest('img, picture')) e.preventDefault();
+    }, true);
+
+    document.addEventListener('dragstart', e => {
+        if (e.target && e.target.closest && e.target.closest('img, picture, a[href$=".jpg"], a[href$=".jpeg"], a[href$=".png"], a[href$=".webp"], a[href$=".gif"]')) {
+            e.preventDefault();
+        }
+    }, true);
+
+    const obs = new MutationObserver(muts => {
+        muts.forEach(m => {
+            m.addedNodes.forEach(n => {
+                if (n.nodeType !== 1) return;
+                if (n.matches && n.matches('img')) {
+                    n.setAttribute('draggable', 'false');
+                    n.style.webkitUserDrag = 'none';
+                    n.style.userSelect = 'none';
+                }
+                if (n.querySelectorAll) markImages(n);
+            });
+        });
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+}
+
 // ===== Common Init (all pages) =====
 function initCommon() {
     // Populate mega-menu thumbnails from admin-uploaded images (refreshed again after product sync)
@@ -1401,6 +1438,8 @@ function initCommon() {
     if (typeof renderFooterCategories === 'function') renderFooterCategories();
     // Enable hover auto-scroll of product tile images
     if (typeof initCardHoverCycle === 'function') initCardHoverCycle();
+    // Deter browser drag/save actions on images (not absolute DRM).
+    initImageProtection();
     // Apply scrub brand name from localStorage to all pages
     applyScrubBrandName();
     // Fix nav active state based on current URL (CliniFlex highlighted only on scrub-suits)
