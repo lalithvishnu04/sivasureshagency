@@ -4500,6 +4500,12 @@ function buildInvoiceHtml(order) {
         const shipping = _bestShippingForInvoice(order);
         const logoUrl = new URL('images/SSA Logo.png', window.location.href).href;
         const invoiceDate = new Date(order.date || Date.now());
+    const rawStatus = String(order.status || '').toLowerCase();
+    const invoiceStatus = rawStatus.includes('cancel')
+        ? { label: 'Cancelled', cls: 'status-cancel', icon: 'fa-circle-xmark' }
+        : (rawStatus.includes('fail') || rawStatus.includes('declin') || rawStatus.includes('reject'))
+            ? { label: 'Failed', cls: 'status-failed', icon: 'fa-triangle-exclamation' }
+            : { label: 'Success', cls: 'status-success', icon: 'fa-circle-check' };
         const rows = (order.items || []).map(i => {
                 const qty = i.qty || 0;
                 const unit = i.price || 0;
@@ -4578,7 +4584,10 @@ function buildInvoiceHtml(order) {
         .info-detail .d-row{display:flex;align-items:baseline;gap:6px;margin-bottom:2px;}
         .info-detail .d-row i{color:var(--muted);font-size:11px;width:13px;flex-shrink:0;}
         .info-detail .d-key{font-weight:600;color:var(--navy);min-width:80px;}
-        .status-ok{color:#16a34a;font-weight:700;}
+        .status-pill{font-weight:700;display:inline-flex;align-items:center;gap:6px;}
+        .status-success{color:#16a34a;}
+        .status-failed{color:#dc2626;}
+        .status-cancel{color:#b45309;}
         /* ── Table ── */
         .section-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
         .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
@@ -4636,7 +4645,8 @@ function buildInvoiceHtml(order) {
         @media print{
             .action-bar{display:none!important;}
             body{background:#fff!important;padding:0!important;}
-            .sheet{max-width:100%;border-radius:0;box-shadow:none;}
+            body::before{content:'';position:fixed;inset:0;background:url('${logoUrl}') center center / 70% auto no-repeat;opacity:.06;z-index:0;}
+            .sheet{width:194mm;max-width:194mm;margin:0 auto;border-radius:0;box-shadow:none;position:relative;z-index:1;}
             .inv-header{padding:18px 24px;background:linear-gradient(135deg,#0a1628 0%,#0e4a86 58%,#1e6fd9 100%)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
             thead tr{background:linear-gradient(135deg,#0a1628,#0e4a86)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
             .grand-row{background:linear-gradient(135deg,#0a1628,#0e4a86)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
@@ -4695,7 +4705,7 @@ function buildInvoiceHtml(order) {
                         <div class="d-row"><span class="d-key">Invoice No</span><span style="font-family:monospace;font-weight:700;color:#0e4a86;">${order.invoiceId || order.id}</span></div>
                         <div class="d-row"><span class="d-key">Order Date</span><span>${invoiceDate.toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'})}</span></div>
                         <div class="d-row"><span class="d-key">Payment</span><span>${order.payment || 'Cash on Delivery'}</span></div>
-                        <div class="d-row"><span class="d-key">Status</span><span class="status-ok"><i class="fas fa-circle-check"></i> Confirmed</span></div>
+                        <div class="d-row"><span class="d-key">Status</span><span class="status-pill ${invoiceStatus.cls}"><i class="fas ${invoiceStatus.icon}"></i> ${invoiceStatus.label}</span></div>
                     </div>
                 </div>
             </div>
