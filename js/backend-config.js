@@ -5,7 +5,7 @@ window.SSA_BACKEND = {
     supabaseUrl: 'https://kyzlxhncnqahlpfhtoky.supabase.co',
     supabaseAnonKey: 'sb_publishable_0hcswuIONUUJPdBl7RRIHw_JH7MsGeK',
     storageBucket: 'assets',
-    authResetApiBase: 'https://us-central1-siva-suresh-agency.cloudfunctions.net/ssa'
+    authResetApiBase: 'https://kyzlxhncnqahlpfhtoky.supabase.co/functions/v1/ssa'
 };
 
 // Razorpay configuration

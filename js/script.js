@@ -2861,7 +2861,7 @@ let _fpResetState = { challengeId: '', email: '', expiresAt: 0 };
 
 function _getAuthResetApiBase() {
     const cfg = window.SSA_BACKEND || {};
-    return (cfg.authResetApiBase || 'https://us-central1-siva-suresh-agency.cloudfunctions.net/ssa').replace(/\/$/, '');
+    return (cfg.authResetApiBase || 'https://kyzlxhncnqahlpfhtoky.supabase.co/functions/v1/ssa').replace(/\/$/, '');
 }
 
 async function _authResetPost(path, body) {

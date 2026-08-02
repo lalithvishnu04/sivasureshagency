@@ -1,0 +1,8 @@
+# Supabase project config
+# Docs: https://supabase.com/docs/guides/cli/config
+
+project_id = "kyzlxhncnqahlpfhtoky"
+
+[functions.ssa]
+# OTP endpoints are public — no JWT required from the caller
+verify_jwt = false
