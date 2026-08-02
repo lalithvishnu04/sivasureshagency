@@ -1882,7 +1882,7 @@ function printOrderInvoice(docId) {
         .action-bar{max-width:920px;margin:0 auto 18px;display:flex;justify-content:flex-end;gap:10px;}
         .btn-print{display:inline-flex;align-items:center;gap:8px;padding:10px 26px;background:linear-gradient(135deg,#0e4a86,#1e6fd9);color:#fff;border:none;border-radius:10px;font-size:.875rem;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(14,74,134,.4);transition:all .2s;letter-spacing:.02em;}
         .btn-print:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(14,74,134,.5);}
-        .sheet{max-width:920px;margin:0 auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(10,22,40,.18);}
+        .sheet{max-width:920px;margin:0 auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(10,22,40,.18);position:relative;}
         /* ── Header ── */
         .inv-header{background:linear-gradient(135deg,#0a1628 0%,#0e4a86 58%,#1e6fd9 100%);padding:32px 36px;position:relative;overflow:hidden;}
         .inv-header::before{content:'INVOICE';position:absolute;right:-12px;top:50%;transform:translateY(-50%);font-size:118px;font-weight:900;color:rgba(255,255,255,.04);letter-spacing:-4px;pointer-events:none;}
@@ -1989,11 +1989,11 @@ function printOrderInvoice(docId) {
     </style>
 </head>
 <body>
-    <div style="position:fixed;inset:0;background:url('${logoUrl}') center/55% no-repeat;opacity:.08;pointer-events:none;z-index:9999;-webkit-print-color-adjust:exact;print-color-adjust:exact;" aria-hidden="true"></div>
     <div class="action-bar">
         <button class="btn-print" onclick="window.print()"><i class="fas fa-print"></i>&nbsp; Print Invoice</button>
     </div>
     <div class="sheet">
+        <div style="position:absolute;inset:0;background:url('${logoUrl}') center/55% no-repeat;opacity:.08;pointer-events:none;z-index:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;" aria-hidden="true"></div>
         <div class="inv-header">
             <div class="header-inner">
                 <div class="brand-side">
