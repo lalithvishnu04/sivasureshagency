@@ -4731,7 +4731,7 @@ function buildInvoiceHtml(order) {
                     <div class="ty-icon"><i class="fas fa-heart"></i></div>
                     <div class="ty-text">
                         <h3>Thank You for Trusting Siva Suresh Agency!</h3>
-                        <p>Your confidence in us is our greatest honour. Every item in this order has been prepared with meticulous care &mdash; from the finest fabric selection to the precision of every stitch. For over <strong style="color:#fbbf24;">15 years</strong>, we have proudly served <strong style="color:#fbbf24;">500+ hospitals</strong> across India, and your order strengthens that legacy of excellence. We are committed to delivering quality that you and your patients truly deserve &mdash; crafted with pride, delivered with dedication.</p>
+                        <p>Your order means the world to us. Crafted with care, delivered with pride &mdash; that's our promise to you, always.</p>
                         <div class="ty-highlights">
                             <span class="ty-chip"><i class="fas fa-star"></i> 15+ Years of Excellence</span>
                             <span class="ty-chip"><i class="fas fa-hospital"></i> 500+ Hospitals Served</span>
