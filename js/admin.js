@@ -868,6 +868,7 @@ function showAdminOrderDetail(docId) {
                         <div class="admin-od-info-row"><span class="admin-od-info-label">Method</span><span class="admin-od-info-value">${_escHtmlCat(o.payment || 'COD')}</span></div>
                         <div class="admin-od-info-row"><span class="admin-od-info-label">Status</span><span class="admin-od-info-value" style="color:${(o.paymentStatus||'').toLowerCase().includes('paid') ? '#16a34a' : '#b45309'};font-weight:600;">${_escHtmlCat(o.paymentStatus || '—')}</span></div>
                         <div class="admin-od-info-row"><span class="admin-od-info-label">Total</span><span class="admin-od-info-value" style="color:var(--primary);font-size:1rem;">₹${(o.total || 0).toLocaleString('en-IN')}</span></div>
+                        ${o.invoiceId ? `<div class="admin-od-info-row"><span class="admin-od-info-label">Invoice No</span><span class="admin-od-info-value" style="font-family:monospace;font-size:0.78rem;font-weight:700;color:var(--primary);">${_escHtmlCat(o.invoiceId)}</span></div>` : ''}
                         ${o.razorpay && o.razorpay.paymentId ? `<div class="admin-od-info-row"><span class="admin-od-info-label">Razorpay ID</span><span class="admin-od-info-value" style="font-size:0.76rem;word-break:break-all;"><a href="https://dashboard.razorpay.com/app/payments/${_escHtmlCat(o.razorpay.paymentId)}" target="_blank" rel="noopener" style="color:var(--primary);">${_escHtmlCat(o.razorpay.paymentId)}</a></span></div>` : ''}
                         ${o.trackingId ? `<div class="admin-od-info-row"><span class="admin-od-info-label">Tracking</span><span class="admin-od-info-value" style="font-size:0.78rem;">${_escHtmlCat(o.trackingId)}</span></div>` : ''}
                         ${o.estimatedDelivery ? `<div class="admin-od-info-row"><span class="admin-od-info-label">Est. Delivery</span><span class="admin-od-info-value">${_escHtmlCat(o.estimatedDelivery)}</span></div>` : ''}
@@ -1864,7 +1865,7 @@ function printOrderInvoice(docId) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice ${o.orderId || docId}</title>
+    <title>Invoice ${o.invoiceId || o.orderId || docId}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root{--teal:#0d9488;--navy:#0f172a;--muted:#64748b;--line:#e2e8f0;--bg:#f8fafc;}
@@ -1925,7 +1926,8 @@ function printOrderInvoice(docId) {
                 </div>
             </div>
             <div class="meta">
-                <p><strong>Invoice No:</strong> ${o.orderId || docId.slice(0, 8)}</p>
+                <p><strong>Invoice No:</strong> ${o.invoiceId || o.orderId || docId.slice(0, 8)}</p>
+                <p><strong>Order Ref:</strong> ${o.orderId || docId.slice(0, 8)}</p>
                 <p><strong>Date:</strong> ${invoiceDate.toLocaleDateString('en-IN')}</p>
                 <p><strong>Payment:</strong> ${o.payment || 'COD'}</p>
             </div>

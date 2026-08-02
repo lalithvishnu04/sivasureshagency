@@ -4118,6 +4118,7 @@ async function initOrderDetailPage() {
                     const d = snap.docs[0].data();
                     order = _normalizeAccountOrder({
                         id: d.orderId || snap.docs[0].id, docId: snap.docs[0].id,
+                        invoiceId: d.invoiceId || '',
                         date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : (d.createdAt || new Date().toISOString()),
                         items: d.items || [], total: d.total || 0, payment: d.payment || 'COD',
                         paymentStatus: d.paymentStatus || '', status: d.status || 'Processing',
@@ -4143,6 +4144,7 @@ async function initOrderDetailPage() {
                         const d = matched.data();
                         order = _normalizeAccountOrder({
                             id: d.orderId || matched.id, docId: matched.id,
+                            invoiceId: d.invoiceId || '',
                             date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : (d.createdAt || new Date().toISOString()),
                             items: d.items || [], total: d.total || 0, payment: d.payment || 'COD',
                             paymentStatus: d.paymentStatus || '', status: d.status || 'Processing',
@@ -4206,6 +4208,7 @@ async function _odpBackgroundRefresh(orderId, cachedOrder, contentEl) {
             && freshCancelRefund === cachedCancelRefund && freshReturnStatus === cachedReturnStatus) return;
         const freshOrder = _normalizeAccountOrder({
             id: d.orderId || snap.docs[0].id, docId: snap.docs[0].id,
+            invoiceId: d.invoiceId || cachedOrder.invoiceId || '',
             date: d.createdAt?.seconds ? new Date(d.createdAt.seconds * 1000).toISOString() : (d.createdAt || cachedOrder.date),
             items: d.items || cachedOrder.items, total: d.total || cachedOrder.total,
             payment: d.payment || cachedOrder.payment, paymentStatus: d.paymentStatus || '',
@@ -4383,6 +4386,7 @@ function _buildOrderDetailPageHTML(order) {
                             <div class="odp-card-body">
                                 <div class="odp-info-row"><span class="odp-info-label">Method</span><span class="odp-info-value">${escapeRichText(_getPaymentMethodLabel(order.payment))}</span></div>
                                 <div class="odp-info-row"><span class="odp-info-label">Payment Status</span><span class="odp-info-value" style="font-weight:700;color:${paymentStatus==='Paid'?'#16a34a':paymentStatus==='Refund Processed'?'#2563eb':'var(--text-mid)'}">${escapeRichText(paymentStatus)}</span></div>
+                                ${order.invoiceId ? `<div class="odp-info-row"><span class="odp-info-label">Invoice No</span><span class="odp-info-value" style="font-family:monospace;font-size:0.78rem;font-weight:700;color:var(--primary-dark);">${escapeRichText(order.invoiceId)}</span></div>` : ''}
                                 ${order.razorpay && order.razorpay.paymentId ? `<div class="odp-info-row"><span class="odp-info-label">Payment ID</span><span class="odp-info-value" style="font-size:0.75rem;color:var(--text-muted);word-break:break-all;font-family:monospace;">${escapeRichText(order.razorpay.paymentId)}</span></div>` : ''}
                                 <hr style="border:none;border-top:1px dashed var(--border);margin:8px 0;">
                                 <div class="odp-info-row"><span class="odp-info-label">Product Subtotal</span><span class="odp-info-value">₹${_productSubtotal.toLocaleString('en-IN')}</span></div>
@@ -4587,7 +4591,8 @@ function buildInvoiceHtml(order) {
                 </div>
             </div>
             <div class="meta">
-                <p><strong>Invoice No:</strong> ${order.id}</p>
+                <p><strong>Invoice No:</strong> ${order.invoiceId || order.id}</p>
+                <p><strong>Order Ref:</strong> ${order.id}</p>
                 <p><strong>Date:</strong> ${invoiceDate.toLocaleDateString('en-IN')}</p>
                 <p><strong>Payment:</strong> ${order.payment || 'COD'}</p>
             </div>
@@ -4699,8 +4704,10 @@ async function placeOrder() {
         ? _normalizeAddressRecord(savedAddresses[parseInt(addressChoice, 10)] || savedAddresses[0] || {}, 0).label
         : (savedAddresses.length ? _normalizeAddressRecord(savedAddresses[0], 0).label : 'New checkout address');
 
+    const _now = Date.now();
     const order = {
-        id: 'SSA' + Date.now().toString(36).toUpperCase(),
+        id: 'SSA' + _now.toString(36).toUpperCase(),
+        invoiceId: 'INV-' + new Date().toISOString().slice(0, 7).replace('-', '') + '-' + _now.toString(36).slice(-5).toUpperCase(),
         date: new Date().toISOString(),
         items: cart.map(i => ({
             productId: i.id,
@@ -4774,6 +4781,7 @@ function _openRazorpayCheckout(order, shipping) {
         currency: 'INR',
         name: rzpCfg.businessName || 'Siva Suresh Agency',
         description: rzpCfg.description || 'Hospital Linen & Medical Uniforms',
+        receipt: order.invoiceId || order.id,
         image: window.location.origin + '/sivasureshagency/' + (rzpCfg.logo || 'images/SSA Logo.png'),
         prefill: {
             name: (shipping.firstname + ' ' + shipping.lastname).trim(),

@@ -12,6 +12,7 @@ async function saveOrderToDb(order, shippingDetails) {
     if (window.ssaApi && window.ssaApi.enabled) {
         await window.ssaApi.postOrder({
             orderId:       order.id,
+            invoiceId:     order.invoiceId || '',
             customerName:  (shippingDetails.firstname + ' ' + shippingDetails.lastname).trim(),
             customerEmail: shippingDetails.email,
             customerPhone: shippingDetails.phone || '',
@@ -29,6 +30,7 @@ async function saveOrderToDb(order, shippingDetails) {
     if (!window.db) throw new Error('Supabase not initialised');
     await db.collection('orders').add({
         orderId: order.id,
+        invoiceId: order.invoiceId || '',
         customerName:  (shippingDetails.firstname + ' ' + shippingDetails.lastname).trim(),
         customerEmail: shippingDetails.email,
         customerPhone: shippingDetails.phone,
