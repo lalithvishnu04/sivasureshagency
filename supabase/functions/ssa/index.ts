@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ============================================================
 //  SSA Supabase Edge Function  —  supabase/functions/ssa/index.ts
 //
