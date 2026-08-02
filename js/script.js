@@ -1344,6 +1344,8 @@ window.renderSignatureQuickLinks = renderSignatureQuickLinks;
 
 // ===== DOM Ready =====
 document.addEventListener('DOMContentLoaded', () => {
+    const _signedIn = sessionStorage.getItem('ssa_just_signed_in');
+    if (_signedIn) { sessionStorage.removeItem('ssa_just_signed_in'); setTimeout(() => showToast(`Signed in successfully, ${_signedIn}! 👋`), 500); }
     initCommon();
     const page = document.body.dataset.page;
     if (page === 'home') initHomePage();
@@ -3123,7 +3125,7 @@ async function handleLogin() {
 
             closeAuthModal();
             updateAuthUI();
-            showToast(`Welcome back, ${firstName || 'User'}!`);
+            sessionStorage.setItem('ssa_just_signed_in', firstName || 'User');
             if (typeof saveCustomerToDb === 'function') {
                 await saveCustomerToDb({ firstName, lastName, email: currentUser.email, phone, customerId }).catch(() => {});
             }
@@ -3149,7 +3151,7 @@ async function handleLogin() {
         currentUser = { name: user.firstName + ' ' + user.lastName, email: user.email, phone: user.phone, customerId: cid };
         localStorage.setItem('ssa_user', JSON.stringify(currentUser));
         closeAuthModal(); updateAuthUI();
-        showToast(`Welcome back, ${user.firstName}!`);
+        sessionStorage.setItem('ssa_just_signed_in', user.firstName);
         if (typeof saveCustomerToDb === 'function') {
             await saveCustomerToDb({ firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone, customerId: cid }).catch(() => {});
         }
@@ -4768,6 +4770,14 @@ function _hidePaymentOverlay() {
     const el = document.getElementById('rzpPaymentOverlay');
     if (el) el.classList.remove('active');
 }
+function _updatePaymentOverlayText(main, sub) {
+    const el = document.getElementById('rzpPaymentOverlay');
+    if (!el) return;
+    const t = el.querySelector('.rzp-overlay-text');
+    const s = el.querySelector('.rzp-overlay-sub');
+    if (t) t.textContent = main;
+    if (s) s.textContent = sub || '';
+}
 
 // Opens the Razorpay checkout modal. Called when payment method = online.
 async function _openRazorpayCheckout(order, shipping) {
@@ -4777,6 +4787,12 @@ async function _openRazorpayCheckout(order, shipping) {
         return;
     }
     const rzpCfg = window.SSA_RAZORPAY || {};
+    const amountInPaise = Math.round(order.total * 100);
+    if (!amountInPaise || !isFinite(amountInPaise) || amountInPaise < 100) {
+        _hidePaymentOverlay();
+        showToast('Invalid order total. Please refresh and try again.');
+        return;
+    }
 
     // Create a Razorpay Order via backend so Order ID appears in the dashboard
     let rzpOrderId = '';
@@ -4796,7 +4812,7 @@ async function _openRazorpayCheckout(order, shipping) {
 
     const options = {
         key: (window.SSA_COMM?.getConfigSync()?.razorpayKeyId) || rzpCfg.keyId || '',
-        amount: order.total * 100,
+        amount: amountInPaise,
         currency: 'INR',
         name: rzpCfg.businessName || 'Siva Suresh Agency',
         description: rzpCfg.description || 'Hospital Linen & Medical Uniforms',
@@ -4810,7 +4826,9 @@ async function _openRazorpayCheckout(order, shipping) {
         },
         theme: { color: rzpCfg.themeColor || '#0d9488' },
         handler: async function(response) {
-            _hidePaymentOverlay();
+            clearTimeout(_rzpHideTimer);
+            _updatePaymentOverlayText('Saving your order\u2026', 'Please wait while we confirm your payment');
+            _showPaymentOverlay();
             // Verify payment signature server-side when a Razorpay Order was created
             if (window.ssaApi && response.razorpay_order_id && response.razorpay_signature) {
                 try {
@@ -4855,7 +4873,7 @@ async function _openRazorpayCheckout(order, shipping) {
             ? response.error.description : 'Please try again.';
         showToast('Payment failed: ' + msg);
     });
-    setTimeout(_hidePaymentOverlay, 1200);
+    const _rzpHideTimer = setTimeout(_hidePaymentOverlay, 1200);
     rzp.open();
 }
 
@@ -4882,6 +4900,7 @@ async function _confirmOrderAfterPayment(order, shipping) {
         }
     } catch (_) {}
     closeCheckoutModal();
+    _hidePaymentOverlay();
     document.getElementById('orderId').textContent = order.id;
     document.getElementById('successModal').classList.add('active');
     cart = []; saveCart(); updateCartUI();
