@@ -2750,23 +2750,51 @@ function openLoginModal() {
       <p class="auth-switch">Already have an account? <a onclick="switchAuthTab('login')">Sign in</a></p>
     </div>
         <div class="auth-form" id="forgotForm" style="display:none;">
-            <h3 style="margin-bottom:4px;">Reset Password</h3>
-            <p class="auth-subtitle" style="margin-bottom:16px;">Enter your registered email to receive a 6-digit OTP</p>
-            <!-- Step 1: Enter email -->
-            <div id="fpStep1">
-                <div class="form-group"><label>Registered Email</label><input type="email" id="fpEmail" placeholder="Email address"></div>
-                <p id="fpMsg" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
-                <button class="btn btn-gradient btn-full" style="margin-top:4px;" onclick="handleForgotSendOtp()"><i class="fas fa-paper-plane"></i> Send OTP</button>
-            </div>
-            <!-- Step 2: Enter OTP + new password -->
-            <div id="fpStep2" style="display:none;">
-                <p style="font-size:0.82rem;color:var(--primary);margin-bottom:12px;"><i class="fas fa-info-circle"></i> OTP sent to your email. Check your inbox.</p>
-                <div class="form-group"><label>6-Digit OTP</label><input type="text" id="fpOtp" placeholder="Enter OTP" maxlength="6" style="letter-spacing:4px;font-size:1.1rem;text-align:center;"></div>
-                <div class="form-group"><label>New Password</label><input type="password" id="fpNewPwd" placeholder="New password (min 6 chars)"></div>
-                <div class="form-group"><label>Confirm Password</label><input type="password" id="fpConfirmPwd" placeholder="Confirm new password"></div>
-                <p id="fpMsg2" style="display:none;font-size:0.82rem;margin-bottom:8px;"></p>
-                <button class="btn btn-gradient btn-full" style="margin-top:4px;" onclick="handleForgotVerifyOtp()"><i class="fas fa-check"></i> Verify & Reset</button>
-                <p style="font-size:0.78rem;color:var(--text-muted);margin-top:8px;text-align:center;">OTP expires in 10 minutes. <a onclick="handleForgotSendOtp()" style="color:var(--primary);cursor:pointer;">Resend</a></p>
+            <div class="fp-glass-wrap">
+                <div class="fp-glow-orb"></div>
+                <div class="fp-glass-card fp-fade-up">
+                    <div class="fp-head">
+                        <div class="fp-head-icon"><i class="fas fa-shield-keyhole"></i></div>
+                        <div>
+                            <h3 style="margin-bottom:4px;">Reset Password</h3>
+                            <p class="auth-subtitle" style="margin-bottom:0;">OTP will be sent from info@sivasureshagency.onmicrosoft.com</p>
+                        </div>
+                    </div>
+                    <div id="fpStep1">
+                        <div class="form-group">
+                            <label>Registered Email</label>
+                            <input type="email" id="fpEmail" placeholder="Email address" autocomplete="email">
+                        </div>
+                        <p id="fpMsg" class="fp-msg" style="display:none;"></p>
+                        <button class="btn btn-gradient btn-full" style="margin-top:8px;" onclick="handleForgotSendOtp()"><i class="fas fa-paper-plane"></i> Send OTP</button>
+                    </div>
+                    <div id="fpStep2" style="display:none;">
+                        <p class="fp-info"><i class="fas fa-circle-info"></i> Enter the OTP and create a strong new password.</p>
+                        <div class="form-group">
+                            <label>6-Digit OTP</label>
+                            <input type="text" id="fpOtp" placeholder="000000" maxlength="6" class="fp-otp-input" inputmode="numeric" autocomplete="one-time-code">
+                        </div>
+                        <div class="form-group">
+                            <label>New Password</label>
+                            <input type="password" id="fpNewPwd" placeholder="Create strong password" autocomplete="new-password" oninput="handleForgotPasswordInputChange()">
+                        </div>
+                        <div class="form-group">
+                            <label>Confirm Password</label>
+                            <input type="password" id="fpConfirmPwd" placeholder="Re-enter new password" autocomplete="new-password" oninput="handleForgotPasswordInputChange()">
+                        </div>
+                        <div class="fp-rules" id="fpRules">
+                            <div class="fp-rule" id="fpRuleLen"><i class="fas fa-circle"></i><span>At least 8 characters</span></div>
+                            <div class="fp-rule" id="fpRuleUpper"><i class="fas fa-circle"></i><span>One uppercase letter (A-Z)</span></div>
+                            <div class="fp-rule" id="fpRuleLower"><i class="fas fa-circle"></i><span>One lowercase letter (a-z)</span></div>
+                            <div class="fp-rule" id="fpRuleNumber"><i class="fas fa-circle"></i><span>One number (0-9)</span></div>
+                            <div class="fp-rule" id="fpRuleSpecial"><i class="fas fa-circle"></i><span>One special character (!@#$...)</span></div>
+                            <div class="fp-rule" id="fpRuleMatch"><i class="fas fa-circle"></i><span>Passwords match</span></div>
+                        </div>
+                        <p id="fpMsg2" class="fp-msg" style="display:none;"></p>
+                        <button class="btn btn-gradient btn-full" style="margin-top:8px;" onclick="handleForgotVerifyOtp()"><i class="fas fa-check"></i> Verify OTP & Reset</button>
+                        <p class="fp-resend-note">OTP expires in 10 minutes. <a onclick="handleForgotSendOtp()">Resend OTP</a></p>
+                    </div>
+                </div>
             </div>
             <p class="auth-switch">Remembered password? <a onclick="backToLoginFromForgot()">Back to sign in</a></p>
         </div>
@@ -2794,115 +2822,157 @@ function openForgotPasswordForm() {
     document.getElementById('loginForm').style.display = 'none';
     document.getElementById('registerForm').style.display = 'none';
     document.getElementById('forgotForm').style.display = 'block';
-    const msg = document.getElementById('fpMsg');
-    if (msg) msg.style.display = 'none';
+    const step1 = document.getElementById('fpStep1');
+    const step2 = document.getElementById('fpStep2');
+    if (step1) step1.style.display = 'block';
+    if (step2) step2.style.display = 'none';
+    const fpOtp = document.getElementById('fpOtp');
+    const fpNew = document.getElementById('fpNewPwd');
+    const fpConfirm = document.getElementById('fpConfirmPwd');
+    if (fpOtp) fpOtp.value = '';
+    if (fpNew) fpNew.value = '';
+    if (fpConfirm) fpConfirm.value = '';
+    _setFpMessage('fpMsg', '', null);
+    _setFpMessage('fpMsg2', '', null);
+    _fpResetState = { challengeId: '', email: '', expiresAt: 0 };
+    handleForgotPasswordInputChange();
 }
 function backToLoginFromForgot() {
     const tabs = document.querySelector('.auth-tabs');
     if (tabs) tabs.style.display = 'flex';
+    _fpResetState = { challengeId: '', email: '', expiresAt: 0 };
     switchAuthTab('login');
 }
 // ── Forgot Password OTP flow ──────────────────────────────────
-let _fpOtpStore = null; // { code, email, expires }
+let _fpResetState = { challengeId: '', email: '', expiresAt: 0 };
+
+function _getAuthResetApiBase() {
+    const cfg = window.SSA_BACKEND || {};
+    return (cfg.authResetApiBase || 'https://us-central1-siva-suresh-agency.cloudfunctions.net/ssa').replace(/\/$/, '');
+}
+
+async function _authResetPost(path, body) {
+    const base = _getAuthResetApiBase();
+    const res = await fetch(base + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+    });
+    const json = await res.json().catch(() => ({ ok: false, error: 'Invalid server response' }));
+    if (!res.ok || !json.ok) throw new Error(json.error || 'Request failed');
+    return json;
+}
+
+function _setFpMessage(elId, text, state) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!text) { el.style.display = 'none'; el.textContent = ''; return; }
+    el.style.display = 'block';
+    el.classList.remove('ok', 'err', 'info');
+    if (state === true) el.classList.add('ok');
+    else if (state === false) el.classList.add('err');
+    else el.classList.add('info');
+    el.textContent = text;
+}
+
+function _passwordRuleChecks(password, confirmPassword) {
+    const p = String(password || '');
+    const c = String(confirmPassword || '');
+    return {
+        len: p.length >= 8,
+        upper: /[A-Z]/.test(p),
+        lower: /[a-z]/.test(p),
+        number: /\d/.test(p),
+        special: /[^A-Za-z\d]/.test(p),
+        match: !!p && p === c
+    };
+}
+
+function _setRuleState(id, ok) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('ok', !!ok);
+}
+
+function handleForgotPasswordInputChange() {
+    const pwd = document.getElementById('fpNewPwd')?.value || '';
+    const confirmPwd = document.getElementById('fpConfirmPwd')?.value || '';
+    const checks = _passwordRuleChecks(pwd, confirmPwd);
+    _setRuleState('fpRuleLen', checks.len);
+    _setRuleState('fpRuleUpper', checks.upper);
+    _setRuleState('fpRuleLower', checks.lower);
+    _setRuleState('fpRuleNumber', checks.number);
+    _setRuleState('fpRuleSpecial', checks.special);
+    _setRuleState('fpRuleMatch', checks.match);
+    return checks;
+}
 
 async function handleForgotSendOtp() {
     const email = document.getElementById('fpEmail')?.value.trim();
-    const msg = document.getElementById('fpMsg');
     const btn = document.querySelector('#fpStep1 button.btn.btn-gradient');
-    const showMsg = (text, ok) => { if(msg){ msg.textContent = text; msg.style.color = ok===true?'#10b981':ok===false?'#ef4444':'#0ea5e9'; msg.style.display='block'; } };
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMsg('Please enter a valid email address', false); return; }
-
-    // Check email exists (local fallback)
-    const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
-    const localUser = users.find(u => (u.email||'').toLowerCase() === email.toLowerCase());
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        _setFpMessage('fpMsg', 'Please enter a valid email address.', false);
+        return;
+    }
 
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending OTP...'; }
-    showMsg('Sending OTP...', null);
+    _setFpMessage('fpMsg', 'Sending OTP from info@sivasureshagency.onmicrosoft.com...', null);
 
-    // Generate a 6-digit OTP stored in sessionStorage (for Supabase-based flow)
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    _fpOtpStore = { code: otp, email: email.toLowerCase(), expires: Date.now() + 10 * 60 * 1000 };
+    try {
+        const out = await _authResetPost('/api/auth/forgot-password/request', { email });
+        _fpResetState = {
+            challengeId: out.challengeId || '',
+            email: email.toLowerCase(),
+            expiresAt: Date.now() + ((Number(out.expiresInSeconds) || 600) * 1000)
+        };
 
-    // Send OTP via Supabase magic link / or via Power Automate webhook
-    let sent = false;
-
-    // Try Supabase OTP email
-    if (window.auth && typeof window.auth.signInWithOtp === 'function') {
-        try {
-            await window.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-            sent = true;
-            // Supabase sends a magic link; tell user to check email for the link
-            showMsg('Check your email for a reset link from Supabase Auth.', true);
-        } catch(e) { console.warn('[otp] supabase OTP failed', e.message); }
+        document.getElementById('fpStep1').style.display = 'none';
+        document.getElementById('fpStep2').style.display = 'block';
+        _setFpMessage('fpMsg2', 'OTP sent. Please check your inbox and spam folder.', true);
+        handleForgotPasswordInputChange();
+    } catch (e) {
+        _setFpMessage('fpMsg', e.message || 'Failed to send OTP. Please try again.', false);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send OTP'; }
     }
-
-    // Fallback: send OTP via Power Automate webhook (if configured)
-    if (!sent && window.SSA_COMM) {
-        const cfg = window.SSA_COMM.getConfig ? await window.SSA_COMM.getConfig() : {};
-        if (cfg.ticketStatusWebhook) {
-            await fetch(cfg.ticketStatusWebhook, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
-                type: 'otp_email', toEmail: email, otp,
-                emailSubject: 'Your SSA Password Reset OTP',
-                emailBody: `Your OTP to reset your Siva Suresh Agency password is:\n\n${otp}\n\nThis OTP is valid for 10 minutes. Do not share it with anyone.`
-            })}).catch(()=>{});
-            sent = true;
-        }
-    }
-
-    // Fallback: Use Supabase reset email
-    if (!sent && window.auth && typeof window.auth.sendPasswordResetEmail === 'function') {
-        try {
-            await window.auth.sendPasswordResetEmail(email);
-            sent = true;
-            showMsg('Password reset link sent to your email. Check inbox/spam.', true);
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send OTP'; }
-            return;
-        } catch(e) { console.warn('[forgot] email reset failed', e.message); }
-    }
-
-    if (!sent) {
-        // Show OTP locally (dev/fallback mode - visible to user in dev)
-        console.info('[OTP] Dev mode OTP:', otp);
-        showMsg('OTP sent! (If you don\'t receive it, check with admin)', true);
-    } else if (!window.auth?.signInWithOtp) {
-        showMsg('OTP sent to ' + email + '! Check your inbox.', true);
-    }
-
-    // Show step 2
-    document.getElementById('fpStep1').style.display = 'none';
-    document.getElementById('fpStep2').style.display = 'block';
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send OTP'; }
 }
 
 async function handleForgotVerifyOtp() {
     const otp = document.getElementById('fpOtp')?.value.trim();
     const newPwd = document.getElementById('fpNewPwd')?.value;
     const confirmPwd = document.getElementById('fpConfirmPwd')?.value;
-    const msg2 = document.getElementById('fpMsg2');
-    const showMsg = (text, ok) => { if(msg2){ msg2.textContent=text; msg2.style.color=ok===true?'#10b981':ok===false?'#ef4444':'#0ea5e9'; msg2.style.display='block'; } };
 
-    if (!otp || otp.length !== 6) { showMsg('Enter the 6-digit OTP', false); return; }
-    if (!newPwd || newPwd.length < 6) { showMsg('Password must be at least 6 characters', false); return; }
-    if (newPwd !== confirmPwd) { showMsg('Passwords do not match', false); return; }
-
-    if (!_fpOtpStore || _fpOtpStore.code !== otp) { showMsg('Invalid or expired OTP', false); return; }
-    if (Date.now() > _fpOtpStore.expires) { showMsg('OTP has expired. Please request a new one.', false); return; }
-
-    const email = _fpOtpStore.email;
-
-    // Update password in local store
-    const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
-    const idx = users.findIndex(u => (u.email||'').toLowerCase() === email);
-    if (idx !== -1) { users[idx].password = newPwd; localStorage.setItem('ssa_users', JSON.stringify(users)); }
-
-    // Update in Supabase Auth
-    if (window.auth && typeof window.auth.updateUser === 'function') {
-        try { await window.auth.updateUser({ password: newPwd }); } catch(e) { console.warn('[forgot] Supabase updateUser failed:', e.message); }
+    if (!otp || !/^\d{6}$/.test(otp)) { _setFpMessage('fpMsg2', 'Enter a valid 6-digit OTP.', false); return; }
+    const checks = handleForgotPasswordInputChange();
+    if (!Object.values(checks).every(Boolean)) {
+        _setFpMessage('fpMsg2', 'Password does not meet all requirements yet.', false);
+        return;
+    }
+    if (!_fpResetState.challengeId || !_fpResetState.email) {
+        _setFpMessage('fpMsg2', 'Session expired. Please request OTP again.', false);
+        return;
+    }
+    if (Date.now() > _fpResetState.expiresAt) {
+        _setFpMessage('fpMsg2', 'OTP expired. Please request a new OTP.', false);
+        return;
     }
 
-    _fpOtpStore = null;
-    showMsg('Password reset successfully! You can now sign in.', true);
+    _setFpMessage('fpMsg2', 'Verifying OTP and updating password...', null);
+    try {
+        await _authResetPost('/api/auth/forgot-password/verify', {
+            challengeId: _fpResetState.challengeId,
+            email: _fpResetState.email,
+            otp,
+            newPassword: newPwd
+        });
+    } catch (e) {
+        _setFpMessage('fpMsg2', e.message || 'Failed to reset password. Please try again.', false);
+        return;
+    }
+
+    _fpResetState = { challengeId: '', email: '', expiresAt: 0 };
+    _setFpMessage('fpMsg2', 'Password reset successful. You can sign in now.', true);
     setTimeout(() => backToLoginFromForgot(), 2000);
 }
 

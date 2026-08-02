@@ -3461,6 +3461,7 @@ async function loadWebhookSettings() {
     set('webhookRating', cfg.ratingWebhook);
     set('webhookLiveAgent', cfg.liveAgentWebhook);
     set('webhookMailReply', cfg.adminEmailReplyWebhook);
+    set('webhookPasswordResetOtp', cfg.passwordResetOtpWebhook);
     set('githubPAT', cfg.githubPAT);
     // Refresh accordion badges
     if (typeof window.updateAccBadge === 'function') {
@@ -3469,6 +3470,7 @@ async function loadWebhookSettings() {
         window.updateAccBadge('badgeAgent',     cfg.liveAgentWebhook      || '');
         window.updateAccBadge('badgeRating',    cfg.ratingWebhook         || '');
         window.updateAccBadge('badgeMailReply', cfg.adminEmailReplyWebhook || '');
+        window.updateAccBadge('badgePasswordResetOtp', cfg.passwordResetOtpWebhook || '');
     }
 }
 async function saveWebhookSettings() {
@@ -3480,7 +3482,8 @@ async function saveWebhookSettings() {
             ticketStatusWebhook:  get('webhookTicketStatus'),
             ratingWebhook:        get('webhookRating'),
             liveAgentWebhook:     get('webhookLiveAgent'),
-            adminEmailReplyWebhook: get('webhookMailReply')
+            adminEmailReplyWebhook: get('webhookMailReply'),
+            passwordResetOtpWebhook: get('webhookPasswordResetOtp')
         });
         showAdminToast('Webhook URLs saved for every visitor (stored in Supabase). Communication flows are now active.');
     } catch (err) {

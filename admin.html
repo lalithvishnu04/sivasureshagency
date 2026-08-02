@@ -662,6 +662,29 @@
                                         </div>
                                     </div>
                                 </div>
+                                <!-- Password Reset OTP -->
+                                <div class="comm-acc-item" id="accPasswordResetOtp">
+                                    <button class="comm-acc-trigger" onclick="toggleAccordion('accPasswordResetOtp')" aria-expanded="false">
+                                        <div class="comm-acc-trigger-left">
+                                            <div class="comm-acc-icon" style="background:rgba(20,83,45,0.1);color:#166534;"><i class="fas fa-key"></i></div>
+                                            <div>
+                                                <div class="comm-acc-title">Password Reset OTP</div>
+                                                <div class="comm-acc-desc">Forgot password OTP email - customer inbox</div>
+                                            </div>
+                                        </div>
+                                        <div class="comm-acc-right">
+                                            <span class="comm-status-badge missing" id="badgePasswordResetOtp">Not Set</span>
+                                            <div class="comm-acc-arrow"><i class="fas fa-chevron-down"></i></div>
+                                        </div>
+                                    </button>
+                                    <div class="comm-acc-body">
+                                        <label style="font-size:0.78rem;font-weight:700;color:var(--text-mid);margin-bottom:8px;display:block;">Password Reset OTP Webhook URL</label>
+                                        <div class="comm-field-wrap">
+                                            <input type="url" id="webhookPasswordResetOtp" placeholder="https://prod-xx.westus.logic.azure.com/..." oninput="updateAccBadge('badgePasswordResetOtp',this.value)">
+                                            <button class="comm-test-btn" onclick="testWebhook('webhookPasswordResetOtp')">Test</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div style="margin-top:16px;">
                                 <button class="btn-primary" onclick="saveWebhookSettings()"><i class="fas fa-save"></i> Save All Webhook URLs</button>
@@ -1041,10 +1064,10 @@
     
     <!-- Backend initialization -->
     <script src="js/api.js?v=80" defer></script>
-    <script src="js/backend-config.js?v=75" defer></script>
+    <script src="js/backend-config.js?v=76" defer></script>
     <script src="js/db-init.js?v=81" defer></script>
     <script src="js/product-helpers.js" defer></script>
-    <script src="js/ssa-comm.js?v=5" defer></script>
+    <script src="js/ssa-comm.js?v=6" defer></script>
     <script defer src="js/admin.js?v=107"></script>
     <script defer src="js/animations.js?v=5"></script>
 
@@ -1297,7 +1320,7 @@
         var items = document.querySelectorAll('.comm-acc-item');
         items.forEach(function(i) { _setAccordionState(i, false); });
 
-        var fieldMap = { webhookContactForm: 'badgeEmail', webhookTicketStatus: 'badgeTicket', webhookLiveAgent: 'badgeAgent', webhookRating: 'badgeRating', webhookMailReply: 'badgeMailReply' };
+        var fieldMap = { webhookContactForm: 'badgeEmail', webhookTicketStatus: 'badgeTicket', webhookLiveAgent: 'badgeAgent', webhookRating: 'badgeRating', webhookMailReply: 'badgeMailReply', webhookPasswordResetOtp: 'badgePasswordResetOtp' };
         // Observe value changes after admin.js populates them
         var observer = new MutationObserver(function() {
             Object.keys(fieldMap).forEach(function(fId) {

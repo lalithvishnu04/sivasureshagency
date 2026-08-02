@@ -829,6 +829,95 @@ body.modal-open { overflow: hidden; touch-action: none; }
 .auth-subtitle { font-size: 0.83rem; color: var(--text-muted); margin-bottom: 17px; }
 .auth-switch { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 13px; }
 .auth-switch a { color: var(--primary); font-weight: 600; cursor: pointer; }
+.fp-glass-wrap { position: relative; isolation: isolate; margin-top: 4px; }
+.fp-glow-orb {
+    position: absolute;
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(45,212,191,0.45), rgba(45,212,191,0));
+    top: -52px;
+    right: -42px;
+    z-index: -1;
+    animation: fpFloatOrb 6s ease-in-out infinite;
+}
+@keyframes fpFloatOrb {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(10px) scale(1.06); }
+}
+.fp-glass-card {
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.46);
+    background: linear-gradient(155deg, rgba(255,255,255,0.78), rgba(255,255,255,0.56));
+    box-shadow: 0 24px 54px rgba(2,6,23,0.14), inset 0 1px 0 rgba(255,255,255,0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 16px 16px 14px;
+}
+.fp-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.fp-head-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0f766e;
+    background: linear-gradient(145deg, rgba(20,184,166,0.18), rgba(15,118,110,0.08));
+    border: 1px solid rgba(20,184,166,0.22);
+}
+.fp-msg {
+    margin: 2px 0 6px;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: rgba(148,163,184,0.12);
+    color: #334155;
+}
+.fp-msg.ok { color: #065f46; background: rgba(16,185,129,0.14); border: 1px solid rgba(16,185,129,0.22); }
+.fp-msg.err { color: #991b1b; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.22); }
+.fp-msg.info { color: #0c4a6e; background: rgba(14,165,233,0.12); border: 1px solid rgba(14,165,233,0.22); }
+.fp-info {
+    font-size: 0.8rem;
+    color: #0f766e;
+    margin: 2px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.fp-otp-input {
+    letter-spacing: 8px;
+    font-size: 1.16rem;
+    text-align: center;
+    font-weight: 700;
+}
+.fp-rules {
+    display: grid;
+    gap: 6px;
+    margin-top: 4px;
+    padding: 10px;
+    background: rgba(241,245,249,0.72);
+    border: 1px solid rgba(148,163,184,0.24);
+    border-radius: 12px;
+}
+.fp-rule {
+    font-size: 0.76rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s ease;
+}
+.fp-rule i { font-size: 0.58rem; color: #94a3b8; transition: all 0.2s ease; }
+.fp-rule.ok { color: #166534; font-weight: 600; }
+.fp-rule.ok i { color: #16a34a; transform: scale(1.15); }
+.fp-resend-note { font-size: 0.76rem; color: #64748b; margin-top: 9px; text-align: center; }
+.fp-resend-note a { color: #0f766e; font-weight: 600; cursor: pointer; }
+.fp-fade-up { animation: fpFadeUp 0.55s cubic-bezier(.2,.8,.2,1); }
+@keyframes fpFadeUp {
+    from { opacity: 0; transform: translateY(10px) scale(0.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
 .account-modal { max-width: 500px; padding: 26px; max-height: 88vh; overflow-y: auto; }
 .account-header { text-align: center; margin-bottom: 17px; }
 .account-avatar { width: 66px; height: 66px; border-radius: 50%; background: var(--primary-bg); border: 2px solid rgba(13,148,136,0.18); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.55rem; margin: 0 auto 9px; }
@@ -1247,6 +1336,11 @@ body.modal-open { overflow: hidden; touch-action: none; }
 .auth-left-img { border-radius: var(--radius); overflow: hidden; height: 130px; }
 .auth-left-img img { width: 100%; height: 100%; object-fit: cover; opacity: 0.82; }
 @media (max-width: 600px) { .auth-split { flex-direction: column; } .auth-panel-left { display: none; } .auth-panel-right { max-height: none; padding: 24px 20px; } }
+@media (max-width: 600px) {
+    .fp-glass-card { padding: 14px 12px 12px; }
+    .fp-otp-input { letter-spacing: 6px; font-size: 1.04rem; }
+    .fp-rules { gap: 5px; }
+}
 
 @media (max-width: 900px) {
     .acct-order-hero,

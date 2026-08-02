@@ -34,6 +34,7 @@ window.SSA_COMM = (function () {
             ratingWebhook: '',
             liveAgentWebhook: '',
             adminEmailReplyWebhook: '',
+            passwordResetOtpWebhook: '',
             adminEmail: 'info@sivasureshagency.onmicrosoft.com',
             razorpayKeyId: 'rzp_test_TI67q5KZaLNQgp', // fallback test key
             githubPAT: '',
@@ -62,6 +63,7 @@ window.SSA_COMM = (function () {
             ratingWebhook: remote?.ratingWebhook || local.ratingWebhook || '',
             liveAgentWebhook: remote?.liveAgentWebhook || local.liveAgentWebhook || '',
             adminEmailReplyWebhook: remote?.adminEmailReplyWebhook || local.adminEmailReplyWebhook || '',
+            passwordResetOtpWebhook: remote?.passwordResetOtpWebhook || local.passwordResetOtpWebhook || '',
             adminEmail: remote?.adminEmail || local.adminEmail || undefined,
             razorpayKeyId: remote?.razorpayKeyId || local.razorpayKeyId || '',
             githubPAT: remote?.githubPAT || ''
