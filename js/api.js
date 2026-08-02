@@ -177,6 +177,17 @@ window.ssaApi = {
         return _ssaAdminPatch('/api/admin/messages/' + docId, { read: true });
     },
 
+    // ── Razorpay ──────────────────────────────────────────────
+    // Create a Razorpay Order — returns { orderId, amount, currency }
+    async createRazorpayOrder(amount, receipt, notes) {
+        return _ssaPost('/api/razorpay/create-order', { amount, currency: 'INR', receipt, notes: notes || {} });
+    },
+
+    // Verify HMAC-SHA256 signature server-side after payment success
+    async verifyRazorpayPayment(razorpay_order_id, razorpay_payment_id, razorpay_signature) {
+        return _ssaPost('/api/razorpay/verify', { razorpay_order_id, razorpay_payment_id, razorpay_signature });
+    },
+
     // Cache helpers
     invalidate: prefix => _ssaCache.del(prefix || ''),
     clearAll: () => _ssaCache.del('')

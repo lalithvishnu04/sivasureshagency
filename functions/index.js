@@ -19,11 +19,15 @@ const compression = require('compression');
 const helmet      = require('helmet');
 const rateLimit   = require('express-rate-limit');
 const NodeCache   = require('node-cache');
+const Razorpay    = require('razorpay');
+const crypto      = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = process.env.SUPABASE_URL  || '';
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const ADMIN_EMAIL  = process.env.ADMIN_EMAIL   || 'admin@sivasureshagency.com';
+const RZP_KEY_ID     = process.env.RAZORPAY_KEY_ID     || '';
+const RZP_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '';
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
     console.error('[SSA] SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars are required.');
@@ -35,6 +39,11 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false }
 });
 const now = () => new Date().toISOString();
+
+// Razorpay instance — only active when both env vars are set
+const rzp = (RZP_KEY_ID && RZP_KEY_SECRET)
+    ? new Razorpay({ key_id: RZP_KEY_ID, key_secret: RZP_KEY_SECRET })
+    : null;
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
 const cache = new NodeCache({ stdTTL: 120, checkperiod: 60 });
@@ -119,12 +128,17 @@ app.post('/api/orders', writeLimiter, async (req, res) => {
     try {
         const { customerEmail, customerName, customerPhone,
                 items, total, payment, paymentStatus, address, city, pincode, orderId,
-                trackingId, deliveredAt, addressLabel } = req.body;
+                invoiceId, trackingId, deliveredAt, addressLabel,
+                razorpayPaymentId, razorpayOrderId, razorpaySignature } = req.body;
         if (!customerEmail || !items?.length) {
             return res.status(400).json({ ok: false, error: 'customerEmail and items required' });
         }
+        const razorpay = (razorpayPaymentId || razorpayOrderId)
+            ? { paymentId: razorpayPaymentId || '', orderId: razorpayOrderId || '', signature: razorpaySignature || '' }
+            : null;
         const { data, error } = await supabase.from('orders').insert({
             orderId:       orderId || ('SSA' + Date.now().toString(36).toUpperCase()),
+            invoiceId:     invoiceId || '',
             customerEmail, customerName, customerPhone,
             items, total, payment, address, city, pincode,
             paymentStatus: paymentStatus || '',
@@ -132,12 +146,54 @@ app.post('/api/orders', writeLimiter, async (req, res) => {
             trackingId:    trackingId  || '',
             deliveredAt:   deliveredAt || null,
             addressLabel:  addressLabel || '',
+            razorpay,
             inventoryDeducted: false,
             createdAt: now(), updatedAt: now()
         }).select('id').single();
         if (error) throw new Error(error.message);
         bust('orders_all', 'admin_dashboard');
         res.json({ ok: true, id: data.id });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Razorpay ──────────────────────────────────────────────────────────────────
+const rzpLimiter = rateLimit({ windowMs: 60_000, max: 15, standardHeaders: true, legacyHeaders: false });
+
+// POST /api/razorpay/create-order  →  creates a Razorpay Order and returns its id
+app.post('/api/razorpay/create-order', rzpLimiter, async (req, res) => {
+    if (!rzp) return res.status(503).json({ ok: false, error: 'Razorpay not configured on server' });
+    try {
+        const { amount, currency = 'INR', receipt, notes } = req.body;
+        if (!amount || Number(amount) < 100) {
+            return res.status(400).json({ ok: false, error: 'amount in paise required (min 100)' });
+        }
+        const order = await rzp.orders.create({
+            amount:          Math.round(Number(amount)),
+            currency,
+            receipt:         receipt || ('rcpt_' + Date.now()),
+            notes:           notes || {},
+            payment_capture: 1
+        });
+        res.json({ ok: true, data: { orderId: order.id, amount: order.amount, currency: order.currency } });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// POST /api/razorpay/verify  →  verifies Razorpay payment signature (HMAC-SHA256)
+app.post('/api/razorpay/verify', rzpLimiter, async (req, res) => {
+    if (!RZP_KEY_SECRET) return res.status(503).json({ ok: false, error: 'Razorpay not configured on server' });
+    try {
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            return res.status(400).json({ ok: false, error: 'order_id, payment_id and signature required' });
+        }
+        const expected = crypto
+            .createHmac('sha256', RZP_KEY_SECRET)
+            .update(razorpay_order_id + '|' + razorpay_payment_id)
+            .digest('hex');
+        if (expected !== razorpay_signature) {
+            return res.status(400).json({ ok: false, verified: false, error: 'Signature mismatch' });
+        }
+        res.json({ ok: true, verified: true });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

@@ -4743,7 +4743,7 @@ async function placeOrder() {
     // Always online payment via Razorpay
     closeCheckoutModal();
     _showPaymentOverlay();
-    _openRazorpayCheckout(order, shipping);
+    await _openRazorpayCheckout(order, shipping);
 }
 
 // ── Payment processing overlay ──────────────────────────────────
@@ -4768,21 +4768,39 @@ function _hidePaymentOverlay() {
 }
 
 // Opens the Razorpay checkout modal. Called when payment method = online.
-function _openRazorpayCheckout(order, shipping) {
+async function _openRazorpayCheckout(order, shipping) {
     if (typeof Razorpay === 'undefined') {
         _hidePaymentOverlay();
         showToast('Payment gateway not loaded. Please refresh and try again.');
         return;
     }
     const rzpCfg = window.SSA_RAZORPAY || {};
+
+    // Create a Razorpay Order via backend so Order ID appears in the dashboard
+    let rzpOrderId = '';
+    if (window.ssaApi && window.ssaApi.enabled) {
+        try {
+            const result = await window.ssaApi.createRazorpayOrder(
+                order.total * 100,
+                order.invoiceId || order.id,
+                { ssa_order_id: order.id, customer: shipping.email }
+            );
+            rzpOrderId = result.data?.orderId || '';
+        } catch (e) {
+            console.warn('[rzp] Could not create Razorpay Order via backend:', e.message);
+            // Continue without order_id — checkout still works (just no Order ID in dashboard)
+        }
+    }
+
     const options = {
         key: (window.SSA_COMM?.getConfigSync()?.razorpayKeyId) || rzpCfg.keyId || '',
-        amount: order.total * 100,   // Razorpay expects paise (1 INR = 100 paise)
+        amount: order.total * 100,
         currency: 'INR',
         name: rzpCfg.businessName || 'Siva Suresh Agency',
         description: rzpCfg.description || 'Hospital Linen & Medical Uniforms',
         receipt: order.invoiceId || order.id,
         image: window.location.origin + '/sivasureshagency/' + (rzpCfg.logo || 'images/SSA Logo.png'),
+        ...(rzpOrderId && { order_id: rzpOrderId }),
         prefill: {
             name: (shipping.firstname + ' ' + shipping.lastname).trim(),
             email: shipping.email,
@@ -4791,7 +4809,22 @@ function _openRazorpayCheckout(order, shipping) {
         theme: { color: rzpCfg.themeColor || '#0d9488' },
         handler: async function(response) {
             _hidePaymentOverlay();
-            // Payment captured — attach Razorpay IDs and finalize order
+            // Verify payment signature server-side when a Razorpay Order was created
+            if (window.ssaApi && window.ssaApi.enabled
+                && response.razorpay_order_id && response.razorpay_signature) {
+                try {
+                    const vr = await window.ssaApi.verifyRazorpayPayment(
+                        response.razorpay_order_id,
+                        response.razorpay_payment_id,
+                        response.razorpay_signature
+                    );
+                    if (!vr.verified) throw new Error('Signature mismatch');
+                } catch (e) {
+                    showToast('Payment verification failed. Please contact support with Payment ID: ' + response.razorpay_payment_id);
+                    console.error('[rzp] Verification failed:', e.message);
+                    return;
+                }
+            }
             order.paymentStatus = 'Paid';
             order.razorpay = {
                 paymentId: response.razorpay_payment_id || '',
@@ -4814,7 +4847,6 @@ function _openRazorpayCheckout(order, shipping) {
             ? response.error.description : 'Please try again.';
         showToast('Payment failed: ' + msg);
     });
-    // Overlay shows briefly while Razorpay modal loads, then Razorpay takes over
     setTimeout(_hidePaymentOverlay, 1200);
     rzp.open();
 }
