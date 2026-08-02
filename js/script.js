@@ -2866,13 +2866,27 @@ function _getAuthResetApiBase() {
 
 async function _authResetPost(path, body) {
     const base = _getAuthResetApiBase();
-    const res = await fetch(base + path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body || {})
-    });
-    const json = await res.json().catch(() => ({ ok: false, error: 'Invalid server response' }));
-    if (!res.ok || !json.ok) throw new Error(json.error || 'Request failed');
+    let res;
+    try {
+        res = await fetch(base + path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body || {})
+        });
+    } catch (e) {
+        throw new Error('OTP service is unreachable. Deploy/configure the reset API and webhook, then try again.');
+    }
+
+    const json = await res.json().catch(() => ({ ok: false, error: '' }));
+    if (!res.ok || !json.ok) {
+        if (res.status === 404) {
+            throw new Error('OTP service route not found (404). Deploy the OTP backend endpoint first.');
+        }
+        if (res.status === 503) {
+            throw new Error('OTP service is not configured yet. Set webhook/env keys in backend.');
+        }
+        throw new Error(json.error || ('Request failed (' + res.status + ')'));
+    }
     return json;
 }
 
