@@ -4645,8 +4645,8 @@ function buildInvoiceHtml(order) {
         @media print{
             .action-bar{display:none!important;}
             body{background:#fff!important;padding:0!important;}
-            body::before{content:'';position:fixed;inset:0;background:url('${logoUrl}') center center / 70% auto no-repeat;opacity:.06;z-index:0;}
-            .sheet{width:194mm;max-width:194mm;margin:0 auto;border-radius:0;box-shadow:none;position:relative;z-index:1;}
+            body::before{content:'';position:fixed;inset:0;background:url('${logoUrl}') center center / 55% auto no-repeat;opacity:.07;z-index:9999;pointer-events:none;}
+            .sheet{width:194mm;max-width:194mm;margin:0 auto;border-radius:0;box-shadow:none;}
             .inv-header{padding:18px 24px;background:linear-gradient(135deg,#0a1628 0%,#0e4a86 58%,#1e6fd9 100%)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
             thead tr{background:linear-gradient(135deg,#0a1628,#0e4a86)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
             .grand-row{background:linear-gradient(135deg,#0a1628,#0e4a86)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
