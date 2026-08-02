@@ -4534,109 +4534,223 @@ function buildInvoiceHtml(order) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice ${order.id}</title>
+    <title>Tax Invoice — ${order.invoiceId || order.id}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root{--teal:#0d9488;--navy:#0f172a;--muted:#64748b;--line:#e2e8f0;--bg:#f8fafc;}
-        *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-        body{font-family:'Segoe UI',Arial,sans-serif;color:var(--navy);margin:0;background:#eef2f7;padding:24px;}
-        .print-bar{max-width:860px;margin:0 auto 16px;display:flex;justify-content:flex-end;gap:10px;}
-        .print-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff;border:none;border-radius:10px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(13,148,136,0.35);transition:transform 0.2s,box-shadow 0.2s;}
-        .print-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(13,148,136,0.45);}
-        .sheet{max-width:860px;margin:0 auto;background:#fff;border:1px solid #dbe4ee;border-radius:18px;overflow:hidden;box-shadow:0 20px 48px rgba(15,23,42,0.12);}
-        .hero{display:flex;justify-content:space-between;gap:20px;padding:22px 26px;background:linear-gradient(135deg,#0f172a 0%,#0d9488 100%);color:#fff;}
-        .brand{display:flex;align-items:flex-start;gap:14px;}
-        .logo{width:58px;height:58px;border-radius:12px;background:#fff;padding:6px;object-fit:contain;}
-        .brand h1{margin:0;font-size:26px;line-height:1.1;}
-        .brand p{margin:6px 0 0;font-size:12px;opacity:.9;line-height:1.6;}
-        .meta{min-width:220px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.22);padding:12px 14px;border-radius:12px;}
-        .meta p{margin:3px 0;font-size:13px;}
-        .body{padding:22px 26px 26px;}
-        .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
-        .box{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;}
-        .box h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
-        .box p{margin:2px 0 0;font-size:14px;line-height:1.6;}
-        table{width:100%;border-collapse:collapse;margin-top:8px;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
-        th,td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:top;}
-        th{background:var(--bg);text-align:left;font-weight:700;color:#334155;}
+        :root{--navy:#0a1628;--blue:#0e4a86;--accent:#1e6fd9;--gold:#f59e0b;--teal:#0891b2;--green:#16a34a;--muted:#64748b;--border:#e2e8f0;--bg:#f8fafc;}
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:'Inter','Segoe UI',sans-serif;background:#d4dce9;color:var(--navy);padding:28px 16px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+        .action-bar{max-width:900px;margin:0 auto 18px;display:flex;justify-content:flex-end;gap:10px;}
+        .btn-print{display:inline-flex;align-items:center;gap:8px;padding:10px 26px;background:linear-gradient(135deg,#0e4a86,#1e6fd9);color:#fff;border:none;border-radius:10px;font-size:.875rem;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(14,74,134,.4);transition:all .2s;letter-spacing:.02em;}
+        .btn-print:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(14,74,134,.5);}
+        .sheet{max-width:900px;margin:0 auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(10,22,40,.18);}
+        /* ── Header ── */
+        .inv-header{background:linear-gradient(135deg,#0a1628 0%,#0e4a86 58%,#1e6fd9 100%);padding:32px 36px;position:relative;overflow:hidden;}
+        .inv-header::before{content:'INVOICE';position:absolute;right:-12px;top:50%;transform:translateY(-50%);font-size:118px;font-weight:900;color:rgba(255,255,255,.04);letter-spacing:-4px;pointer-events:none;}
+        .inv-header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#f59e0b 0%,#0e4a86 40%,#1e6fd9 70%,#0891b2 100%);}
+        .header-inner{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;position:relative;z-index:1;}
+        .brand-side{display:flex;align-items:center;gap:16px;}
+        .logo-wrap{width:72px;height:72px;background:rgba(255,255,255,.96);border-radius:14px;padding:6px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.28);flex-shrink:0;}
+        .logo-wrap img{width:100%;height:100%;object-fit:contain;}
+        .brand-text h1{color:#fff;font-size:22px;font-weight:800;letter-spacing:-.3px;margin-bottom:5px;}
+        .brand-text .tagline{color:rgba(255,255,255,.75);font-size:11.5px;line-height:1.75;}
+        .inv-meta-side{text-align:right;min-width:210px;}
+        .inv-label{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:7px;padding:3px 13px;color:rgba(255,255,255,.9);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;margin-bottom:9px;}
+        .inv-num{color:#fff;font-size:20px;font-weight:800;letter-spacing:-.3px;margin-bottom:9px;}
+        .meta-list{list-style:none;}
+        .meta-list li{display:flex;justify-content:flex-end;gap:8px;color:rgba(255,255,255,.78);font-size:12px;margin-bottom:4px;}
+        .meta-list li strong{color:#fff;font-weight:600;}
+        .pay-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-top:7px;}
+        .pay-pill.cod{background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.3);}
+        .pay-pill.online{background:rgba(22,163,74,.2);color:#4ade80;border:1px solid rgba(22,163,74,.3);}
+        .stripe{height:5px;background:linear-gradient(90deg,#f59e0b 0%,#0e4a86 35%,#1e6fd9 68%,#0891b2 100%);}
+        /* ── Body ── */
+        .inv-body{padding:28px 36px 32px;}
+        .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+        .info-card{border:1px solid var(--border);border-radius:14px;padding:16px 18px 18px;background:#fdfdff;position:relative;overflow:hidden;}
+        .info-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:linear-gradient(180deg,#0e4a86,#1e6fd9);}
+        .card-label{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:11px;}
+        .card-label i{color:#0e4a86;font-size:12px;}
+        .info-name{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:5px;}
+        .info-detail{font-size:13px;color:#475569;line-height:1.75;}
+        .info-detail .d-row{display:flex;align-items:baseline;gap:6px;margin-bottom:2px;}
+        .info-detail .d-row i{color:var(--muted);font-size:11px;width:13px;flex-shrink:0;}
+        .info-detail .d-key{font-weight:600;color:var(--navy);min-width:80px;}
+        .status-ok{color:#16a34a;font-weight:700;}
+        /* ── Table ── */
+        .section-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+        .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+        table{width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+        thead tr{background:linear-gradient(135deg,#0a1628,#0e4a86);}
+        thead th{padding:12px 14px;color:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+        tbody tr:nth-child(even){background:#f8fafc;}
+        tbody td{padding:11px 14px;border-bottom:1px solid #f1f5f9;font-size:13.5px;vertical-align:top;color:#1e293b;}
+        tbody tr:last-child td{border-bottom:none;}
+        tbody td.center{font-weight:700;color:#0e4a86;}
         .center{text-align:center;}
         .right{text-align:right;}
-        .variant{color:var(--muted);font-size:12px;}
-        .emb-detail{color:#0d9488;font-size:11.5px;line-height:1.6;}
-        .totals{width:360px;margin-left:auto;margin-top:16px;border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--bg);}
-        .totals div{display:flex;justify-content:space-between;padding:7px 0;font-size:14px;}
-        .totals .grand{font-weight:800;font-size:17px;border-top:1px dashed #c7d2df;margin-top:3px;padding-top:10px;color:var(--navy);}
-        .foot{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;font-size:12px;color:var(--muted);}
-        @media (max-width:760px){body{padding:10px;background:#fff;}.sheet{border:none;box-shadow:none;}.hero{flex-direction:column;padding:16px;}.body{padding:16px;}.grid{grid-template-columns:1fr;}.totals{width:100%;}}
-        @page{size:A4;margin:10mm;}
+        .variant{color:var(--muted);font-size:12px;display:block;margin-top:2px;}
+        .emb-detail{color:#0891b2;font-size:11.5px;line-height:1.65;display:block;margin-top:3px;}
+        /* ── Totals ── */
+        .totals-wrap{display:flex;justify-content:flex-end;margin-top:20px;}
+        .totals-card{width:340px;border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+        .t-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;font-size:13.5px;border-bottom:1px solid #f1f5f9;}
+        .t-row.disc{color:#16a34a;}
+        .grand-row{background:linear-gradient(135deg,#0a1628,#0e4a86);padding:15px 16px;display:flex;justify-content:space-between;align-items:center;}
+        .grand-row .gl{color:rgba(255,255,255,.85);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+        .grand-row .ga{color:#fff;font-size:23px;font-weight:800;letter-spacing:-.5px;}
+        /* ── Thank You ── */
+        .ty-section{margin-top:28px;background:linear-gradient(135deg,#0a1628 0%,#0e4a86 100%);border-radius:16px;padding:26px 30px;position:relative;overflow:hidden;}
+        .ty-section::before{content:'"';position:absolute;right:20px;top:-8px;font-size:130px;color:rgba(255,255,255,.04);font-family:Georgia,serif;line-height:1;}
+        .ty-inner{display:flex;align-items:flex-start;gap:18px;position:relative;z-index:1;}
+        .ty-icon{width:52px;height:52px;background:linear-gradient(135deg,#f59e0b,#f97316);border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 16px rgba(245,158,11,.45);}
+        .ty-icon i{color:#fff;font-size:22px;}
+        .ty-text h3{color:#fff;font-size:18px;font-weight:800;margin-bottom:8px;letter-spacing:-.2px;}
+        .ty-text p{color:rgba(255,255,255,.82);font-size:13px;line-height:1.85;margin-bottom:14px;}
+        .ty-highlights{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+        .ty-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:4px 12px;color:rgba(255,255,255,.88);font-size:11.5px;font-weight:600;}
+        .ty-chip i{color:#fbbf24;font-size:11px;}
+        .ty-contact{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:9px;padding:8px 15px;color:rgba(255,255,255,.9);font-size:12px;font-weight:600;}
+        .ty-contact i{color:#fbbf24;font-size:13px;}
+        /* ── Footer ── */
+        .inv-footer{margin-top:20px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:16px;}
+        .footer-left{font-size:11px;color:var(--muted);line-height:1.75;}
+        .footer-right{font-size:11px;color:var(--muted);text-align:right;line-height:1.75;}
+        .footer-right strong{color:#0e4a86;}
+        /* ── Responsive ── */
+        @media(max-width:720px){
+            body{padding:10px;background:#fff;}
+            .sheet{border-radius:0;box-shadow:none;}
+            .inv-header{padding:20px;}
+            .header-inner{flex-direction:column;}
+            .inv-meta-side{text-align:left;min-width:0;}
+            .inv-body{padding:20px 20px 24px;}
+            .info-grid{grid-template-columns:1fr;}
+            .totals-card{width:100%;}
+            .inv-footer{flex-direction:column;text-align:center;}
+            .ty-inner{flex-direction:column;}
+        }
+        @page{size:A4;margin:8mm;}
         @media print{
-            .print-bar{display:none!important;}
+            .action-bar{display:none!important;}
             body{background:#fff!important;padding:0!important;}
-            .sheet{width:190mm;max-width:190mm;margin:0 auto;box-shadow:none;border:1px solid #dbe4ee;border-radius:0;}
-            .hero{padding:14px 18px;background:linear-gradient(135deg,#0f172a 0%,#0d9488 100%)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-            .body{padding:14px 18px 18px;}
-            th,td{padding:8px 10px;font-size:12.5px;}
-            .totals{width:86mm;}
-            .foot{font-size:11px;}
+            .sheet{max-width:100%;border-radius:0;box-shadow:none;}
+            .inv-header{padding:18px 24px;background:linear-gradient(135deg,#0a1628 0%,#0e4a86 58%,#1e6fd9 100%)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+            thead tr{background:linear-gradient(135deg,#0a1628,#0e4a86)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+            .grand-row{background:linear-gradient(135deg,#0a1628,#0e4a86)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+            .ty-section{background:linear-gradient(135deg,#0a1628 0%,#0e4a86 100%)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+            .inv-body{padding:16px 24px 20px;}
+            th,td{font-size:12px!important;padding:8px 11px!important;}
+            .totals-card{width:280px;}
+            .ty-section{padding:18px 22px;}
         }
     </style>
 </head>
 <body>
-    <div class="print-bar">
-        <button class="print-btn" onclick="window.print()"><i class="fas fa-print"></i> Print Invoice</button>
+    <div class="action-bar">
+        <button class="btn-print" onclick="window.print()"><i class="fas fa-print"></i>&nbsp; Print Invoice</button>
     </div>
     <div class="sheet">
-        <div class="hero">
-            <div class="brand">
-                <img class="logo" src="${logoUrl}" alt="SSA Logo">
-                <div>
-                    <h1>Siva Suresh Agency</h1>
-                    <p>PVT Towers, 37/10, Selvam Nagar, Erode - 638011<br>Phone: +91 93666 40060 | Email: info@sivasureshagency.onmicrosoft.com</p>
+        <div class="inv-header">
+            <div class="header-inner">
+                <div class="brand-side">
+                    <div class="logo-wrap"><img src="${logoUrl}" alt="SSA Logo"></div>
+                    <div class="brand-text">
+                        <h1>Siva Suresh Agency</h1>
+                        <p class="tagline">PVT Towers, 37/10, Selvam Nagar, Erode &ndash; 638 011<br>+91 93666 40060 &nbsp;&bull;&nbsp; +91 93666 40050<br>info@sivasureshagency.onmicrosoft.com</p>
+                    </div>
                 </div>
-            </div>
-            <div class="meta">
-                <p><strong>Invoice No:</strong> ${order.invoiceId || order.id}</p>
-                <p><strong>Order Ref:</strong> ${order.id}</p>
-                <p><strong>Date:</strong> ${invoiceDate.toLocaleDateString('en-IN')}</p>
-                <p><strong>Payment:</strong> ${order.payment || 'COD'}</p>
+                <div class="inv-meta-side">
+                    <div class="inv-label">Tax Invoice</div>
+                    <div class="inv-num">${order.invoiceId || order.id}</div>
+                    <ul class="meta-list">
+                        <li><strong>Order Ref:</strong>&nbsp;${order.id}</li>
+                        <li><strong>Date:</strong>&nbsp;${invoiceDate.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'})}</li>
+                    </ul>
+                    <div class="pay-pill ${(order.payment || 'cod').toLowerCase().includes('cod') ? 'cod' : 'online'}">
+                        <i class="fas ${(order.payment || 'cod').toLowerCase().includes('cod') ? 'fa-truck' : 'fa-check-circle'}"></i>
+                        ${order.payment || 'Cash on Delivery'}
+                    </div>
+                </div>
             </div>
         </div>
+        <div class="stripe"></div>
 
-        <div class="body">
-            <div class="grid">
-                <div class="box">
-                    <h3>Bill To</h3>
-                    <p><strong>${shipping.name}</strong></p>
-                    <p>${shipping.email}</p>
-                    <p>${shipping.phone}</p>
-                    <p>${shippingLine || 'Address not available'}</p>
+        <div class="inv-body">
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="card-label"><i class="fas fa-user-circle"></i> Bill To</div>
+                    <div class="info-name">${shipping.name}</div>
+                    <div class="info-detail">
+                        ${shipping.email ? `<div class="d-row"><i class="fas fa-envelope"></i><span>${shipping.email}</span></div>` : ''}
+                        ${shipping.phone ? `<div class="d-row"><i class="fas fa-phone"></i><span>${shipping.phone}</span></div>` : ''}
+                        ${shippingLine ? `<div class="d-row"><i class="fas fa-map-marker-alt"></i><span>${shippingLine}</span></div>` : ''}
+                    </div>
                 </div>
-                <div class="box">
-                    <h3>Notes</h3>
-                    <p>Thank you for choosing Siva Suresh Agency.</p>
-                    <p>For support, contact +91 93666 40060.</p>
-                    <p>This is a computer-generated invoice.</p>
+                <div class="info-card">
+                    <div class="card-label"><i class="fas fa-file-invoice"></i> Invoice Details</div>
+                    <div class="info-detail">
+                        <div class="d-row"><span class="d-key">Invoice No</span><span style="font-family:monospace;font-weight:700;color:#0e4a86;">${order.invoiceId || order.id}</span></div>
+                        <div class="d-row"><span class="d-key">Order Date</span><span>${invoiceDate.toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'})}</span></div>
+                        <div class="d-row"><span class="d-key">Payment</span><span>${order.payment || 'Cash on Delivery'}</span></div>
+                        <div class="d-row"><span class="d-key">Status</span><span class="status-ok"><i class="fas fa-circle-check"></i> Confirmed</span></div>
+                    </div>
                 </div>
             </div>
 
+            <div class="section-title"><i class="fas fa-box-open"></i>&nbsp; Order Items</div>
             <table>
                 <thead>
-                    <tr><th>Item</th><th class="center">Qty</th><th class="right">Unit Price</th><th class="right">Amount</th></tr>
+                    <tr>
+                        <th>Product Description</th>
+                        <th class="center">Qty</th>
+                        <th class="right">Unit Price</th>
+                        <th class="right">Amount</th>
+                    </tr>
                 </thead>
                 <tbody>${rows}</tbody>
             </table>
 
-            <div class="totals">
-                <div><span>Product Subtotal</span><span>&#8377;${productSubtotal.toLocaleString('en-IN')}</span></div>
-                ${embTotal > 0 ? `<div><span>Embroidery</span><span>&#8377;${embTotal.toLocaleString('en-IN')}</span></div>` : ''}
-                ${discountAmt > 0 ? `<div style="color:#16a34a;"><span>Discount</span><span>−&#8377;${discountAmt.toLocaleString('en-IN')}</span></div>` : ''}
-                <div><span>Shipping</span><span>${shippingCharge > 0 ? '&#8377;' + shippingCharge.toLocaleString('en-IN') : '<span style="color:#16a34a;font-weight:700;">FREE</span>'}</span></div>
-                <div class="grand"><span>Order Total</span><span>&#8377;${(order.total || 0).toLocaleString('en-IN')}</span></div>
+            <div class="totals-wrap">
+                <div class="totals-card">
+                    <div class="t-row"><span>Product Subtotal</span><span>&#8377;${productSubtotal.toLocaleString('en-IN')}</span></div>
+                    ${embTotal > 0 ? `<div class="t-row"><span><i class="fas fa-needle" style="color:#0891b2"></i> Embroidery</span><span>&#8377;${embTotal.toLocaleString('en-IN')}</span></div>` : ''}
+                    ${discountAmt > 0 ? `<div class="t-row disc"><span><i class="fas fa-tag"></i> Discount</span><span>&minus;&#8377;${discountAmt.toLocaleString('en-IN')}</span></div>` : ''}
+                    <div class="t-row"><span>Delivery Charges</span><span>${shippingCharge > 0 ? '&#8377;' + shippingCharge.toLocaleString('en-IN') : '<span style="color:#16a34a;font-weight:700;">FREE</span>'}</span></div>
+                    <div class="grand-row">
+                        <span class="gl">Grand Total</span>
+                        <span class="ga">&#8377;${(order.total || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="foot">
-                <span>Invoice generated on ${new Date().toLocaleString('en-IN')}</span>
-                <span>www.sivasureshagency.com</span>
+            <div class="ty-section">
+                <div class="ty-inner">
+                    <div class="ty-icon"><i class="fas fa-heart"></i></div>
+                    <div class="ty-text">
+                        <h3>Thank You for Trusting Siva Suresh Agency!</h3>
+                        <p>Your confidence in us is our greatest honour. Every item in this order has been prepared with meticulous care &mdash; from the finest fabric selection to the precision of every stitch. For over <strong style="color:#fbbf24;">15 years</strong>, we have proudly served <strong style="color:#fbbf24;">500+ hospitals</strong> across India, and your order strengthens that legacy of excellence. We are committed to delivering quality that you and your patients truly deserve &mdash; crafted with pride, delivered with dedication.</p>
+                        <div class="ty-highlights">
+                            <span class="ty-chip"><i class="fas fa-star"></i> 15+ Years of Excellence</span>
+                            <span class="ty-chip"><i class="fas fa-hospital"></i> 500+ Hospitals Served</span>
+                            <span class="ty-chip"><i class="fas fa-shield-halved"></i> Quality Guaranteed</span>
+                        </div>
+                        <span class="ty-contact"><i class="fas fa-headset"></i>&nbsp; Need help? &nbsp;+91 93666 40060 &nbsp;&bull;&nbsp; info@sivasureshagency.onmicrosoft.com</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="inv-footer">
+                <div class="footer-left">
+                    <div>This is a computer-generated invoice. No signature required.</div>
+                    <div>Generated on ${new Date().toLocaleString('en-IN')}</div>
+                </div>
+                <div class="footer-right">
+                    <div><strong>www.sivasureshagency.com</strong></div>
+                    <div>GST Invoice &nbsp;&bull;&nbsp; Erode, Tamil Nadu, India</div>
+                </div>
             </div>
         </div>
     </div>
