@@ -4862,16 +4862,19 @@ async function _openRazorpayCheckout(order, shipping) {
         modal: {
             ondismiss: function() {
                 _hidePaymentOverlay();
-                showToast('Payment cancelled. Your order was not placed.');
+                // ondismiss also fires after payment.failed — only show cancel message if no failure yet
+                if (!_rzpFailed) showToast('Payment cancelled. Your order has not been placed.');
             }
         }
     };
+    let _rzpFailed = false;
     const rzp = new Razorpay(options);
     rzp.on('payment.failed', function(response) {
+        _rzpFailed = true;
         _hidePaymentOverlay();
         const msg = (response.error && response.error.description)
             ? response.error.description : 'Please try again.';
-        showToast('Payment failed: ' + msg);
+        showToast('Payment failed: ' + msg + ' — No order was placed.');
     });
     const _rzpHideTimer = setTimeout(_hidePaymentOverlay, 1200);
     rzp.open();
