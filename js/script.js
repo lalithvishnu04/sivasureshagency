@@ -2714,9 +2714,9 @@ function openLoginModal() {
     <div class="auth-form" id="loginForm">
       <h3 style="margin-bottom:4px;">Welcome Back</h3>
       <p class="auth-subtitle" style="margin-bottom:16px;">Sign in to manage orders &amp; account</p>
-      <div class="form-group">
-        <label>Email, Phone or Customer ID</label>
-        <input type="text" id="loginEmail" placeholder="Email, phone or SSA-XXXXXX">
+            <div class="form-group">
+                <label>Email or Customer ID</label>
+                <input type="text" id="loginEmail" placeholder="Email or SSA-XXXXXX">
         <span class="field-error" id="loginEmailError" style="display:none;"></span>
       </div>
       <div class="form-group">
@@ -2730,7 +2730,7 @@ function openLoginModal() {
             <div style="text-align:right;margin-top:-2px;margin-bottom:10px;">
                 <a onclick="openForgotPasswordForm()" style="font-size:0.83rem;color:var(--primary);cursor:pointer;">Forgot password?</a>
             </div>
-      <button class="btn btn-gradient btn-full" style="margin-top:4px;" onclick="handleLogin()"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+    <button class="btn btn-gradient btn-full" id="loginSubmitBtn" style="margin-top:4px;" onclick="handleLogin()"><i class="fas fa-sign-in-alt"></i> Sign In</button>
       <p class="auth-switch">New here? <a onclick="switchAuthTab('register')">Create account</a></p>
     </div>
     <div class="auth-form" id="registerForm" style="display:none;">
@@ -2801,6 +2801,19 @@ function openLoginModal() {
   </div>
 </div>`;
     modal.classList.add('active');
+    const bindEnter = (id) => {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.enterBound === '1') return;
+        el.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') {
+                ev.preventDefault();
+                handleLogin();
+            }
+        });
+        el.dataset.enterBound = '1';
+    };
+    bindEnter('loginEmail');
+    bindEnter('loginPassword');
     setTimeout(() => { const el = document.getElementById('loginEmail'); if (el) el.focus(); }, 100);
 }
 function togglePwdVis(inputId, btn) {
@@ -2994,25 +3007,80 @@ function _upsertLocalUserProfile(profile) {
     localStorage.setItem('ssa_users', JSON.stringify(users));
 }
 
+async function _resolveEmailFromCustomerId(customerIdInput) {
+    const cid = String(customerIdInput || '').trim().toUpperCase();
+    if (!/^SSA-[A-Z0-9-]+$/.test(cid)) return null;
+
+    const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
+    const local = users.find(u => String(u.customerId || '').trim().toUpperCase() === cid);
+    if (local && local.email) return String(local.email).trim().toLowerCase();
+
+    if (window.db) {
+        try {
+            const exact = await window.db.collection('customers').where('customerId', '==', cid).get();
+            if (exact && exact.docs && exact.docs.length) {
+                const em = exact.docs[0]?.data()?.email;
+                if (em) return String(em).trim().toLowerCase();
+            }
+
+            // Fallback for legacy case inconsistencies.
+            const all = await window.db.collection('customers').get();
+            const found = (all.docs || []).find(d => String(d.data()?.customerId || '').trim().toUpperCase() === cid);
+            const em2 = found?.data()?.email;
+            if (em2) return String(em2).trim().toLowerCase();
+        } catch (e) {
+            console.warn('[login] customer ID lookup failed:', e.message || e);
+        }
+    }
+    return null;
+}
+
 async function handleLogin() {
-    const emailInput = document.getElementById('loginEmail').value.trim();
+    const loginInput = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
+    const loginBtn = document.getElementById('loginSubmitBtn');
     document.getElementById('loginEmailError').style.display = 'none';
     document.getElementById('loginPasswordError').style.display = 'none';
-    if (!emailInput) { document.getElementById('loginEmailError').textContent = 'Required'; document.getElementById('loginEmailError').style.display = 'block'; return; }
+    if (!loginInput) { document.getElementById('loginEmailError').textContent = 'Required'; document.getElementById('loginEmailError').style.display = 'block'; return; }
     if (!password) { document.getElementById('loginPasswordError').textContent = 'Required'; document.getElementById('loginPasswordError').style.display = 'block'; return; }
 
-    // Support login via Customer ID (SSA-XXXXXXXX format)
-    let email = emailInput;
-    if (/^SSA-[A-Z0-9]+$/i.test(emailInput)) {
-        const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
-        const byId = users.find(u => u.customerId && u.customerId.toLowerCase() === emailInput.toLowerCase());
-        if (byId) { email = byId.email; }
-        else { document.getElementById('loginEmailError').textContent = 'Customer ID not found'; document.getElementById('loginEmailError').style.display = 'block'; return; }
+    const resetLoginBtn = () => {
+        if (!loginBtn) return;
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+    };
+    if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
     }
 
-    // Primary path: backend auth (email only)
-    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && window.auth && typeof window.auth.signInWithEmailAndPassword === 'function') {
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginInput);
+    const isCustomerId = /^SSA-[A-Z0-9-]+$/i.test(loginInput);
+    const looksLikePhone = /^\+?\d{7,15}$/.test(loginInput.replace(/[\s-]/g, ''));
+
+    if (looksLikePhone) {
+        document.getElementById('loginEmailError').textContent = 'Mobile number login is disabled. Use email or Customer ID.';
+        document.getElementById('loginEmailError').style.display = 'block';
+        resetLoginBtn();
+        return;
+    }
+    if (!isEmail && !isCustomerId) {
+        document.getElementById('loginEmailError').textContent = 'Enter a valid email or Customer ID (SSA-...).';
+        document.getElementById('loginEmailError').style.display = 'block';
+        resetLoginBtn();
+        return;
+    }
+
+    let email = isEmail ? loginInput.toLowerCase() : await _resolveEmailFromCustomerId(loginInput);
+    if (!email) {
+        document.getElementById('loginEmailError').textContent = 'Customer ID not found';
+        document.getElementById('loginEmailError').style.display = 'block';
+        resetLoginBtn();
+        return;
+    }
+
+    // Primary path: Supabase auth (using resolved email)
+    if (window.auth && typeof window.auth.signInWithEmailAndPassword === 'function') {
         try {
             const r = await window.auth.signInWithEmailAndPassword(email, password);
             const u = r?.user || r?.data?.user || null;
@@ -3044,6 +3112,7 @@ async function handleLogin() {
                 await saveCustomerToDb({ firstName, lastName, email: currentUser.email, phone, customerId }).catch(() => {});
             }
             if (typeof syncPendingOrders === 'function') syncPendingOrders(currentUser.email, currentUser.name, currentUser.phone);
+            resetLoginBtn();
             location.reload();
             return;
         } catch (e) {
@@ -3051,9 +3120,13 @@ async function handleLogin() {
         }
     }
 
-    // Fallback path: local profile login (email, phone, or customer ID)
+    // Fallback path: local profile login (email or customer ID only)
     const usersAll = JSON.parse(localStorage.getItem('ssa_users') || '[]');
-    const user = usersAll.find(u => (u.email === email || u.phone === email || (u.customerId && u.customerId.toLowerCase() === emailInput.toLowerCase())) && u.password === password);
+    const normalizedInput = loginInput.trim().toUpperCase();
+    const user = usersAll.find(u => (
+        u.email === email ||
+        (u.customerId && String(u.customerId).trim().toUpperCase() === normalizedInput)
+    ) && u.password === password);
     if (user) {
         const cid = user.customerId || _generateCustomerId(user.email);
         if (!user.customerId) { user.customerId = cid; localStorage.setItem('ssa_users', JSON.stringify(usersAll)); }
@@ -3065,8 +3138,13 @@ async function handleLogin() {
             await saveCustomerToDb({ firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone, customerId: cid }).catch(() => {});
         }
         if (typeof syncPendingOrders === 'function') syncPendingOrders(currentUser.email, currentUser.name, currentUser.phone);
+        resetLoginBtn();
         location.reload();
-    } else { document.getElementById('loginPasswordError').textContent = 'Invalid credentials'; document.getElementById('loginPasswordError').style.display = 'block'; }
+    } else {
+        document.getElementById('loginPasswordError').textContent = 'Invalid credentials';
+        document.getElementById('loginPasswordError').style.display = 'block';
+        resetLoginBtn();
+    }
 }
 async function handleRegister() {
     const fields = ['regFirstName','regLastName','regEmail','regPhone','regPassword','regConfirmPassword'];
