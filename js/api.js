@@ -63,6 +63,20 @@ async function _ssaPost(path, body) {
     return json;
 }
 
+// Calls the always-available Supabase Edge Function (not SSA_API_BASE)
+async function _ssaEdgePost(path, body) {
+    const base = (window.SSA_BACKEND?.authResetApiBase || '').replace(/\/$/, '');
+    if (!base) throw new Error('Supabase Edge Function URL not configured');
+    const res  = await fetch(base + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'Edge function error');
+    return json;
+}
+
 async function _ssaAdminGet(path, ttlMs = 60_000) {
     const hit = _ssaCache.get(path);
     if (hit !== null) { console.log('[api] admin cache HIT:', path); return hit; }
@@ -180,12 +194,12 @@ window.ssaApi = {
     // ── Razorpay ──────────────────────────────────────────────
     // Create a Razorpay Order — returns { orderId, amount, currency }
     async createRazorpayOrder(amount, receipt, notes) {
-        return _ssaPost('/api/razorpay/create-order', { amount, currency: 'INR', receipt, notes: notes || {} });
+        return _ssaEdgePost('/api/razorpay/create-order', { amount, currency: 'INR', receipt, notes: notes || {} });
     },
 
     // Verify HMAC-SHA256 signature server-side after payment success
     async verifyRazorpayPayment(razorpay_order_id, razorpay_payment_id, razorpay_signature) {
-        return _ssaPost('/api/razorpay/verify', { razorpay_order_id, razorpay_payment_id, razorpay_signature });
+        return _ssaEdgePost('/api/razorpay/verify', { razorpay_order_id, razorpay_payment_id, razorpay_signature });
     },
 
     // Cache helpers

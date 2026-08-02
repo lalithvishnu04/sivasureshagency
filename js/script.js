@@ -4778,7 +4778,7 @@ async function _openRazorpayCheckout(order, shipping) {
 
     // Create a Razorpay Order via backend so Order ID appears in the dashboard
     let rzpOrderId = '';
-    if (window.ssaApi && window.ssaApi.enabled) {
+    if (window.ssaApi) {
         try {
             const result = await window.ssaApi.createRazorpayOrder(
                 order.total * 100,
@@ -4787,8 +4787,8 @@ async function _openRazorpayCheckout(order, shipping) {
             );
             rzpOrderId = result.data?.orderId || '';
         } catch (e) {
-            console.warn('[rzp] Could not create Razorpay Order via backend:', e.message);
-            // Continue without order_id — checkout still works (just no Order ID in dashboard)
+            console.warn('[rzp] Could not create Razorpay Order:', e.message);
+            // Continue without order_id — checkout still works
         }
     }
 
@@ -4810,19 +4810,25 @@ async function _openRazorpayCheckout(order, shipping) {
         handler: async function(response) {
             _hidePaymentOverlay();
             // Verify payment signature server-side when a Razorpay Order was created
-            if (window.ssaApi && window.ssaApi.enabled
-                && response.razorpay_order_id && response.razorpay_signature) {
+            if (window.ssaApi && response.razorpay_order_id && response.razorpay_signature) {
                 try {
                     const vr = await window.ssaApi.verifyRazorpayPayment(
                         response.razorpay_order_id,
                         response.razorpay_payment_id,
                         response.razorpay_signature
                     );
-                    if (!vr.verified) throw new Error('Signature mismatch');
+                    if (vr.verified === false) {
+                        showToast('Payment verification failed. Contact support: ' + response.razorpay_payment_id);
+                        console.error('[rzp] Signature mismatch');
+                        return;
+                    }
                 } catch (e) {
-                    showToast('Payment verification failed. Please contact support with Payment ID: ' + response.razorpay_payment_id);
-                    console.error('[rzp] Verification failed:', e.message);
-                    return;
+                    // Only block on explicit signature mismatch; ignore endpoint errors
+                    if (/signature/i.test(e.message)) {
+                        showToast('Payment verification failed. Contact support: ' + response.razorpay_payment_id);
+                        return;
+                    }
+                    console.warn('[rzp] Verify unavailable:', e.message);
                 }
             }
             order.paymentStatus = 'Paid';

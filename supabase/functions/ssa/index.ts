@@ -177,6 +177,38 @@ async function sendOtpEmail(webhookUrl: string, toEmail: string, otp: string): P
   });
 }
 
+// ── Razorpay helpers ─────────────────────────────────────────
+
+/** Creates a Razorpay Order via their REST API (no SDK needed). */
+async function rzpCreateOrder(
+  keyId: string, keySecret: string,
+  amount: number, receipt: string, notes: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const auth = btoa(`${keyId}:${keySecret}`);
+  const res  = await fetch('https://api.razorpay.com/v1/orders', {
+    method:  'POST',
+    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ amount, currency: 'INR', receipt, notes, payment_capture: 1 }),
+  });
+  const json: Record<string, unknown> = await res.json();
+  if (!res.ok) {
+    const errMsg = (json?.error as Record<string, string>)?.description ?? `Razorpay ${res.status}`;
+    throw new Error(errMsg);
+  }
+  return json;
+}
+
+/** Verifies Razorpay payment signature using HMAC-SHA-256. */
+async function rzpVerifySignature(
+  keySecret: string, orderId: string, paymentId: string, signature: string
+): Promise<boolean> {
+  const enc     = new TextEncoder();
+  const key     = await crypto.subtle.importKey('raw', enc.encode(keySecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const rawSig  = await crypto.subtle.sign('HMAC', key, enc.encode(`${orderId}|${paymentId}`));
+  const computed = [...new Uint8Array(rawSig)].map(b => b.toString(16).padStart(2, '0')).join('');
+  return computed === signature;
+}
+
 // ── Main handler ─────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -297,6 +329,44 @@ Deno.serve(async (req: Request) => {
     }
 
     return jsonResp({ ok: true, message: 'Password updated successfully.' }, 200, cors);
+  }
+
+  // ── POST /api/razorpay/create-order ────────────────────────
+  if (req.method === 'POST' && route === '/api/razorpay/create-order') {
+    const keyId     = Deno.env.get('RAZORPAY_KEY_ID')     ?? '';
+    const keySecret = Deno.env.get('RAZORPAY_KEY_SECRET') ?? '';
+    if (!keyId || !keySecret) {
+      return jsonResp({ ok: false, error: 'Razorpay not configured on server' }, 503, cors);
+    }
+    const { amount, receipt, notes } = body as { amount?: number; receipt?: string; notes?: Record<string, unknown> };
+    if (!amount || Number(amount) < 100) {
+      return jsonResp({ ok: false, error: 'amount in paise required (min 100)' }, 400, cors);
+    }
+    try {
+      const order = await rzpCreateOrder(keyId, keySecret, Math.round(Number(amount)), receipt ?? ('rcpt_' + Date.now()), notes ?? {});
+      return jsonResp({ ok: true, data: { orderId: order.id, amount: order.amount, currency: order.currency } }, 200, cors);
+    } catch (e: unknown) {
+      return jsonResp({ ok: false, error: (e as Error).message }, 500, cors);
+    }
+  }
+
+  // ── POST /api/razorpay/verify ───────────────────────────────
+  if (req.method === 'POST' && route === '/api/razorpay/verify') {
+    const keySecret = Deno.env.get('RAZORPAY_KEY_SECRET') ?? '';
+    if (!keySecret) {
+      return jsonResp({ ok: false, error: 'Razorpay not configured on server' }, 503, cors);
+    }
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body as Record<string, string>;
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return jsonResp({ ok: false, error: 'order_id, payment_id and signature required' }, 400, cors);
+    }
+    try {
+      const verified = await rzpVerifySignature(keySecret, razorpay_order_id, razorpay_payment_id, razorpay_signature);
+      if (!verified) return jsonResp({ ok: false, verified: false, error: 'Signature mismatch' }, 400, cors);
+      return jsonResp({ ok: true, verified: true }, 200, cors);
+    } catch (e: unknown) {
+      return jsonResp({ ok: false, error: (e as Error).message }, 500, cors);
+    }
   }
 
   return jsonResp({ ok: false, error: 'Not found.' }, 404, cors);
