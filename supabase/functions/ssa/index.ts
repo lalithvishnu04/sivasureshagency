@@ -339,7 +339,7 @@ Deno.serve(async (req: Request) => {
       return jsonResp({ ok: false, error: 'Razorpay not configured on server' }, 503, cors);
     }
     const { amount, receipt, notes } = body as { amount?: number; receipt?: string; notes?: Record<string, unknown> };
-    if (!amount || Number(amount) < 100) {
+    if (!amount || !Number.isFinite(Number(amount)) || Number(amount) < 100) {
       return jsonResp({ ok: false, error: 'amount in paise required (min 100)' }, 400, cors);
     }
     try {
