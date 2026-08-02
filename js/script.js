@@ -2658,7 +2658,9 @@ function addToCartFromDetail(id) {
         const size = getSelectedSize(id); const color = getSelectedColor(id); const p = productsData.find(x => x.id === id);
         if (!p) return;
         if (size && isVariantOutOfStock(p, size, color)) { showToast(`${size}${color ? ' / ' + color : ''} is out of stock!`); return; }
-        if (p.outOfStock) { showToast('This product is currently out of stock!'); return; }
+        // Use color-aware check; p.outOfStock is size-only and would wrongly block in-stock colors
+        const _allOos = p.sizes?.length ? p.sizes.every(s => isVariantOutOfStock(p, s, color)) : !!p.outOfStock;
+        if (_allOos) { showToast('This product is currently out of stock!'); return; }
         const emb = getEmbroideryData(id);
         const base = typeof getSizePrice === 'function' ? getSizePrice(p, size) : { price: p.price };
         const effectivePrice = base.price + (emb ? emb.price : 0);

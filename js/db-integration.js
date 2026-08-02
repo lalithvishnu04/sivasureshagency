@@ -227,9 +227,17 @@ function _applyStockMaps(outMap, lowMap, outVariantMap, lowVariantMap) {
             p.outOfStockSizes = o ? [...o] : [];
             p.lowStockSizes   = l ? [...l] : [];
             const normalizedSizes = (p.sizes || []).map(_normalizeSize).filter(Boolean);
-            p.outOfStock = normalizedSizes.length
-                ? (!!o && normalizedSizes.every(s => o.has(s)))
-                : false;
+            const ov = outVariantMap[p.name];
+            // A color-aware product is fully OOS only if every (size × color) variant is OOS
+            const pColors = (typeof getProductColors === 'function' ? getProductColors(p) : null) || [];
+            if (normalizedSizes.length && pColors.length && ov) {
+                p.outOfStock = pColors.every(c => {
+                    const ck = _normalizeColor(c.name);
+                    return normalizedSizes.every(s => ov.has(_variantKey(s, ck)) || ov.has(_variantKey(s, '')));
+                });
+            } else {
+                p.outOfStock = normalizedSizes.length ? (!!o && normalizedSizes.every(s => o.has(s))) : false;
+            }
             p.lowStock   = !p.outOfStock && (!!l && normalizedSizes.some(s => l.has(s)));
         });
     }
