@@ -2015,11 +2015,19 @@ function buildProductCard(p) {
     const _shownColors = colors ? colors.slice(0, _maxSwatches) : [];
     const _extraColors = colors ? colors.length - _shownColors.length : 0;
     const colorSwatchesHtml = colors ? `<div class="color-swatches" onclick="event.stopPropagation()">
-        ${_shownColors.map((c, i) => `<button class="color-swatch${i === 0 ? ' active' : ''}" data-hex="${c.hex}" data-color-name="${c.name}" title="${c.name}" style="background:${c.hex}${c.hex === '#FFFFFF' ? ';border-color:#ccc' : ''}" onclick="selectCardColor(this)"></button>`).join('')}
+        ${_shownColors.map(c => {
+            const _cOos = (p.sizes||[]).length ? (p.sizes||[]).every(s => isVariantOutOfStock(p, s, c.name)) : false;
+            return `<button class="color-swatch${_cOos ? ' swatch-oos' : ''}" data-hex="${c.hex}" data-color-name="${c.name}" title="${c.name}${_cOos ? ' (Out of Stock)' : ''}" style="background:${c.hex}${c.hex === '#FFFFFF' ? ';border-color:#ccc' : ''}" onclick="selectCardColor(this)"></button>`;
+        }).join('')}
         ${_extraColors > 0 ? `<button class="color-swatch-more" title="View all ${colors.length} colors" onclick="event.stopPropagation();openProductDetail(${p.id})">+${_extraColors}</button>` : ''}
-        <span class="color-name">${colors[0].name}</span>
+        <span class="color-name"></span>
     </div>` : '';
-    const defaultColor = colors?.[0]?.name || '';
+    const _anyAvailColor = (colors || []).find(c =>
+        (p.sizes || []).length
+            ? (p.sizes || []).some(s => !isVariantOutOfStock(p, s, c.name))
+            : !p.outOfStock
+    );
+    const defaultColor = _anyAvailColor?.name || colors?.[0]?.name || '';
     const cardState = getCardStockState(p, defaultColor);
     const isOut = cardState.isOut;
     const isLow = !isOut && cardState.isLow;
@@ -2039,14 +2047,14 @@ function buildProductCard(p) {
         ${outBadge}
         <button class="shop-card-wishlist" data-product-id="${p.id}" aria-label="Wishlist"><i class="${isWishlisted(p.id) ? 'fas' : 'far'} fa-heart"></i></button>
         <div class="shop-card-image${_hoverImgs.length > 1 ? ' has-hover-cycle' : ''}" onclick="openProductDetail(${p.id})">
-            <img src="${_cardImg}" alt="${p.name}" loading="lazy">
+            <img src="${_cardImg}" alt="${p.name}" loading="lazy" data-default-img="${_cardImg}">
             ${_dotsHtml}
             ${quickBtn}
         </div>
         <div class="shop-card-body" onclick="openProductDetail(${p.id})">
             <span class="shop-card-category">${typeof getCategoryLabel === 'function' ? getCategoryLabel(p.category) : p.category.replace(/-/g, ' ')}</span>
             ${p.gender ? `<span class="shop-card-tag ${p.gender}">${p.gender === 'male' ? '<i class="fas fa-mars"></i> Gents' : p.gender === 'unisex' ? '<i class="fas fa-venus-mars"></i> Unisex' : '<i class="fas fa-venus"></i> Ladies'}${p.sleeve ? ' • ' + p.sleeve.charAt(0).toUpperCase() + p.sleeve.slice(1) + ' Sleeve' : ''}</span>` : ''}
-            <h4 class="shop-card-name" data-base-name="${p.name}">${p.name}${colors && colors[0] ? ' \u2013 ' + colors[0].name : ''}</h4>
+            <h4 class="shop-card-name" data-base-name="${p.name}">${p.name}</h4>
             ${colorSwatchesHtml}
             <div class="shop-card-rating"><span class="rating-val">${(p.rating||0).toFixed(1)}</span>${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating||0))}${(p.rating||0) % 1 ? '<i class="fas fa-star-half-alt"></i>' : ''}<span>(${p.reviews||0})</span></div>
             <div class="shop-card-price"><span class="price">₹${p.price}</span>${p.oldPrice ? `<span class="old-price">₹${p.oldPrice}</span>` : ''}</div>
@@ -2217,7 +2225,19 @@ function updateCardStockUI(cardEl) {
     if (!product) return;
 
     const selectedColorBtn = cardEl.querySelector('.color-swatch.active');
-    const selectedColor = selectedColorBtn?.dataset.colorName || getProductColors(product)?.[0]?.name || '';
+    let selectedColor;
+    if (selectedColorBtn) {
+        selectedColor = selectedColorBtn.dataset.colorName;
+    } else {
+        // No color selected — find any available color so the badge is accurate
+        const _allCardColors = getProductColors(product) || [];
+        const _anyAvail = _allCardColors.find(c =>
+            (product.sizes || []).length
+                ? (product.sizes || []).some(s => !isVariantOutOfStock(product, s, c.name))
+                : !product.outOfStock
+        );
+        selectedColor = _anyAvail?.name || _allCardColors[0]?.name || '';
+    }
     const state = getCardStockState(product, selectedColor);
 
     const allBadges = Array.from(cardEl.querySelectorAll('.shop-card-badge'));
@@ -6276,34 +6296,39 @@ async function _appendUserMsgToSession(docId, text) {
 }
 
 
-// ===== Color Selection (order-only, no image change) =====
 function selectCardColor(btn) {
+    if (btn.classList.contains('swatch-oos')) return; // OOS colors are not selectable
     const swatches = btn.parentElement;
-    swatches.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-    btn.classList.add('active');
-    const label = swatches.querySelector('.color-name');
-    if (label) label.textContent = btn.dataset.colorName;
+    const wasActive = btn.classList.contains('active');
     const card = btn.closest('.shop-card');
-    if (card) {
-        // Update h4 to show color name
-        const h4 = card.querySelector('.shop-card-name');
+    const label = swatches.querySelector('.color-name');
+    const h4 = card?.querySelector('.shop-card-name');
+    const img = card?.querySelector('.shop-card-image img');
+
+    swatches.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+
+    if (wasActive) {
+        // Toggle OFF — deselect, revert title and image to defaults
+        if (label) label.textContent = '';
+        if (h4) h4.textContent = h4.dataset.baseName || h4.textContent.split('\u2013')[0].trim();
+        if (img && img.dataset.defaultImg) img.src = img.dataset.defaultImg;
+    } else {
+        // Toggle ON — activate this color
+        btn.classList.add('active');
+        if (label) label.textContent = btn.dataset.colorName;
         if (h4) {
             const base = h4.dataset.baseName || h4.textContent.split('\u2013')[0].trim();
             h4.dataset.baseName = h4.dataset.baseName || base;
-            h4.textContent = base + (btn.dataset.colorName ? '\u2013 ' + btn.dataset.colorName : '');
+            h4.textContent = base + ' \u2013 ' + btn.dataset.colorName;
         }
-        updateCardStockUI(card);
-        // Swap card image to selected color's image
-        const pid = Number(card.dataset.id);
-        const product = productsData.find(p => p.id === pid);
-        if (product?.colorVariants) {
-            const cv = product.colorVariants.find(c => c.name === btn.dataset.colorName);
-            if (cv?.images?.[0]) {
-                const img = card.querySelector('.shop-card-image img');
-                if (img) img.src = cv.images[0];
-            }
+        if (card) {
+            const pid = Number(card.dataset.id);
+            const product = productsData.find(p => p.id === pid);
+            const cv = product?.colorVariants?.find(c => c.name === btn.dataset.colorName);
+            if (cv?.images?.[0] && img) img.src = cv.images[0];
         }
     }
+    if (card) updateCardStockUI(card);
 }
 
 function selectDetailColor(btn, pid) {
