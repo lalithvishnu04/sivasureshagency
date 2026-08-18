@@ -3151,3 +3151,173 @@ img{max-width:100%;display:block;}
 .admin-order-return-badge.approved { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
 .admin-order-return-badge.rejected { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
 .admin-order-return-badge.refunded { background: #e0e7ff; color: #3730a3; border-color: #a5b4fc; }
+
+/* ═══════════════════════════════════════════════════════════════
+   SSA Admin v2 — Modern & Professional Refresh
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Sidebar v2 ─────────────────────────────────────────────── */
+/* Gradient accent line at top of sidebar */
+.sidebar::before {
+  content:''; display:block; height:3px;
+  background:linear-gradient(90deg, #0d9488 0%, #0ea5e9 50%, #0d9488 100%);
+  flex-shrink:0;
+}
+/* Left indicator bar on active nav item */
+.nav-item.active::before {
+  content:''; position:absolute; left:0; top:6px; bottom:6px;
+  width:3px; border-radius:0 3px 3px 0;
+  background:linear-gradient(180deg, #5eead4, #0d9488);
+}
+/* Active nav item deeper gradient */
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(13,148,136,0.28), rgba(14,165,233,0.14)) !important;
+  border: 1px solid rgba(13,148,136,0.22) !important;
+  box-shadow: 0 4px 18px rgba(13,148,136,0.2), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+}
+/* Nav item hover with subtle glass */
+.nav-item:hover {
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+}
+/* Sidebar header subtle glow */
+.sidebar-header {
+  background: linear-gradient(180deg, rgba(13,148,136,0.08) 0%, transparent 100%);
+}
+
+/* ── Stat Cards v2 ──────────────────────────────────────────── */
+.stat-card {
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.12) !important;
+  transition: transform 0.28s cubic-bezier(0.4,0,0.2,1), box-shadow 0.28s ease !important;
+}
+.stat-card:hover {
+  transform: translateY(-5px) !important;
+  filter: brightness(1.06);
+}
+/* Deeper shimmer sweep on hover */
+.stat-card::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
+  transform:translateX(-100%); pointer-events:none;
+}
+.stat-card:hover::before { transform:translateX(100%); transition:transform 0.6s ease; }
+
+/* Radial orb top-right for depth */
+.stat-card::after {
+  width:110px !important; height:110px !important;
+  background:rgba(255,255,255,0.1) !important;
+  bottom:-28px !important; right:-22px !important;
+}
+.stat-card.blue   { background:linear-gradient(145deg,#1d4ed8,#3b82f6) !important; box-shadow:0 8px 32px rgba(59,130,246,0.32) !important; }
+.stat-card.orange { background:linear-gradient(145deg,#c2410c,#f59e0b) !important; box-shadow:0 8px 32px rgba(245,158,11,0.32) !important; }
+.stat-card.green  { background:linear-gradient(145deg,#047857,#10b981) !important; box-shadow:0 8px 32px rgba(16,185,129,0.32) !important; }
+.stat-card.purple { background:linear-gradient(145deg,#5b21b6,#8b5cf6) !important; box-shadow:0 8px 32px rgba(139,92,246,0.32) !important; }
+.stat-card.pink   { background:linear-gradient(145deg,#9d174d,#ec4899) !important; box-shadow:0 8px 32px rgba(236,72,153,0.32) !important; }
+
+/* Stat number bigger, bolder */
+.stat-value {
+  font-size: clamp(1.7rem, 3vw, 2.4rem) !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.05em !important;
+  text-shadow: 0 2px 12px rgba(255,255,255,0.15) !important;
+}
+
+/* ── Data Table v2 ──────────────────────────────────────────── */
+.data-table thead tr {
+  background: linear-gradient(to right, #f0f9ff, #f0fdfa) !important;
+}
+.data-table th {
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  font-size: 0.67rem !important;
+  color: var(--text-mid) !important;
+  border-bottom: 2px solid rgba(13,148,136,0.18) !important;
+}
+/* Teal tint on row hover */
+.data-table tbody tr:hover {
+  background: rgba(13,148,136,0.04) !important;
+  box-shadow: inset 3px 0 0 rgba(13,148,136,0.4) !important;
+}
+.data-table tbody tr {
+  transition: background 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+/* ── KPI Card v2 ────────────────────────────────────────────── */
+.kpi-card {
+  border-radius: var(--radius) !important;
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s ease !important;
+  overflow: hidden;
+}
+.kpi-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.1) !important;
+}
+.kpi-card::before {
+  height: 4px !important;
+}
+.kpi-card.kpi-teal::before   { background:linear-gradient(90deg,#0f766e,#14b8a6,#0ea5e9) !important; }
+.kpi-card.kpi-blue::before   { background:linear-gradient(90deg,#1d4ed8,#3b82f6,#0ea5e9) !important; }
+.kpi-card.kpi-green::before  { background:linear-gradient(90deg,#047857,#10b981,#34d399) !important; }
+.kpi-card.kpi-orange::before { background:linear-gradient(90deg,#c2410c,#f59e0b,#fcd34d) !important; }
+.kpi-card.kpi-purple::before { background:linear-gradient(90deg,#5b21b6,#8b5cf6,#a78bfa) !important; }
+.kpi-card.kpi-red::before    { background:linear-gradient(90deg,#991b1b,#ef4444,#f87171) !important; }
+
+/* ── Section Header (page title bar) v2 ────────────────────── */
+.page-header {
+  background: linear-gradient(135deg, #fff 0%, #f8fffe 100%) !important;
+  border-bottom: 2px solid rgba(13,148,136,0.12) !important;
+  box-shadow: 0 2px 14px rgba(13,148,136,0.06) !important;
+}
+.page-title {
+  font-weight: 900 !important;
+  letter-spacing: -0.03em !important;
+}
+
+/* ── Admin Card (panels) v2 ─────────────────────────────────── */
+.admin-card, .card {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05), 0 4px 20px rgba(0,0,0,0.06) !important;
+  transition: box-shadow 0.25s ease !important;
+}
+.admin-card:hover, .card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.09) !important;
+}
+
+/* ── Buttons in Admin v2 ─────────────────────────────────────── */
+.btn-primary, .btn-save, .action-btn.primary {
+  box-shadow: 0 2px 10px rgba(13,148,136,0.22) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease !important;
+}
+.btn-primary:hover, .btn-save:hover, .action-btn.primary:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 22px rgba(13,148,136,0.36) !important;
+}
+
+/* ── Focus ring ─────────────────────────────────────────────── */
+a:focus-visible, button:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 2px !important;
+  border-radius: 5px !important;
+}
+
+/* ── Scrollbar in admin ─────────────────────────────────────── */
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #0d9488, #0f766e) !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #14b8a6, #0d9488) !important;
+}
+
+/* ── Order status badges — sharper ─────────────────────────── */
+.status-badge {
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  border-radius: 50px !important;
+}
+
+/* ── Modal overlay deeper ───────────────────────────────────── */
+.modal-overlay, .overlay {
+  backdrop-filter: blur(4px) !important;
+  background: rgba(15,23,42,0.55) !important;
+}

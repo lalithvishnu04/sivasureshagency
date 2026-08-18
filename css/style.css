@@ -1,5 +1,5 @@
 /* ================================================================
-   SIVA SURESH AGENCY  —  Style v70
+   SIVA SURESH AGENCY  —  Style v95
    Design: Clean medical professional (KnyaMed-inspired)
    Font  : Inter
    Accent: Teal #0d9488  |  Navy #0f172a
@@ -3945,4 +3945,346 @@ section.section-alt { background: var(--bg-off); }
 }
 .ssa-share-item span {
     font-size: 0.52rem; font-weight: 800; color: var(--clr); letter-spacing: 0.03em; text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   § 48  DESIGN SYSTEM v2 — Modern & Professional Refresh
+   Improvements: hero mesh orbs · premium cards · bento v2 ·
+   section headers · CTA · footer gradient · trust strip · polish
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 48a. CSS Variable Additions ──────────────────────────────── */
+:root {
+  --glow-teal:   0 0 0 1px rgba(13,148,136,0.15), 0 8px 32px rgba(13,148,136,0.2);
+  --glow-teal-lg:0 0 0 1px rgba(13,148,136,0.2),  0 16px 48px rgba(13,148,136,0.28);
+  --gradient-brand: linear-gradient(135deg, #0d9488 0%, #0ea5e9 100%);
+  --gradient-dark:  linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+}
+
+/* ── 48b. Hero — Animated Mesh Orbs ──────────────────────────── */
+/* Glowing orbs sit inside each .hero-bg for depth without JS     */
+.hero-gradient-1::before,.hero-gradient-2::before,
+.hero-gradient-3::before,.hero-gradient-4::before {
+  content:''; position:absolute;
+  width:520px; height:520px; border-radius:50%;
+  background:radial-gradient(circle, rgba(13,148,136,0.18) 0%, transparent 70%);
+  top:-120px; right:-80px; pointer-events:none;
+  animation:hero-orb-float 9s ease-in-out infinite;
+}
+.hero-gradient-1::after,.hero-gradient-2::after,
+.hero-gradient-3::after,.hero-gradient-4::after {
+  content:''; position:absolute;
+  width:360px; height:360px; border-radius:50%;
+  background:radial-gradient(circle, rgba(13,148,136,0.11) 0%, transparent 70%);
+  bottom:-80px; left:5%; pointer-events:none;
+  animation:hero-orb-float 12s ease-in-out infinite reverse;
+}
+@keyframes hero-orb-float {
+  0%,100% { transform:translateY(0) scale(1); }
+  50%      { transform:translateY(-28px) scale(1.06); }
+}
+
+/* Hero badge — shimmer sweep on active slide */
+.hero-slide.active .hero-badge {
+  background: rgba(13,148,136,0.22);
+  border-color: rgba(13,148,136,0.48);
+  box-shadow: 0 0 18px rgba(13,148,136,0.22);
+}
+
+/* Hero product labels — elevated glass pills */
+.hero-prod-label {
+  background: rgba(10,18,36,0.72) !important;
+  backdrop-filter: blur(14px) saturate(180%) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.07) !important;
+  border-radius: 10px !important;
+  padding: 8px 14px !important;
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* Hero H1 — refined letter-spacing on large viewport */
+@media(min-width:1100px) {
+  .hero-content h1 { font-size: clamp(2rem, 4.5vw, 3.2rem); letter-spacing:-0.05em; }
+}
+
+/* ── 49. Premium Shop Card v2 ─────────────────────────────────── */
+.shop-card {
+  transition: transform 0.28s cubic-bezier(0.4,0,0.2,1),
+              box-shadow 0.28s cubic-bezier(0.4,0,0.2,1),
+              border-color 0.28s ease !important;
+}
+.shop-card:hover {
+  transform: translateY(-7px) !important;
+  box-shadow: var(--glow-teal-lg) !important;
+  border-color: rgba(13,148,136,0.35) !important;
+}
+/* Shimmer sweep on card image hover */
+.shop-card-image { overflow:hidden; position:relative; }
+.shop-card-image::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%);
+  transform:translateX(-100%); transition:transform 0.55s ease;
+  pointer-events:none;
+}
+.shop-card:hover .shop-card-image::after { transform:translateX(100%); }
+
+/* Badge pill — refined */
+.shop-card-badge {
+  font-size: 0.65rem !important; letter-spacing:0.06em !important;
+  padding: 3px 9px !important; border-radius: 6px !important;
+  background: var(--primary) !important;
+  box-shadow: 0 2px 10px rgba(13,148,136,0.38) !important;
+}
+/* Out-of-stock overlay */
+.out-of-stock-card { opacity:0.65 !important; }
+
+/* ── 50. Section Header v2 ─────────────────────────────────────── */
+.section-tag {
+  display: inline-flex !important; align-items:center; gap:6px;
+  background: linear-gradient(135deg, rgba(13,148,136,0.12) 0%, rgba(14,165,233,0.08) 100%) !important;
+  border: 1px solid rgba(13,148,136,0.22) !important;
+  color: var(--primary) !important;
+  padding: 5px 14px !important; border-radius: 50px !important;
+  font-size: 0.72rem !important; font-weight: 800 !important;
+  letter-spacing: 0.1em !important; text-transform: uppercase !important;
+  margin-bottom: 12px !important;
+}
+.section-header { text-align:center; max-width:640px; margin:0 auto 36px; }
+/* Gradient shimmer on section titles */
+.gradient-text {
+  background: linear-gradient(120deg, #0d9488 0%, #0ea5e9 50%, #0d9488 100%) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important; background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  animation: shimmer-text 4s linear infinite;
+}
+@keyframes shimmer-text {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ── 51. Category Tiles v2 ─────────────────────────────────────── */
+.category-tile {
+  transition: transform 0.28s cubic-bezier(0.4,0,0.2,1),
+              box-shadow 0.28s ease, border-color 0.28s ease !important;
+}
+.category-tile:hover {
+  transform: translateY(-8px) !important;
+  box-shadow: var(--glow-teal-lg) !important;
+  border-color: rgba(13,148,136,0.3) !important;
+}
+.cat-tile-icon {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, rgba(13,148,136,0.15), rgba(14,165,233,0.1)) !important;
+  border: 1px solid rgba(13,148,136,0.18) !important;
+  border-radius: 12px;
+  display:flex; align-items:center; justify-content:center;
+  transition: background 0.28s, box-shadow 0.28s;
+}
+.category-tile:hover .cat-tile-icon {
+  background: linear-gradient(135deg, rgba(13,148,136,0.28), rgba(14,165,233,0.18)) !important;
+  box-shadow: 0 0 14px rgba(13,148,136,0.2);
+}
+
+/* ── 52. Bento Grid v2 ─────────────────────────────────────────── */
+.bento-card {
+  transition: transform 0.28s cubic-bezier(0.4,0,0.2,1),
+              box-shadow 0.28s ease !important;
+}
+.bento-card:hover { transform:translateY(-4px); box-shadow:var(--glow-teal) !important; }
+
+/* Hero bento: animated mesh orb */
+.bento-card--hero {
+  position:relative; overflow:hidden;
+  background: linear-gradient(135deg, #0a1628 0%, #0f2d3e 50%, #0a2520 100%) !important;
+}
+.bento-card--hero::after {
+  content:''; position:absolute;
+  width:340px; height:340px; border-radius:50%;
+  background:radial-gradient(circle, rgba(13,148,136,0.15) 0%, transparent 70%);
+  top:-80px; right:-60px; pointer-events:none;
+  animation:hero-orb-float 8s ease-in-out infinite;
+}
+
+/* Stat bento: gradient number glow */
+.bento-card--stat {
+  background: linear-gradient(145deg, #042f2e 0%, #0f766e 50%, #0d9488 100%) !important;
+  box-shadow: 0 4px 24px rgba(13,148,136,0.3) !important;
+  position:relative; overflow:hidden;
+}
+.bento-card--stat::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(circle at 70% 30%, rgba(255,255,255,0.07) 0%, transparent 60%);
+  pointer-events:none;
+}
+.bento-stat-num {
+  font-size: clamp(2.4rem, 5vw, 3.2rem) !important;
+  font-weight: 900 !important; letter-spacing:-0.05em !important;
+  text-shadow: 0 2px 20px rgba(255,255,255,0.2) !important;
+}
+
+/* Icon bento: gradient icon orb */
+.bento-card--icon .bento-icon {
+  width:52px; height:52px;
+  background: linear-gradient(135deg, rgba(13,148,136,0.18), rgba(14,165,233,0.12)) !important;
+  border: 1px solid rgba(13,148,136,0.22) !important;
+  border-radius: 14px;
+  display:flex; align-items:center; justify-content:center;
+  transition: background 0.3s, box-shadow 0.3s;
+  margin-bottom: 14px;
+}
+.bento-card--icon:hover .bento-icon {
+  background: linear-gradient(135deg, rgba(13,148,136,0.32), rgba(14,165,233,0.2)) !important;
+  box-shadow: 0 0 18px rgba(13,148,136,0.24);
+}
+.bento-card--icon .bento-icon i { color: var(--primary); font-size:1.15rem; }
+
+/* Wide bento trust items */
+.bento-trust-item {
+  display:flex; align-items:center; gap:8px;
+  background: rgba(13,148,136,0.08);
+  border: 1px solid rgba(13,148,136,0.16);
+  border-radius: 50px; padding: 7px 16px;
+  font-size:0.77rem; font-weight:700; color:var(--text-mid);
+  transition: var(--transition);
+}
+.bento-trust-item:hover {
+  background: rgba(13,148,136,0.14);
+  border-color: rgba(13,148,136,0.28);
+  color: var(--primary-dark);
+}
+.bento-trust-item i { color:var(--primary); }
+
+/* ── 53. Trust Strip v2 ────────────────────────────────────────── */
+.ts-icon {
+  width:42px; height:42px;
+  background: linear-gradient(135deg, rgba(13,148,136,0.14), rgba(14,165,233,0.09));
+  border: 1px solid rgba(13,148,136,0.18);
+  border-radius: 12px;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+  transition: background 0.28s, box-shadow 0.28s;
+}
+.trust-strip-item:hover .ts-icon {
+  background: linear-gradient(135deg, rgba(13,148,136,0.26), rgba(14,165,233,0.16));
+  box-shadow: 0 0 14px rgba(13,148,136,0.22);
+}
+.ts-icon i { color:var(--primary); font-size:1rem; }
+.ts-label { font-size:0.83rem; font-weight:800; color:var(--text); display:block; }
+.ts-sub   { font-size:0.72rem; color:var(--text-muted); }
+
+/* ── 54. Testimonials tcard v2 ─────────────────────────────────── */
+.tcard {
+  transition: transform 0.28s ease, box-shadow 0.28s ease !important;
+}
+.tcard:hover { transform:translateY(-5px) !important; box-shadow:var(--glow-teal) !important; }
+.tcard-quote {
+  font-size:2.8rem !important; line-height:1 !important;
+  background: linear-gradient(135deg, #0d9488, #0ea5e9);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  opacity:0.7; margin-bottom:6px !important;
+}
+.tcard-avatar {
+  background: linear-gradient(135deg, #0d9488, #0f766e) !important;
+  box-shadow: 0 4px 14px rgba(13,148,136,0.35) !important;
+}
+
+/* ── 55. CTA Banner v2 ─────────────────────────────────────────── */
+.cta-banner {
+  background: linear-gradient(135deg, #071923 0%, #0a2520 40%, #0f172a 100%) !important;
+  position:relative; overflow:hidden;
+}
+/* Mesh orb */
+.cta-banner::before {
+  content:''; position:absolute;
+  width:480px; height:480px; border-radius:50%;
+  background:radial-gradient(circle, rgba(13,148,136,0.14) 0%, transparent 70%);
+  top:-150px; right:-80px; pointer-events:none !important;
+}
+.cta-banner::after {
+  content:''; position:absolute;
+  width:280px; height:280px; border-radius:50%;
+  background:radial-gradient(circle, rgba(14,165,233,0.09) 0%, transparent 70%);
+  bottom:-80px; left:5%; pointer-events:none !important;
+}
+.cta-content { position:relative; z-index:1; }
+.cta-content h2 {
+  font-size:clamp(1.6rem,3.5vw,2.4rem) !important;
+  letter-spacing:-0.04em !important; font-weight:900 !important;
+}
+.cta-content p { color:rgba(255,255,255,0.72) !important; font-size:1rem !important; }
+/* Glass stat chips inside CTA */
+.cta-stat-chips {
+  display:flex; gap:12px; justify-content:center; flex-wrap:wrap;
+  margin-top:28px;
+}
+.cta-stat-chip {
+  display:inline-flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);
+  backdrop-filter:blur(10px); border-radius:50px;
+  padding:8px 20px; color:#fff; font-size:0.82rem; font-weight:700;
+}
+.cta-stat-chip i { color:#5eead4; }
+.cta-stat-chip strong { color:#5eead4; font-size:1.05rem; }
+
+/* ── 56. Footer v2 ─────────────────────────────────────────────── */
+/* Gradient accent line at top of footer */
+.footer::before {
+  content:''; display:block; height:3px;
+  background:linear-gradient(90deg, transparent 0%, #0d9488 25%, #0ea5e9 50%, #0d9488 75%, transparent 100%);
+}
+.footer-links ul li a,
+.footer-contact a {
+  transition: color 0.22s ease, padding-left 0.22s ease !important;
+}
+.footer-links ul li a:hover { padding-left:5px !important; }
+.social-links a {
+  transition: color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease !important;
+}
+.social-links a:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(13,148,136,0.28) !important;
+}
+
+/* ── 57. Scrollbar v2 ──────────────────────────────────────────── */
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #0d9488 0%, #0f766e 100%) !important;
+  border-radius:10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%) !important;
+}
+
+/* ── 58. Button Polish v2 ──────────────────────────────────────── */
+.btn-primary, .btn-gradient {
+  box-shadow: 0 2px 10px rgba(13,148,136,0.22);
+}
+.btn-primary:hover, .btn-gradient:hover {
+  box-shadow: 0 6px 24px rgba(13,148,136,0.38) !important;
+}
+.btn-navy:hover {
+  box-shadow: 0 6px 22px rgba(15,23,42,0.32) !important;
+}
+/* Subtle press feedback */
+.btn:active { transform:translateY(0) scale(0.98) !important; }
+
+/* ── 59. Global Focus Ring ─────────────────────────────────────── */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 3px !important;
+  border-radius: 5px !important;
+}
+
+/* ── 60. Reduce motion – override new animations ─────────────── */
+@media(prefers-reduced-motion:reduce) {
+  .hero-gradient-1::before,.hero-gradient-1::after,
+  .hero-gradient-2::before,.hero-gradient-2::after,
+  .hero-gradient-3::before,.hero-gradient-3::after,
+  .hero-gradient-4::before,.hero-gradient-4::after,
+  .bento-card--hero::after { animation:none !important; }
+  .gradient-text { animation:none !important; }
+  .shop-card-image::after { transition:none !important; }
 }

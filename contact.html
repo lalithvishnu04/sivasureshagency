@@ -11,8 +11,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=94">
-    <link rel="stylesheet" href="css/animations.css?v=8">
+    <link rel="stylesheet" href="css/style.css?v=95">
+    <link rel="stylesheet" href="css/animations.css?v=9">
     <link rel="icon" type="image/png" href="images/SSA Logo.png">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
 <body data-page="contact">
@@ -190,7 +190,7 @@
         </div>
     </section>
 
-    <!-- Map — PVT Towers, Erode -->
+    <!-- Map ï¿½ PVT Towers, Erode -->
     <section class="map-section-v2" style="position:relative;">
         <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3912.1234!2d77.7290!3d11.3410!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba96f3a95555555%3A0x0!2sPVT+Towers%2C+37%2F10+Selvam+Nagar%2C+Erode%2C+Tamil+Nadu+638011!5e0!3m2!1sen!2sin!4v1" width="100%" height="280" style="border:0;display:block;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="PVT Towers, Siva Suresh Agency Location"></iframe>
         <div class="map-overlay-info">
@@ -209,7 +209,7 @@
                 <div class="footer-links"><h4>Categories</h4><ul><li><a href="categories.html?cat=doctor-uniform">Doctor Uniform</a></li><li><a href="categories.html?cat=staff-uniform">Staff Uniform</a></li><li><a href="categories.html?cat=bedsheets">Bedsheets</a></li><li><a href="categories.html?cat=hospital-linen">Hospital Linen</a></li><li><a href="categories.html?cat=hotel-linen">Hotel Linen</a></li></ul></div>
                 <div class="footer-contact"><h4>Get In Touch</h4><p><i class="fas fa-map-marker-alt"></i> PVT Towers, 37/10, Selvam Nagar, Erode - 638 011</p><p><i class="fas fa-envelope"></i> <a href="mailto:info@sivasureshagency.onmicrosoft.com">info@sivasureshagency.onmicrosoft.com</a></p><p><i class="fas fa-phone-alt"></i> <a href="tel:+919366640050">+91 93666 40050</a></p></div>
             </div>
-            <div class="footer-bottom"><p>&copy; 2024 Siva Suresh Agency. All rights reserved.</p><div class="footer-bottom-links"><a href="#" onclick="openPolicyModal('privacy');return false;">Privacy Policy</a><a href="#" onclick="openPolicyModal('terms');return false;">Terms of Service</a><a href="#" onclick="openPolicyModal('shipping');return false;">Shipping Policy</a></div></div>
+            <div class="footer-bottom"><p>&copy; 2026 Siva Suresh Agency. All rights reserved.</p><div class="footer-bottom-links"><a href="#" onclick="openPolicyModal('privacy');return false;">Privacy Policy</a><a href="#" onclick="openPolicyModal('terms');return false;">Terms of Service</a><a href="#" onclick="openPolicyModal('shipping');return false;">Shipping Policy</a></div></div>
         </div>
     </footer>
 
@@ -348,7 +348,7 @@
                 await window.db.collection('messages').add(msgDoc);
             }
 
-            // Send via Power Automate webhook — email to Admin
+            // Send via Power Automate webhook ï¿½ email to Admin
             if (window.SSA_COMM && window.SSA_COMM.sendContactFormEmail) {
                 await window.SSA_COMM.sendContactFormEmail({ ticketId, name, email, phone, subject, message, customerId });
             }
