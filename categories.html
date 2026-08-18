@@ -5,13 +5,20 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://checkout.razorpay.com https://*.supabase.co https://fonts.googleapis.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; frame-src https://checkout.razorpay.com https://api.razorpay.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self' https:;">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Categories | Siva Suresh Agency - Shop Online</title>
-    <meta name="description" content="Browse and shop hospital linen, doctor coats, scrub suits, uniforms, bedsheets and hotel linen online from Siva Suresh Agency.">
+    <title>Shop Hospital Linen & Uniforms | Siva Suresh Agency</title>
+    <meta name="description" content="Browse and shop premium hospital linen, doctor coats, CliniFlex™ scrub suits, uniforms, bedsheets and hotel linen online from Siva Suresh Agency, Erode.">
+    <meta property="og:title" content="Shop Hospital Linen & Uniforms | Siva Suresh Agency">
+    <meta property="og:description" content="Premium hospital linen, CliniFlex™ scrubs, doctor uniforms and hotel linen. Bulk orders with fast delivery across Tamil Nadu.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://lalithvishnu04.github.io/sivasureshagency/categories.html">
+    <meta property="og:image" content="https://lalithvishnu04.github.io/sivasureshagency/images/products/ssa-cliniflex-scrub-round-neck-thumb-9f69cdc3.jpg">
+    <meta name="twitter:card" content="summary_large_image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=97">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="stylesheet" href="css/style.css?v=98">
     <link rel="stylesheet" href="css/animations.css?v=9">
     <link rel="icon" type="image/jpeg" href="images/SSA Logo.png">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -133,14 +140,31 @@
                         <option value="price-low">Price: Low to High</option>
                         <option value="price-high">Price: High to Low</option>
                         <option value="newest">Newest First</option>
+                        <option value="rating">Top Rated</option>
                     </select>
+                </div>
+                <div class="grid-toggle-group" aria-label="Grid layout">
+                    <button class="grid-toggle-btn active" id="gridToggle4" title="4-column grid" aria-label="4 columns"><i class="fas fa-th"></i></button>
+                    <button class="grid-toggle-btn" id="gridToggle2" title="2-column grid" aria-label="2 columns"><i class="fas fa-th-large"></i></button>
                 </div>
             </div>
             <div class="shop-results-info" id="shopResultsInfo"></div>
             <div class="shop-grid" id="shopGrid"></div>
+            <div id="scrollSentinel"></div>
             <div class="section-cta">
                 <button class="btn btn-gradient btn-lg" id="loadMoreBtn" style="display:none;">Load More Products <i class="fas fa-plus"></i></button>
             </div>
+        </div>
+    </section>
+
+    <!-- Recently Viewed -->
+    <section class="recently-viewed-section" id="recentlyViewedSection" style="display:none;">
+        <div class="container">
+            <div class="section-header" style="margin-bottom:16px;">
+                <span class="section-tag">Your History</span>
+                <h2 class="section-title" style="font-size:1.3rem;">Recently <span class="gradient-text">Viewed</span></h2>
+            </div>
+            <div class="rv-grid" id="recentlyViewedGrid"></div>
         </div>
     </section>
 

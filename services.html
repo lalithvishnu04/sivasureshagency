@@ -5,13 +5,19 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://checkout.razorpay.com https://*.supabase.co https://fonts.googleapis.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; frame-src https://checkout.razorpay.com https://api.razorpay.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self' https:;">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Our Services | Siva Suresh Agency</title>
-    <meta name="description" content="Explore our services - custom manufacturing, bulk supply, pan-India delivery, and more from Siva Suresh Agency.">
+    <title>Our Services | Siva Suresh Agency — Custom & Bulk Textile Supply</title>
+    <meta name="description" content="Custom manufacturing, bulk institutional supply, pan-India delivery and embroidery services from Siva Suresh Agency, Erode. Get a free quote today.">
+    <meta property="og:title" content="Our Services | Siva Suresh Agency">
+    <meta property="og:description" content="Custom manufacturing, bulk supply, pan-India delivery and more from Erode's leading hospital linen specialist.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://lalithvishnu04.github.io/sivasureshagency/services.html">
+    <meta property="og:image" content="https://lalithvishnu04.github.io/sivasureshagency/images/SSA Logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=97">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="stylesheet" href="css/style.css?v=98">
     <link rel="stylesheet" href="css/animations.css?v=9">
     <link rel="icon" type="image/jpeg" href="images/SSA Logo.png">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -167,23 +173,23 @@
                 <span class="section-tag">How It Works</span>
                 <h2 class="section-title">Our Simple <span class="gradient-text">Process</span></h2>
             </div>
-            <div class="process-grid-v2">
-                <div class="process-step-v2 reveal">
+            <div class="process-grid-v2" id="processGrid">
+                <div class="process-step-v2 reveal step-active" data-step="1" onclick="activateProcessStep(this)">
                     <div class="process-num-v2"><i class="fas fa-search"></i></div>
                     <h4>Browse &amp; Select</h4>
                     <p>Explore our categories and choose the products you need</p>
                 </div>
-                <div class="process-step-v2 reveal">
+                <div class="process-step-v2 reveal" data-step="2" onclick="activateProcessStep(this)">
                     <div class="process-num-v2"><i class="fas fa-pen"></i></div>
                     <h4>Customize &amp; Order</h4>
                     <p>Select sizes, quantities and place your order online</p>
                 </div>
-                <div class="process-step-v2 reveal">
+                <div class="process-step-v2 reveal" data-step="3" onclick="activateProcessStep(this)">
                     <div class="process-num-v2"><i class="fas fa-check-double"></i></div>
                     <h4>Quality Check</h4>
                     <p>Every item undergoes strict quality inspection</p>
                 </div>
-                <div class="process-step-v2 reveal">
+                <div class="process-step-v2 reveal" data-step="4" onclick="activateProcessStep(this)">
                     <div class="process-num-v2"><i class="fas fa-truck"></i></div>
                     <h4>Fast Delivery</h4>
                     <p>Receive your order at your doorstep within 3&ndash;5 days</p>
@@ -191,6 +197,72 @@
             </div>
         </div>
     </section>
+
+    <!-- Bulk Quote Section -->
+    <section class="bulk-quote-section">
+        <div class="container">
+            <div class="bulk-quote-grid">
+                <div class="bulk-quote-copy">
+                    <span class="section-tag">Bulk Orders</span>
+                    <h2 class="section-title">Get an Instant <span class="gradient-text">Quote</span></h2>
+                    <p>Whether you need 50 pieces or 5,000 — we offer competitive pricing, fast turnaround and custom embroidery for all institutional orders.</p>
+                    <ul class="bulk-quote-perks">
+                        <li><i class="fas fa-check-circle"></i> Minimum order: 10 pieces</li>
+                        <li><i class="fas fa-check-circle"></i> Custom branding &amp; embroidery</li>
+                        <li><i class="fas fa-check-circle"></i> Pan-India delivery in 5–7 days</li>
+                        <li><i class="fas fa-check-circle"></i> Dedicated account manager</li>
+                        <li><i class="fas fa-check-circle"></i> GST invoice &amp; credit terms</li>
+                    </ul>
+                </div>
+                <div>
+                    <form class="bulk-quote-form" onsubmit="submitBulkQuote(event)">
+                        <h3><i class="fas fa-paper-plane"></i> Request a Quote</h3>
+                        <div class="bqf-row">
+                            <div class="bqf-field">
+                                <label>Your Name *</label>
+                                <input type="text" name="name" placeholder="Full name" required>
+                            </div>
+                            <div class="bqf-field">
+                                <label>Phone *</label>
+                                <input type="tel" name="phone" placeholder="+91 XXXXX XXXXX" required pattern="[0-9+\-\s]{7,15}">
+                            </div>
+                        </div>
+                        <div class="bqf-row">
+                            <div class="bqf-field">
+                                <label>Organisation</label>
+                                <input type="text" name="org" placeholder="Hospital / Hotel name">
+                            </div>
+                            <div class="bqf-field">
+                                <label>Quantity</label>
+                                <input type="number" name="qty" placeholder="No. of pieces" min="10">
+                            </div>
+                        </div>
+                        <div class="bqf-field">
+                            <label>Requirement *</label>
+                            <textarea name="requirement" placeholder="Describe the products, sizes, colours and any custom requirements..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-gradient btn-lg" style="width:100%">
+                            <i class="fab fa-whatsapp"></i> Send via WhatsApp
+                        </button>
+                        <p style="font-size:0.75rem;color:#94a3b8;text-align:center;margin-top:10px;"><i class="fas fa-lock"></i> Your info is only used to send your quote.</p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+    function activateProcessStep(el) {
+        const grid = document.getElementById('processGrid');
+        const steps = grid ? grid.querySelectorAll('.process-step-v2') : [];
+        const clickedStep = parseInt(el.dataset.step);
+        steps.forEach(s => {
+            const n = parseInt(s.dataset.step);
+            s.classList.toggle('step-active', n === clickedStep);
+            s.classList.toggle('step-done', n < clickedStep);
+        });
+    }
+    </script>
 
     <!-- CTA -->
     <section class="cta-banner">

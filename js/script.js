@@ -1799,6 +1799,10 @@ function initHomePage() {
     initCategoryTileScroll();
     initHeroDynamicImages();
     applyScrubBrandName();
+    // Abandoned cart reminder (3.5 s delay)
+    if (typeof _checkAbandonedCart === 'function') _checkAbandonedCart();
+    // Exit intent (desktop only)
+    if (typeof _initExitIntent === 'function' && window.innerWidth > 768) _initExitIntent();
 }
 
 // ===== Categories Page =====
@@ -1891,6 +1895,11 @@ function applyUrlFilterAndRender() {
 window.applyUrlFilterAndRender = applyUrlFilterAndRender;
 
 function initCategoriesPage() {
+    // Show skeleton loaders while data initializes
+    const grid = document.getElementById('shopGrid');
+    if (grid && !grid.innerHTML.trim()) {
+        grid.innerHTML = Array(8).fill(`<div class="shop-card-skeleton"><div class="skeleton skeleton-img"></div><div class="skeleton-body"><div class="skeleton skeleton-line w-80"></div><div class="skeleton skeleton-line w-60"></div><div class="skeleton skeleton-price"></div><div class="skeleton skeleton-btn"></div></div></div>`).join('');
+    }
     // Parse URL params
     const params = new URLSearchParams(window.location.search);
     const cat = params.get('cat') || params.get('heading');
@@ -1953,7 +1962,8 @@ function initCategoriesPage() {
             if (val === 'price-low') productsData.sort((a, b) => a.price - b.price);
             else if (val === 'price-high') productsData.sort((a, b) => b.price - a.price);
             else if (val === 'newest') productsData.sort((a, b) => b.id - a.id);
-            else productsData.sort((a, b) => b.reviews - a.reviews);
+            else if (val === 'rating') productsData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+            else productsData.sort((a, b) => (b.reviews || 0) - (a.reviews || 0));
             _syncWindowState(); renderProducts(currentFilter, displayedProducts, window._currentGender, window._currentSleeve, currentSearch);
         });
     }
@@ -1973,6 +1983,7 @@ function initCategoriesPage() {
     _syncWindowState();
     if (typeof updateCategoryHero === 'function') updateCategoryHero(currentFilter);
     renderProducts(currentFilter, displayedProducts, gender, sleeve, currentSearch, sub);
+    if (typeof _initCategoryPageFeatures === 'function') _initCategoryPageFeatures();
 }
 
 // ===== Contact Page =====
@@ -2048,12 +2059,16 @@ function buildProductCard(p) {
             ? `<span class="shop-card-badge" style="background:#f59e0b;color:#fff">Low Stock</span>`
             : (p.badge ? `<span class="shop-card-badge">${p.badge}</span>` : '');
     const addBtn = isOut
-        ? `<button class="btn btn-primary" disabled style="opacity:0.4;cursor:not-allowed"><i class="fas fa-ban"></i> Out of Stock</button>`
+        ? `<button class="btn btn-notify-me" onclick="event.stopPropagation();openNotifyMe(${p.id})"><i class="fas fa-bell"></i> Notify Me</button>`
         : `<button class="btn btn-primary" onclick="addToCart(${p.id})"><i class="fas fa-cart-plus"></i> Add</button>`;
     const buyBtn = isOut ? '' : `<button class="btn btn-outline-dark" onclick="buyNow(${p.id})"><i class="fas fa-bolt"></i> Buy</button>`;
     const quickBtn = isOut
-        ? `<div class="shop-card-quick"><button class="btn btn-primary btn-sm" disabled style="opacity:0.5"><i class="fas fa-ban"></i> Out of Stock</button></div>`
+        ? `<div class="shop-card-quick"><button class="btn btn-notify-me btn-sm" onclick="event.stopPropagation();openNotifyMe(${p.id})"><i class="fas fa-bell"></i> Notify</button></div>`
         : `<div class="shop-card-quick"><button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); addToCart(${p.id})"><i class="fas fa-cart-plus"></i> Add</button></div>`;
+    const stockBarHtml = isLow
+        ? `<div class="stock-bar-wrap"><div class="stock-bar-fill" style="width:${Math.min(100,Math.round((p.stock||5)/20*100))}%"></div><span class="stock-bar-label">Only ${p.stock||5} left</span></div>`
+        : '';
+    const deliveryHtml = `<div class="card-delivery-est"><i class="fas fa-truck"></i> Ships in 3–5 days</div>`;
     return `<div class="shop-card${p.badge || isOut || isLow ? ' has-badge' : ''} reveal active${isOut ? ' out-of-stock-card' : isLow ? ' low-stock-card' : ''}" data-category="${p.category}" data-id="${p.id}">
         ${outBadge}
         <button class="shop-card-wishlist" data-product-id="${p.id}" aria-label="Wishlist"><i class="${isWishlisted(p.id) ? 'fas' : 'far'} fa-heart"></i></button>
@@ -2069,6 +2084,8 @@ function buildProductCard(p) {
             ${colorSwatchesHtml}
             <div class="shop-card-rating"><span class="rating-val">${(p.rating||0).toFixed(1)}</span>${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating||0))}${(p.rating||0) % 1 ? '<i class="fas fa-star-half-alt"></i>' : ''}<span>(${p.reviews||0})</span></div>
             <div class="shop-card-price"><span class="price">₹${p.price}</span>${p.oldPrice ? `<span class="old-price">₹${p.oldPrice}</span>` : ''}</div>
+            ${stockBarHtml}
+            ${deliveryHtml}
             <div class="shop-card-footer" onclick="event.stopPropagation()">
                 ${addBtn}
                 ${buyBtn}
@@ -2546,10 +2563,30 @@ function updateCartUI() {
         if (cartItems) cartItems.innerHTML = '<div class="cart-empty"><i class="fas fa-shopping-bag"></i><p>Your cart is empty</p><a href="categories.html" class="btn btn-gradient btn-sm">Start Shopping</a></div>';
         if (cartFooter) cartFooter.style.display = 'none';
     } else {
-        if (cartItems) cartItems.innerHTML = cart.map(item => `<div class="cart-item"><div class="cart-item-img"><img src="${item.image}" alt="${item.name}"></div><div class="cart-item-info"><h4>${item.name}</h4><span class="item-meta">Size: ${item.selectedSize}${item.selectedColor ? ' | Color: ' + item.selectedColor : ''}</span><div class="item-price">₹${item.price * item.qty}</div><div class="cart-item-qty"><button onclick="updateQty(${item.id},-1)"><i class="fas fa-minus"></i></button><span>${item.qty}</span><button onclick="updateQty(${item.id},1)"><i class="fas fa-plus"></i></button></div></div><button class="cart-item-remove" onclick="removeFromCart(${item.id})"><i class="fas fa-trash"></i></button></div>`).join('');
-        if (cartFooter) cartFooter.style.display = 'block';
+        // Free delivery progress
+        const fdpHtml = _buildFreeDeliveryBar(totalPrice);
+        if (cartItems) cartItems.innerHTML = `${fdpHtml}` + cart.map(item => `<div class="cart-item"><div class="cart-item-img"><img src="${item.image}" alt="${item.name}"></div><div class="cart-item-info"><h4>${item.name}</h4><span class="item-meta">Size: ${item.selectedSize}${item.selectedColor ? ' | Color: ' + item.selectedColor : ''}</span><div class="item-price">₹${item.price * item.qty}</div><div class="cart-item-qty"><button onclick="updateQty(${item.id},-1)"><i class="fas fa-minus"></i></button><span>${item.qty}</span><button onclick="updateQty(${item.id},1)"><i class="fas fa-plus"></i></button></div></div><button class="cart-item-remove" onclick="removeFromCart(${item.id})"><i class="fas fa-trash"></i></button></div>`).join('');
+        if (cartFooter) {
+            cartFooter.style.display = 'block';
+            // Inject trust badges
+            if (!cartFooter.querySelector('.cart-trust-badges')) {
+                const trustEl = document.createElement('div');
+                trustEl.className = 'cart-trust-badges';
+                trustEl.innerHTML = `<span><i class="fas fa-lock"></i> Secure</span><span><i class="fas fa-shipping-fast"></i> Free ₹2000+</span><span><i class="fas fa-undo"></i> 7-day Returns</span>`;
+                cartFooter.insertBefore(trustEl, cartFooter.firstChild);
+            }
+        }
         if (cartTotal) cartTotal.textContent = `₹${totalPrice.toLocaleString()}`;
     }
+}
+function _buildFreeDeliveryBar(total) {
+    const threshold = 2000;
+    if (total >= threshold) {
+        return `<div class="fdp-wrap fdp-success"><i class="fas fa-check-circle"></i> You have <strong>FREE delivery!</strong></div>`;
+    }
+    const remaining = threshold - total;
+    const pct = Math.round((total / threshold) * 100);
+    return `<div class="fdp-wrap"><div class="fdp-label">Add <strong>₹${remaining.toLocaleString('en-IN')}</strong> more for FREE delivery</div><div class="fdp-bar"><div class="fdp-fill" style="width:${pct}%"></div></div></div>`;
 }
 
 function openCart() { document.getElementById('cartDrawer').classList.add('open'); document.getElementById('cartOverlay').classList.add('open'); }
@@ -2667,11 +2704,14 @@ function openProductDetail(id) {
 
     const modal = document.getElementById('productDetailModal');
     const accordionHtml = (p.fitSizing || p.fabricCare || p.returns) ? `<div class="pd-accordion">${p.fitSizing ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Details &amp; Fit</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.fitSizing)}</div></div>` : ''}${p.fabricCare ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Fabric &amp; Care</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.fabricCare)}</div></div>` : ''}${p.returns ? `<div class="pd-accordion-item"><button class="pd-accordion-header" onclick="togglePdAccordion(this)"><span>Return &amp; Exchange</span><i class="fas fa-plus"></i></button><div class="pd-accordion-body">${renderRichText(p.returns)}</div></div>` : ''}</div>` : '';
-    modal.innerHTML = `<div class="modal product-detail-modal"><button class="modal-close pd-close" onclick="closeProductDetail()"><i class="fas fa-times"></i></button><div class="pd-grid"><div class="pd-image-gallery">${thumbsHtml}<div class="pd-main-img" id="pdMainWrap-${p.id}" onclick="openImageLightbox('pdMainImg-${p.id}')">${mainImg ? `<img id="pdMainImg-${p.id}" src="${mainImg}" alt="${p.name}">` : `<div class="pd-no-img"><i class="fas fa-tshirt"></i></div>`}<button class="pd-expand-btn" onclick="event.stopPropagation();openImageLightbox('pdMainImg-${p.id}')" aria-label="Expand"><i class="fas fa-expand-alt"></i></button>${p.badge?`<span class="pd-badge">${p.badge}</span>`:''}</div></div><div class="pd-info"><span class="pd-category">${typeof getCategoryLabel === 'function' ? getCategoryLabel(p.category) : p.category.replace(/-/g,' ')}</span><h2 class="pd-title" id="pdTitle-${p.id}">${p.name}${defaultColor ? `<span class="pd-title-color"> — ${defaultColor}</span>` : ''}</h2><div class="pd-rating"><span class="rating-val">${(p.rating||0).toFixed(1)}</span>${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating||0))}${(p.rating||0)%1?'<i class="fas fa-star-half-alt"></i>':''}<span>(${p.reviews||0} reviews)</span></div><div class="pd-price"><span class="pd-current-price" id="pdCurPrice-${p.id}">\u20b9${p.price}</span><span class="pd-old-price" id="pdOldPrice-${p.id}"${p.oldPrice?'':' style="display:none"'}>\u20b9${p.oldPrice||''}</span><span class="pd-discount" id="pdDiscount-${p.id}"${p.oldPrice?'':' style="display:none"'}>${discount}% OFF</span><span class="pd-emb-note" id="pdEmbNote-${p.id}" style="display:none"></span></div><div class="pd-description">${renderRichText(p.description)}</div>${colorSection}<div class="pd-size-section"><h4>Select Size</h4><div class="pd-sizes" id="pdSizes-${p.id}">${p.sizes.map((s,i)=>{ const oos=isVariantOutOfStock(p,s,defaultColor); const active=firstAvailableSize?(s===firstAvailableSize):(!oos&&i===0); return `<button class="pd-size-btn${active?' active':''}${oos?' is-oos':''}" data-size="${s.replace(/"/g,'&quot;')}" ${oos?'disabled title="Out of stock for this color"':''} onclick="selectSize(this,${p.id})">${s}</button>`; }).join('')}</div><p id="pdVariantStockMsg-${p.id}" style="display:none;color:#dc2626;font-size:0.85rem;margin-top:8px;"></p></div>${embHtml}<div class="pd-qty-section"><h4>Quantity</h4><div class="pd-qty"><button onclick="changePdQty(-1)"><i class="fas fa-minus"></i></button><span id="pdQty">1</span><button onclick="changePdQty(1)"><i class="fas fa-plus"></i></button></div></div><div class="pd-actions"><button id="pdAddBtn-${p.id}" class="btn btn-primary btn-lg" onclick="addToCartFromDetail(${p.id})"><i class="fas fa-cart-plus"></i> Add to Cart</button><button id="pdBuyBtn-${p.id}" class="btn btn-outline-dark btn-lg" onclick="buyNowFromDetail(${p.id})"><i class="fas fa-bolt"></i> Buy Now</button></div><div class="pd-features"><div class="pd-feature"><i class="fas fa-truck"></i> Free delivery above \u20b92000</div><div class="pd-feature"><i class="fas fa-undo"></i> 7-day returns</div><div class="pd-feature"><i class="fas fa-shield-alt"></i> Quality guaranteed</div></div>${accordionHtml}</div></div></div>`;
+    modal.innerHTML = `<div class="modal product-detail-modal"><button class="modal-close pd-close" onclick="closeProductDetail()"><i class="fas fa-times"></i></button><div class="pd-grid"><div class="pd-image-gallery">${thumbsHtml}<div class="pd-main-img" id="pdMainWrap-${p.id}" onclick="openImageLightbox('pdMainImg-${p.id}')">${mainImg ? `<img id="pdMainImg-${p.id}" src="${mainImg}" alt="${p.name}">` : `<div class="pd-no-img"><i class="fas fa-tshirt"></i></div>`}<button class="pd-expand-btn" onclick="event.stopPropagation();openImageLightbox('pdMainImg-${p.id}')" aria-label="Expand"><i class="fas fa-expand-alt"></i></button>${p.badge?`<span class="pd-badge">${p.badge}</span>`:''}</div></div><div class="pd-info"><span class="pd-category">${typeof getCategoryLabel === 'function' ? getCategoryLabel(p.category) : p.category.replace(/-/g,' ')}</span><h2 class="pd-title" id="pdTitle-${p.id}">${p.name}${defaultColor ? `<span class="pd-title-color"> — ${defaultColor}</span>` : ''}</h2><div class="pd-rating"><span class="rating-val">${(p.rating||0).toFixed(1)}</span>${'<i class="fas fa-star"></i>'.repeat(Math.floor(p.rating||0))}${(p.rating||0)%1?'<i class="fas fa-star-half-alt"></i>':''}<span>(${p.reviews||0} reviews)</span></div><div class="pd-price"><span class="pd-current-price" id="pdCurPrice-${p.id}">\u20b9${p.price}</span><span class="pd-old-price" id="pdOldPrice-${p.id}"${p.oldPrice?'':' style="display:none"'}>\u20b9${p.oldPrice||''}</span><span class="pd-discount" id="pdDiscount-${p.id}"${p.oldPrice?'':' style="display:none"'}>${discount}% OFF</span><span class="pd-emb-note" id="pdEmbNote-${p.id}" style="display:none"></span></div><div class="pd-description">${renderRichText(p.description)}</div>${colorSection}<div class="pd-size-section"><h4>Select Size</h4><div class="pd-sizes" id="pdSizes-${p.id}">${p.sizes.map((s,i)=>{ const oos=isVariantOutOfStock(p,s,defaultColor); const active=firstAvailableSize?(s===firstAvailableSize):(!oos&&i===0); return `<button class="pd-size-btn${active?' active':''}${oos?' is-oos':''}" data-size="${s.replace(/"/g,'&quot;')}" ${oos?'disabled title="Out of stock for this color"':''} onclick="selectSize(this,${p.id})">${s}</button>`; }).join('')}</div><p id="pdVariantStockMsg-${p.id}" style="display:none;color:#dc2626;font-size:0.85rem;margin-top:8px;"></p></div>${embHtml}<div class="pd-qty-section"><h4>Quantity</h4><div class="pd-qty"><button onclick="changePdQty(-1)"><i class="fas fa-minus"></i></button><span id="pdQty">1</span><button onclick="changePdQty(1)"><i class="fas fa-plus"></i></button></div></div><div class="pd-actions"><button id="pdAddBtn-${p.id}" class="btn btn-primary btn-lg" onclick="addToCartFromDetail(${p.id})"><i class="fas fa-cart-plus"></i> Add to Cart</button><button id="pdBuyBtn-${p.id}" class="btn btn-outline-dark btn-lg" onclick="buyNowFromDetail(${p.id})"><i class="fas fa-bolt"></i> Buy Now</button><button class="btn btn-pd-share" onclick="_sharePd(${p.id})" title="Share this product"><i class="fas fa-share-alt"></i></button></div><div class="pd-features"><div class="pd-feature"><i class="fas fa-truck"></i> Free delivery above \u20b92000</div><div class="pd-feature"><i class="fas fa-undo"></i> 7-day returns</div><div class="pd-feature"><i class="fas fa-shield-alt"></i> Quality guaranteed</div></div>${accordionHtml}</div></div><div class="pd-related-section" id="pdRelated-${p.id}"></div></div>`;
     modal.classList.add('active'); pdQuantity = 1;
     document.body.classList.add('modal-open'); // lock background scroll (mobile fix)
     modal.scrollTop = 0;
     updateProductDetailVariantState(p.id);
+    _trackRecentlyViewed(id);
+    _initPdSwipe(p.id, initImages);
+    setTimeout(() => _renderRelatedProducts(p), 200);
 }
 function changePdQty(d) { pdQuantity = Math.max(1, pdQuantity + d); const el = document.getElementById('pdQty'); if (el) el.textContent = pdQuantity; }
 function togglePdAccordion(btn) {
@@ -7113,3 +7153,292 @@ function initTicketsPage() {
         setTimeout(() => { if (!window._dbReady) loadMyTickets(); }, 2500);
     }
 }
+
+// ===== §62 COMPREHENSIVE FEATURE ADDITIONS v179 =====
+
+// ─── Recently Viewed ───────────────────────────────────────────────
+const _MAX_RV = 10;
+function _trackRecentlyViewed(productId) {
+    try {
+        let rv = JSON.parse(localStorage.getItem('ssa_recently_viewed') || '[]');
+        rv = rv.filter(id => id !== productId);
+        rv.unshift(productId);
+        localStorage.setItem('ssa_recently_viewed', JSON.stringify(rv.slice(0, _MAX_RV)));
+    } catch(e) {}
+}
+function _renderRecentlyViewed() {
+    const el = document.getElementById('recentlyViewedSection');
+    if (!el) return;
+    let rv = [];
+    try { rv = JSON.parse(localStorage.getItem('ssa_recently_viewed') || '[]'); } catch(e) {}
+    if (!rv.length || !window.productsData) { el.style.display = 'none'; return; }
+    const items = rv.map(id => productsData.find(p => p.id === id)).filter(Boolean).slice(0, 8);
+    if (items.length < 2) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    document.getElementById('recentlyViewedGrid').innerHTML = items.map(p => {
+        const colors = (typeof getProductColors === 'function') ? getProductColors(p) : null;
+        const img = (colors && colors[0] && colors[0].images && colors[0].images[0]) || p.mainImage || p.image || '';
+        return `<div class="rv-card" onclick="openProductDetail(${p.id})">
+            <div class="rv-img"><img src="${img}" alt="${p.name}" loading="lazy"></div>
+            <div class="rv-info"><div class="rv-name">${p.name}</div><div class="rv-price">₹${p.price.toLocaleString('en-IN')}</div></div>
+        </div>`;
+    }).join('');
+}
+window._trackRecentlyViewed = _trackRecentlyViewed;
+window._renderRecentlyViewed = _renderRecentlyViewed;
+
+// ─── Grid Toggle ───────────────────────────────────────────────────
+function initGridToggle() {
+    const btn2 = document.getElementById('gridToggle2');
+    const btn4 = document.getElementById('gridToggle4');
+    const grid = document.getElementById('shopGrid');
+    if (!btn2 || !btn4 || !grid) return;
+    const setGrid = cols => {
+        grid.classList.toggle('grid-2col', cols === 2);
+        grid.classList.toggle('grid-4col', cols === 4);
+        btn2.classList.toggle('active', cols === 2);
+        btn4.classList.toggle('active', cols !== 2);
+        localStorage.setItem('ssa_grid_cols', cols);
+    };
+    setGrid(Number(localStorage.getItem('ssa_grid_cols')) || 4);
+    btn2.addEventListener('click', () => setGrid(2));
+    btn4.addEventListener('click', () => setGrid(4));
+}
+window.initGridToggle = initGridToggle;
+
+// ─── Infinite Scroll ───────────────────────────────────────────────
+function initInfiniteScroll() {
+    const sentinel = document.getElementById('scrollSentinel');
+    if (!sentinel || !('IntersectionObserver' in window)) return;
+    const observer = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting) {
+            const btn = document.getElementById('loadMoreBtn');
+            if (btn && btn.style.display !== 'none') btn.click();
+        }
+    }, { rootMargin: '300px' });
+    observer.observe(sentinel);
+}
+window.initInfiniteScroll = initInfiniteScroll;
+
+// ─── Notify Me (OOS) ──────────────────────────────────────────────
+function openNotifyMe(productId) {
+    const p = window.productsData ? productsData.find(x => x.id === productId) : null;
+    const name = p ? p.name : 'this product';
+    const existing = document.getElementById('notifyMeModal');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.id = 'notifyMeModal';
+    modal.className = 'notify-modal-overlay';
+    modal.innerHTML = `
+        <div class="notify-modal">
+            <button class="notify-modal-close" onclick="document.getElementById('notifyMeModal').remove()"><i class="fas fa-times"></i></button>
+            <div class="notify-modal-icon"><i class="fas fa-bell"></i></div>
+            <h3>Notify Me When Available</h3>
+            <p>We'll alert you as soon as <strong>${name}</strong> is back in stock.</p>
+            <div class="notify-modal-form">
+                <input type="email" id="notifyEmail" placeholder="Enter your email address" class="form-control">
+                <button class="btn btn-gradient" onclick="_submitNotifyMe(${productId})">
+                    <i class="fas fa-bell"></i> Notify Me
+                </button>
+            </div>
+            <p class="notify-modal-note"><i class="fas fa-lock"></i> No spam. Just a one-time stock alert.</p>
+        </div>`;
+    document.body.appendChild(modal);
+    setTimeout(() => modal.classList.add('show'), 50);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+function _submitNotifyMe(productId) {
+    const emailEl = document.getElementById('notifyEmail');
+    if (!emailEl) return;
+    const email = emailEl.value.trim();
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRe.test(email)) { showToast('Please enter a valid email address.'); return; }
+    // Store locally + would send to backend in production
+    try {
+        const notifies = JSON.parse(localStorage.getItem('ssa_notifies') || '[]');
+        notifies.push({ productId, email, ts: Date.now() });
+        localStorage.setItem('ssa_notifies', JSON.stringify(notifies));
+    } catch(e) {}
+    document.getElementById('notifyMeModal').remove();
+    showToast('✅ We\'ll notify you when it\'s back in stock!');
+}
+window.openNotifyMe = openNotifyMe;
+window._submitNotifyMe = _submitNotifyMe;
+
+// ─── Abandoned Cart Toast ─────────────────────────────────────────
+function _checkAbandonedCart() {
+    try {
+        const savedCart = JSON.parse(localStorage.getItem('ssa_cart') || '[]');
+        if (!savedCart.length) return;
+        const lastShown = Number(localStorage.getItem('ssa_cart_toast_ts') || 0);
+        if (Date.now() - lastShown < 60 * 60 * 1000) return; // once per hour
+        setTimeout(() => {
+            localStorage.setItem('ssa_cart_toast_ts', Date.now());
+            const toast = document.createElement('div');
+            toast.className = 'abandoned-toast';
+            toast.innerHTML = `
+                <div class="abandoned-toast-inner">
+                    <span class="abandoned-icon"><i class="fas fa-shopping-bag"></i></span>
+                    <div class="abandoned-text">
+                        <strong>You left items in your cart</strong>
+                        <span>${savedCart.length} item${savedCart.length > 1 ? 's' : ''} waiting</span>
+                    </div>
+                    <button class="btn btn-gradient btn-sm" onclick="openCart();this.closest('.abandoned-toast').remove()">View Cart</button>
+                    <button class="abandoned-dismiss" onclick="this.closest('.abandoned-toast').remove()" aria-label="Dismiss"><i class="fas fa-times"></i></button>
+                </div>`;
+            document.body.appendChild(toast);
+            requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add('show')));
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 7000);
+        }, 3500);
+    } catch(e) {}
+}
+window._checkAbandonedCart = _checkAbandonedCart;
+
+// ─── Exit Intent Popup ────────────────────────────────────────────
+function _initExitIntent() {
+    if (localStorage.getItem('ssa_exit_intent_shown')) return;
+    let shown = false;
+    document.addEventListener('mouseleave', e => {
+        if (e.clientY > 10 || shown) return;
+        shown = true;
+        localStorage.setItem('ssa_exit_intent_shown', '1');
+        const overlay = document.createElement('div');
+        overlay.className = 'exit-intent-overlay';
+        overlay.innerHTML = `
+            <div class="exit-intent-modal">
+                <button class="exit-intent-close" onclick="this.closest('.exit-intent-overlay').remove()" aria-label="Close"><i class="fas fa-times"></i></button>
+                <span class="exit-intent-badge">Wait! Special Offer</span>
+                <h3>Before You Leave...</h3>
+                <p>Get <strong>5% off</strong> your first bulk order of 10+ pieces.</p>
+                <div class="exit-coupon-row">
+                    <div class="exit-coupon-code">SSA5OFF</div>
+                    <button class="btn btn-sm btn-outline" onclick="navigator.clipboard&&navigator.clipboard.writeText('SSA5OFF').then(()=>{this.textContent='Copied!';})">Copy</button>
+                </div>
+                <div class="exit-intent-actions">
+                    <a href="categories.html" class="btn btn-gradient"><i class="fas fa-shopping-bag"></i> Shop Now</a>
+                    <button onclick="this.closest('.exit-intent-overlay').remove()" class="btn btn-ghost btn-sm">No thanks</button>
+                </div>
+                <p class="exit-intent-note"><i class="fas fa-clock"></i> Limited time offer</p>
+            </div>`;
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('show'), 50);
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    });
+}
+window._initExitIntent = _initExitIntent;
+
+// ─── Product Detail: Share ────────────────────────────────────────
+function _sharePd(productId) {
+    const p = window.productsData ? productsData.find(x => x.id === productId) : null;
+    const name = p ? p.name : 'this product';
+    const url = window.location.origin + window.location.pathname + '?product=' + productId;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(name + ' - Check this out: ' + url)}`;
+    const menu = document.createElement('div');
+    menu.className = 'pd-share-menu';
+    menu.innerHTML = `
+        <button class="pd-share-opt" onclick="navigator.clipboard&&navigator.clipboard.writeText('${url}').then(()=>showToast('Link copied!'));this.closest('.pd-share-menu').remove()">
+            <i class="fas fa-link"></i> Copy Link
+        </button>
+        <a class="pd-share-opt" href="${whatsappUrl}" target="_blank" rel="noopener" onclick="this.closest('.pd-share-menu').remove()">
+            <i class="fab fa-whatsapp"></i> WhatsApp
+        </a>`;
+    const btn = document.querySelector('.btn-pd-share');
+    if (btn) {
+        const existing = document.querySelector('.pd-share-menu');
+        if (existing) { existing.remove(); return; }
+        btn.parentElement.style.position = 'relative';
+        btn.parentElement.appendChild(menu);
+        const dismiss = e => { if (!menu.contains(e.target) && e.target !== btn) { menu.remove(); document.removeEventListener('click', dismiss); } };
+        setTimeout(() => document.addEventListener('click', dismiss), 50);
+    }
+}
+window._sharePd = _sharePd;
+
+// ─── Product Detail: Related Products ─────────────────────────────
+function _renderRelatedProducts(p) {
+    const container = document.getElementById(`pdRelated-${p.id}`);
+    if (!container || !window.productsData) return;
+    const related = productsData.filter(x => x.id !== p.id && x.category === p.category)
+        .sort(() => Math.random() - 0.5).slice(0, 4);
+    if (!related.length) { container.style.display = 'none'; return; }
+    container.innerHTML = `
+        <div class="pd-related-inner">
+            <h3 class="pd-related-title"><i class="fas fa-th-large"></i> You Might Also Like</h3>
+            <div class="pd-related-grid">
+                ${related.map(rp => {
+                    const colors = (typeof getProductColors === 'function') ? getProductColors(rp) : null;
+                    const img = (colors && colors[0] && colors[0].images && colors[0].images[0]) || rp.mainImage || rp.image || '';
+                    return `<div class="pd-related-card" onclick="closeProductDetail();setTimeout(()=>openProductDetail(${rp.id}),300)">
+                        <img src="${img}" alt="${rp.name}" loading="lazy">
+                        <div class="pd-related-info">
+                            <span>${rp.name}</span>
+                            <strong>₹${rp.price.toLocaleString('en-IN')}</strong>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+}
+window._renderRelatedProducts = _renderRelatedProducts;
+
+// ─── Product Detail: Swipe Gesture ───────────────────────────────
+function _initPdSwipe(pid, images) {
+    const wrap = document.getElementById(`pdMainWrap-${pid}`);
+    if (!wrap || images.length < 2) return;
+    let startX = 0;
+    wrap.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+    wrap.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - startX;
+        if (Math.abs(dx) < 50) return;
+        const img = document.getElementById(`pdMainImg-${pid}`);
+        if (!img) return;
+        const cur = window._lbIndex || 0;
+        const next = dx < 0 ? Math.min(cur + 1, images.length - 1) : Math.max(cur - 1, 0);
+        if (next !== cur) {
+            window._lbIndex = next;
+            img.src = images[next];
+            // Sync thumbnails
+            document.querySelectorAll(`#pdThumbs-${pid} .pd-thumb`).forEach((t, i) => t.classList.toggle('active', i === next));
+        }
+    }, { passive: true });
+}
+window._initPdSwipe = _initPdSwipe;
+
+// ─── Newsletter Subscribe ─────────────────────────────────────────
+function subscribeNewsletter(formEl) {
+    const emailEl = formEl ? formEl.querySelector('input[type="email"]') : document.getElementById('newsletterEmail');
+    if (!emailEl) return;
+    const email = emailEl.value.trim();
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRe.test(email)) { showToast('Please enter a valid email address.'); return; }
+    emailEl.value = '';
+    showToast('🎉 Thanks for subscribing! Welcome to the SSA family.');
+    try {
+        const subs = JSON.parse(localStorage.getItem('ssa_newsletter_subs') || '[]');
+        subs.push({ email, ts: Date.now() });
+        localStorage.setItem('ssa_newsletter_subs', JSON.stringify(subs));
+    } catch(e) {}
+}
+window.subscribeNewsletter = subscribeNewsletter;
+
+// ─── Bulk Quote Form ──────────────────────────────────────────────
+function submitBulkQuote(e) {
+    e.preventDefault();
+    const form = e.target;
+    const data = Object.fromEntries(new FormData(form));
+    if (!data.name || !data.phone || !data.requirement) { showToast('Please fill all required fields.'); return; }
+    const msg = encodeURIComponent(`Bulk Quote Request\nName: ${data.name}\nPhone: ${data.phone}\nOrganisation: ${data.org||'-'}\nQty: ${data.qty||'-'}\nRequirement: ${data.requirement}`);
+    window.open(`https://wa.me/919366640060?text=${msg}`, '_blank', 'noopener');
+    form.reset();
+    showToast('✅ Redirecting to WhatsApp with your quote request!');
+}
+window.submitBulkQuote = submitBulkQuote;
+
+// ─── Page-Level Feature Init (called after DB ready on categories) ─
+function _initCategoryPageFeatures() {
+    initGridToggle();
+    initInfiniteScroll();
+    // Show recently viewed after products render
+    setTimeout(_renderRecentlyViewed, 1500);
+}
+window._initCategoryPageFeatures = _initCategoryPageFeatures;

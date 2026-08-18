@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /tools/
+Disallow: /supabase/
+Disallow: /functions/
+Disallow: /backup/
+
+Sitemap: https://lalithvishnu04.github.io/sivasureshagency/sitemap.xml
