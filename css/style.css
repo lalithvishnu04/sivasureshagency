@@ -3854,7 +3854,7 @@ section.section-alt { background: var(--bg-off); }
 .acct-ov2-badge.delivered  { background: #dcfce7; color: #166534; }
 .acct-ov2-badge.cancelled  { background: #fee2e2; color: #991b1b; }
 .acct-order-v2-body { padding: 13px 18px 14px; }
-.acct-ov2-summary { font-size: 0.82rem; color: var(--text-mid); margin-bottom: 11px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.acct-ov2-summary { font-size: 0.82rem; color: var(--text-mid); margin-bottom: 11px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .acct-ov2-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acct-ov2-total { font-size: 1rem; font-weight: 900; color: var(--primary-dark); }
 .acct-ov2-pay { font-size: 0.71rem; color: var(--text-muted); margin-top: 1px; }
