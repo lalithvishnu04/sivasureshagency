@@ -1,4 +1,4 @@
-# Siva Suresh Agency — Project Handoff
+# Siva Suresh Agency ï¿½ Project Handoff
 
 ## 1. Live URLs
 
@@ -40,7 +40,7 @@ git push origin main
 | Project ID | kyzlxhncnqahlpfhtoky |
 | Project URL | https://kyzlxhncnqahlpfhtoky.supabase.co |
 | Anon key (public) | sb_publishable_0hcswuIONUUJPdBl7RRIHw_JH7MsGeK |
-| Service Role key | SECRET — keep in password manager only, never commit to git |
+| Service Role key | SECRET ï¿½ keep in password manager only, never commit to git |
 | Storage bucket | assets |
 
 ### Auth Settings
@@ -53,7 +53,7 @@ git push origin main
 | | |
 |---|---|
 | Email | admin@sivasureshagency.com |
-| Password | Set by you — use `python tools/setup-admin-user.py` to reset |
+| Password | Set by you ï¿½ use `python tools/setup-admin-user.py` to reset |
 
 To reset admin password:
 ```bash
@@ -96,22 +96,22 @@ badge, totalStock, createdAt, updatedAt
 +-- contact.html
 +-- wishlist.html
 +-- admin.html           Admin dashboard
-+-- sw.js                Service Worker — auto cache-busting
-¦
++-- sw.js                Service Worker ï¿½ auto cache-busting
+ï¿½
 +-- css/
-¦   +-- style.css        Frontend styles
-¦   +-- admin.css        Admin panel styles
-¦
+ï¿½   +-- style.css        Frontend styles
+ï¿½   +-- admin.css        Admin panel styles
+ï¿½
 +-- js/
-¦   +-- script.js            Frontend (products, cart, auth, modals)
-¦   +-- admin.js             Admin panel logic
-¦   +-- firebase-db-init.js  Supabase compat layer (window.auth, window.db)
-¦   +-- firebase-integration.js  Inventory loader, stock variant maps
-¦   +-- api.js               Optional REST API client (disabled, SSA_API_BASE='')
-¦   +-- backend-config.js    Supabase URL + anon key
-¦
+ï¿½   +-- script.js            Frontend (products, cart, auth, modals)
+ï¿½   +-- admin.js             Admin panel logic
+ï¿½   +-- firebase-db-init.js  Supabase compat layer (window.auth, window.db)
+ï¿½   +-- firebase-integration.js  Inventory loader, stock variant maps
+ï¿½   +-- api.js               Optional REST API client (disabled, SSA_API_BASE='')
+ï¿½   +-- backend-config.js    Supabase URL + anon key
+ï¿½
 +-- images/Images/       Product and brand images
-¦
+ï¿½
 +-- tools/               Local admin scripts
     +-- setup-admin-user.py   Create/reset admin Supabase account
     +-- fix_inventory.py      Fill missing inventory rows
@@ -124,7 +124,7 @@ badge, totalStock, createdAt, updatedAt
 
 ## 6. Frontend Architecture
 
-**Stack:** Pure HTML/CSS/JS — no framework, no build step.
+**Stack:** Pure HTML/CSS/JS ï¿½ no framework, no build step.
 
 ### Page load sequence
 1. Supabase JS SDK (CDN) loads
@@ -134,7 +134,7 @@ badge, totalStock, createdAt, updatedAt
 5. `script.js` renders products, handles cart/auth/checkout
 
 ### Cart & Wishlist
-Stored in browser `localStorage` — persist across sessions on same browser.
+Stored in browser `localStorage` ï¿½ persist across sessions on same browser.
 
 ### Asset Versioning (cache busting)
 All CSS/JS loaded with `?v=XX`. When changing a file, bump the version in all HTML files:
@@ -148,22 +148,46 @@ $v_old = '?v=30'; $v_new = '?v=31'
 
 ---
 
-## 7. Service Worker — Auto Cache Clearing
+## 7. Service Worker ï¿½ Auto Cache Clearing
 
 `sw.js` is registered on all pages. Behaviour:
 
 | Request type | Strategy |
 |---|---|
-| HTML pages | **Network-first** — always fresh from server |
-| JS/CSS (`?v=xx`) | **Cache-first** — version string handles busting |
+| HTML pages | **Network-first** ï¿½ always fresh from server |
+| JS/CSS (`?v=xx`) | **Cache-first** ï¿½ version string handles busting |
 | Images | **Cache-first** |
 | Supabase API / CDN | Pass-through (not cached) |
 
-On every new deploy, the SW activates, **purges all old `ssa-v*` caches**, and claims all open tabs — users automatically get the new version.
+On every new deploy, the SW activates, **purges all old `ssa-v*` caches**, and claims all open tabs ï¿½ users automatically get the new version.
 
 **After each deploy, update `sw.js` line 5:**
 ```js
 const CACHE_VERSION = 'v31'; // match your HTML version number
+
+---
+
+## 8. Pending Action Items (complete before full production launch)
+
+### ðŸ”´ Critical â€” do when enabling Razorpay Live
+
+| Step | Where | What to do |
+|---|---|---|
+| 1 | `js/backend-config.js` â†’ `keyId` field | Replace `rzp_test_TI67q5KZaLNQgp` with your live Razorpay key ID (`rzp_live_...`) |
+| 2 | Supabase Dashboard â†’ Edge Functions â†’ `ssa` â†’ Secrets | Set `RAZORPAY_KEY_ID` = your live key ID |
+| 3 | Same page | Set `RAZORPAY_KEY_SECRET` = your live key secret (never commit to git) |
+
+All 3 must be updated together at the same time.
+
+---
+
+### ðŸŸ¡ Recommended â€” future code hardening (needs dev work)
+
+| Item | Description |
+|---|---|
+| **Server-side amount validation** | Edge Function creates Razorpay order but doesn't cross-check amount vs `orders.total` in DB. A tampered client could pass a lower amount. Fix: fetch `orders` row in Edge Function and compare before creating Razorpay order. |
+| **Supabase SMTP upgrade** | Default Supabase email is rate-limited to 4/hr. Set a custom SMTP (e.g. SendGrid, Resend) in Supabase Dashboard â†’ Auth â†’ SMTP for reliable OTP/password-reset emails. |
+| **Rate limiting on Edge Function** | Add per-IP or per-email rate limiting on OTP request endpoint to prevent abuse. |
 ```
 
 ---
@@ -205,4 +229,4 @@ const CACHE_VERSION = 'v31'; // match your HTML version number
 - Product images are stored as **base64 data URLs** inside `colorVariants` JSONB in Supabase.
 - `productsData` in `script.js` is a local JS array used as initial/fallback data. Supabase is the source of truth for admin edits.
 - Inventory is loaded fresh from Supabase `inventory` table on each page load.
-- The `firebase.json` and `firestore.rules` files are legacy artifacts from an earlier Firebase version — they are unused.
+- The `firebase.json` and `firestore.rules` files are legacy artifacts from an earlier Firebase version ï¿½ they are unused.
