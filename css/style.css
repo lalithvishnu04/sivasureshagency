@@ -1,4 +1,4 @@
-/* ================================================================
+﻿/* ================================================================
    SIVA SURESH AGENCY  —  Style v95
    Design: Clean medical professional (KnyaMed-inspired)
    Font  : Inter
@@ -4288,3 +4288,39 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   .gradient-text { animation:none !important; }
   .shop-card-image::after { transition:none !important; }
 }
+
+/* ─── 61. Chatbot inline cards (order / ticket / recent-orders) ──── */
+.chat-order-card,.chat-ticket-card,.chat-orders-list{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;font-size:.82rem;margin:4px 0;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.coc-header,.ctc-header{display:flex;justify-content:space-between;align-items:flex-start;padding:12px 14px 10px;background:linear-gradient(135deg,#f0fdf4 0%,#f0f9ff 100%);border-bottom:1px solid #e2e8f0;}
+.coc-id,.ctc-id{font-weight:700;font-size:.88rem;color:#0f172a;}
+.coc-date,.ctc-date{font-size:.72rem;color:#64748b;margin-top:2px;}
+.coc-badge{font-size:.72rem;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap;margin-top:2px;}
+.coc-badge-processing{background:#fef9c3;color:#854d0e;}.coc-badge-approved{background:#dcfce7;color:#166534;}.coc-badge-packed{background:#dbeafe;color:#1d4ed8;}.coc-badge-shipped{background:#e0f2fe;color:#0369a1;}.coc-badge-delivered{background:#d1fae5;color:#065f46;}.coc-badge-cancelled{background:#fee2e2;color:#991b1b;}
+.coc-progress{display:flex;align-items:center;padding:10px 14px 8px;gap:0;overflow-x:auto;}
+.coc-step{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;min-width:52px;}
+.coc-step span{font-size:.6rem;color:#94a3b8;text-align:center;white-space:nowrap;font-weight:500;}
+.coc-dot{width:10px;height:10px;border-radius:50%;background:#e2e8f0;border:2px solid #e2e8f0;}
+.coc-step.done .coc-dot{background:#10b981;border-color:#10b981;}
+.coc-step.active .coc-dot{background:#0d9488;border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,.2);}
+.coc-step.done span,.coc-step.active span{color:#0f172a;font-weight:600;}
+.coc-line{flex:1;height:2px;background:#e2e8f0;margin:0 2px;margin-bottom:14px;min-width:10px;}
+.coc-line.done{background:#10b981;}
+.coc-items{padding:8px 14px;border-bottom:1px solid #f1f5f9;}
+.coc-item{display:flex;justify-content:space-between;padding:3px 0;color:#374151;}
+.coc-qty{color:#64748b;font-size:.78rem;}
+.coc-item-more{font-size:.72rem;color:#94a3b8;text-align:center;padding-top:4px;}
+.coc-footer{padding:8px 14px;background:#f8fafc;}
+.coc-row{display:flex;justify-content:space-between;padding:2px 0;font-size:.78rem;color:#475569;}
+.ctc-badge{font-size:.72rem;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+.ctc-subject{padding:8px 14px;font-weight:600;color:#1e293b;border-bottom:1px solid #f1f5f9;}
+.ctc-reply{padding:8px 14px 4px;}
+.ctc-reply-label{font-size:.68rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;font-weight:600;}
+.ctc-reply-text{font-size:.8rem;color:#374151;background:#f8fafc;border-radius:6px;padding:6px 10px;border-left:3px solid #0d9488;}
+.ctc-footer{padding:6px 14px;font-size:.72rem;color:#64748b;background:#f8fafc;border-top:1px solid #f1f5f9;}
+.col-header{padding:10px 14px 8px;font-weight:700;font-size:.85rem;color:#0f172a;background:linear-gradient(135deg,#f0fdf4,#f0f9ff);border-bottom:1px solid #e2e8f0;}
+.cor-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid #f1f5f9;transition:background .15s;}
+.cor-row:hover{background:#f0f9ff;}.cor-row:last-of-type{border-bottom:none;}
+.cor-left,.cor-right{display:flex;flex-direction:column;}.cor-right{align-items:flex-end;}
+.cor-id{font-weight:700;font-size:.82rem;color:#0f172a;}.cor-date{font-size:.7rem;color:#94a3b8;margin-top:1px;}
+.cor-status{font-size:.78rem;font-weight:600;color:#374151;}.cor-total{font-size:.75rem;color:#64748b;margin-top:2px;}
+.col-footer{padding:6px 14px;font-size:.7rem;color:#94a3b8;text-align:center;font-style:italic;}

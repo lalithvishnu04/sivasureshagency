@@ -5294,6 +5294,7 @@ let _chatPollInterval = null;    // Polling timer for admin replies
 let _chatShownAdminMsgs = 0;     // Admin messages already rendered
 let _chatPendingFile = null;
 let _chatMsgCount = 0;
+let _chatCtx = { mode: null };  // conversation context: 'awaitingOrderId' | 'awaitingTicketId'
 let _liveAgentEnabled = true;    // Cached live-agent ON/OFF from Firestore
 
 function initChatbot() {
@@ -5539,7 +5540,28 @@ function appendMsgWithQuickReplies(type, html, replies) {
 
 async function getAIResponse(msg) {
     const m = (msg || '').toLowerCase().trim();
+    const raw = (msg || '').trim();
     const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
+
+    // ── Context mode: intercept next message as awaited input ──
+    if (_chatCtx.mode === 'awaitingOrderId') {
+        _chatCtx.mode = null;
+        await _lookupOrderInChat(raw);
+        return { __handled: true };
+    }
+    if (_chatCtx.mode === 'awaitingTicketId') {
+        _chatCtx.mode = null;
+        await _lookupTicketInChat(raw);
+        return { __handled: true };
+    }
+
+    // ── Auto-detect order ID anywhere in message ──
+    const _autoOrderMatch = raw.match(/\b([A-Z0-9]{2,5}-[A-Z0-9]{4,}|ORD[A-Z0-9]+|#([A-Z0-9]{5,}))\b/i);
+    if (_autoOrderMatch && /track|status|order|check|where|deliver|ship|dispatch|when/i.test(raw)) {
+        const _detectedId = (_autoOrderMatch[2] || _autoOrderMatch[1]).replace(/^#/, '');
+        await _lookupOrderInChat(_detectedId);
+        return { __handled: true };
+    }
 
     // ── Greetings ──
     if (/^(hi|hello|hey|hii|good morning|good evening|good afternoon|howdy|namaste|helo|hai|hiya|sup|yo)\b/.test(m)) {
@@ -5713,24 +5735,22 @@ async function getAIResponse(msg) {
         };
     }
 
+    // ── Recent orders list ──
+    if (/my.*orders|recent.*order|order.*history|show.*orders|all.*orders|past.*order/.test(m)) {
+        await _showRecentOrdersInChat(user);
+        return { __handled: true };
+    }
+
     // ── Order status / tracking ──
     if (/track|order status|my order|where.*order|order.*id|order.*number|check.*order|order.*update/.test(m)) {
-        if (!user) {
-            return { text: `To check your order status, <strong>sign in</strong> first, then go to <strong>My Account → My Orders</strong>.<br><br>🔍 You can also use the <strong>"Track Order"</strong> button in the top bar to track by Order ID — no login needed!<br><br><strong>Order Status meanings:</strong><br>🟡 Processing → Approved → 📦 Packed → 🚚 Shipped → ✅ Delivered`, quickReplies: [
-                { label: '🔑 Sign In', msg: 'sign in now' },
-                { label: '📧 Order Support', msg: 'send message' }
-            ]};
-        }
-        return { text: `Hi <strong>${user.name?.split(' ')[0] || 'there'}</strong>! Here's how to track your order:<br><br>✅ <strong>Option 1:</strong> <a onclick="if(typeof openAccountPanel==='function')openAccountPanel();" style="color:var(--primary);cursor:pointer;font-weight:700;">My Account → Orders tab</a><br>✅ <strong>Option 2:</strong> <strong>Track Order</strong> button (top bar) — enter Order ID<br><br><strong>Status meanings:</strong><br>🟡 <strong>Processing</strong> — Confirmed, being prepared<br>🟢 <strong>Approved</strong> — Verified &amp; ready<br>📦 <strong>Packed</strong> — Packed, ready to dispatch<br>🚚 <strong>Shipped</strong> — On the way! (tracking link sent)<br>✅ <strong>Delivered</strong> — Successfully delivered<br>❌ <strong>Cancelled</strong> — Order cancelled`, quickReplies: [
-            { label: '👤 My Account', msg: 'go to my account' },
-            { label: '📧 Order Support', msg: 'I need help with my order' }
-        ]};
+        _chatCtx.mode = 'awaitingOrderId';
+        return { text: `📦 <strong>Order Status Lookup</strong><br><br>Please type your <strong>Order ID</strong> (e.g. <em>ORD-ABC123</em>) and I'll pull up the live status instantly.<br><br>💡 Your Order ID is in your order confirmation email or SMS.` };
     }
 
     // ── Ticket tracking / support ──
-    if (/ticket|ticket.*status|track.*ticket|support.*ticket|my.*ticket|ticket.*id|complaint|grievance/.test(m)) {
-        return { text: `🎫 <strong>Support Ticket Tracking:</strong><br><br>✅ Visit the <a href="tickets.html" style="color:var(--primary);font-weight:700;">Track Ticket</a> page<br>✅ Enter your <strong>Ticket ID</strong> (sent to your email when raised)<br>✅ Or click <strong>"Track Ticket"</strong> in the top bar<br><br><strong>Ticket Status meanings:</strong><br>🔵 <strong>Open</strong> — Received, under review<br>🟡 <strong>In Progress</strong> — Team is working on it<br>🟢 <strong>Resolved</strong> — Solution has been provided<br>⚫ <strong>Closed</strong> — Issue resolved &amp; closed<br><br>💡 You'll get <strong>email updates</strong> on every status change.<br>Average resolution time: <strong>24–48 hours</strong>`, quickReplies: [
-            { label: '🎫 Track Ticket', msg: 'go to track ticket page' },
+    if (/ticket|ticket.*status|track.*ticket|support.*ticket|my.*ticket|ticket.*id|grievance/.test(m)) {
+        _chatCtx.mode = 'awaitingTicketId';
+        return { text: `🎫 <strong>Ticket Status Lookup</strong><br><br>Please type your <strong>Ticket ID</strong> (format: <em>SSA-TKT-xxxxxxx</em> — it was emailed when you submitted the form) and I'll show the current status.<br><br>💡 Don't have a ticket yet? I'll raise one for you!`, quickReplies: [
             { label: '📧 Raise New Ticket', msg: 'send message' }
         ]};
     }
@@ -5841,14 +5861,231 @@ async function getAIResponse(msg) {
         return { text: `Goodbye! 👋 Thank you for visiting Siva Suresh Agency. Have a wonderful day! Come back anytime. 😊<br><br>📞 Need urgent help? Call us: <strong>+91 93666 40060</strong>` };
     }
 
-    // ── Default fallback — comprehensive ──
-    return { text: `I'm here to help! 😊 I can answer questions about our <strong>products, pricing, orders, delivery, tickets, custom orders</strong>, and more. Could you rephrase, or pick a topic below?`, quickReplies: [
+    // ── Cancel order ──
+    if (/cancel.*order|order.*cancel|how.*cancel|want.*cancel/.test(m)) {
+        return { text: `↩️ <strong>Cancel an Order:</strong><br><br>Orders can be cancelled before they reach <strong>Packed</strong> status.<br><br>1. <a onclick="if(typeof openAccountPanel==='function')openAccountPanel();" style="color:var(--primary);cursor:pointer;font-weight:700;">My Account → My Orders</a><br>2. Select the order → <strong>Cancel Order</strong><br><br>If already Packed/Shipped, raise a <strong>return request within 7 days of delivery</strong>.<br>📞 Urgent cancellations: <strong>+91 93666 40060</strong>`, quickReplies: [
+            { label: '📦 Track Order', msg: 'track my order' },
+            { label: '↩️ Return Policy', msg: 'What is your return policy?' },
+            { label: '📧 Contact Support', msg: 'send message' }
+        ]};
+    }
+
+    // ── Order not received / delayed ──
+    if (/not.*deliver|not.*receiv|not.*arriv|order.*delay|order.*late|where.*my.*order|expected.*deliver|overdue|still.*waiting|haven.*receiv/.test(m)) {
+        return { text: `📦 <strong>Order Not Received?</strong><br><br>If your expected delivery date has passed:<br><br>1. Check your <strong>tracking ID</strong> in order details<br>2. Standard delivery: <strong>3–5 business days</strong><br>3. Remote areas: <strong>5–7 business days</strong><br>4. If 2+ days overdue — raise a support ticket<br><br>We'll trace the shipment with the courier immediately.`, quickReplies: [
+            { label: '📦 Track My Order', msg: 'track my order' },
+            { label: '🎫 Raise a Ticket', msg: 'raise ticket' },
+            { label: '📞 Call Support', msg: 'What is your phone number?' }
+        ]};
+    }
+
+    // ── Complaint / defect / wrong item ──
+    if (/complaint|complain|wrong.*product|bad.*quality|damaged|torn|fade|wrong.*size|wrong.*color|defect|poor.*quality|dissatisf/.test(m)) {
+        return { text: `😟 <strong>I'm sorry to hear that!</strong><br><br>We take quality very seriously. Here's how to resolve this quickly:<br><br>🎫 <strong>Raise a ticket</strong> — attach photos, fastest resolution<br>📞 <strong>Call us</strong> — +91 93666 40060 (Mon–Sat, 9am–6pm)<br>📧 <strong>Email</strong> — info@sivasureshagency.onmicrosoft.com<br><br>We offer <strong>free replacement or full refund</strong> for quality issues.<br>Resolution time: <strong>24–48 hours</strong>.`, quickReplies: [
+            { label: '🎫 Raise Ticket Now', msg: 'send message' },
+            { label: '↩️ Return / Refund', msg: 'I want to return or get a refund' },
+            { label: '👤 Talk to Agent', msg: 'connect live agent' }
+        ]};
+    }
+
+    // ── Refund status ──
+    if (/refund.*status|when.*refund|my.*refund|refund.*time|got.*refund|money.*back/.test(m)) {
+        return { text: `💰 <strong>Refund Status:</strong><br><br>After return is approved:<br>• <strong>Online payments</strong> (card/UPI/net banking): <strong>5–7 business days</strong><br>• <strong>COD orders</strong>: Refund via NEFT/UPI — share bank details via ticket<br><br>📧 Check your email for a <strong>Ticket ID</strong>, then use "Track Ticket" to monitor the refund status.`, quickReplies: [
+            { label: '🎫 Track My Ticket', msg: 'track ticket' },
+            { label: '📧 Contact Support', msg: 'send message' }
+        ]};
+    }
+
+    // ── Default fallback — smart topic detection ──
+    const _hasQ = /\?|how|what|when|where|which|why|can|do you|is there|tell me/.test(m);
+    return { text: _hasQ
+        ? `I didn't quite catch that. 🤔 I can help with <strong>products, pricing, orders, delivery, tickets, returns, custom orders</strong>, and more. Which topic are you asking about?`
+        : `I'm here to help! 😊 Pick a topic below or type your question:`, quickReplies: [
         { label: '🛍️ Products', msg: 'What products do you offer?' },
         { label: '💰 Pricing', msg: 'Tell me about pricing' },
-        { label: '📦 My Orders', msg: 'Check my order status' },
-        { label: '🏢 About SSA', msg: 'Tell me about Siva Suresh Agency' },
-        { label: '📞 Contact', msg: 'How do I contact you?' }
+        { label: '📦 My Orders', msg: 'track my order' },
+        { label: '🎫 My Tickets', msg: 'track ticket' },
+        { label: '👤 Live Agent', msg: 'connect live agent' }
     ]};
+}
+
+// ── Chat helper: look up a single order and render an inline card ──
+async function _lookupOrderInChat(rawId) {
+    const orderId = rawId.replace(/^#/, '').trim().toUpperCase();
+    const user = JSON.parse(localStorage.getItem('ssa_user') || 'null');
+    let order = null;
+
+    // 1. localStorage (immediate, always available for orders placed on this device)
+    if (user?.email) {
+        const saved = JSON.parse(localStorage.getItem('ssa_orders_' + user.email) || '[]');
+        order = saved.find(o =>
+            (o.id || '').toUpperCase() === orderId ||
+            (o.orderId || '').toUpperCase() === orderId
+        ) || null;
+    }
+    // 2. Supabase (finds orders placed on other devices; requires auth session)
+    if (!order && window._supabase) {
+        try {
+            const { data } = await window._supabase.from('orders')
+                .select('orderId,id,status,items,total,trackingId,createdAt,payment,paymentStatus,customerName')
+                .or(`"orderId".eq.${orderId},"id".eq.${orderId}`)
+                .limit(1);
+            order = data?.[0] || null;
+        } catch { /* RLS will block un-authed queries — silently fall through */ }
+    }
+
+    if (!order) {
+        appendMsg('bot', `❓ I couldn't find order <strong>#${escapeRichText(orderId)}</strong>.<br><br>• Double-check the Order ID from your <strong>confirmation email or SMS</strong><br>• Make sure you're signed in with the account used to place the order`);
+        appendMsgWithQuickReplies('bot', 'Need more help?', [
+            { label: '🎫 Raise a Ticket', msg: 'raise ticket' },
+            { label: '📧 Contact Support', msg: 'send message' },
+            { label: '🔑 Sign In', msg: 'sign in now' }
+        ]);
+        return;
+    }
+
+    const STATUS_STEPS = ['Processing', 'Approved', 'Packed', 'Shipped', 'Delivered'];
+    const STATUS_EMOJI = { Processing: '🟡', Approved: '🟢', Packed: '📦', Shipped: '🚚', Delivered: '✅', Cancelled: '❌' };
+    const curIdx = STATUS_STEPS.indexOf(order.status);
+    const isCancelled = order.status === 'Cancelled';
+
+    const progressDots = STATUS_STEPS.map((s, i) =>
+        `<div class="coc-step${i < curIdx ? ' done' : ''}${i === curIdx ? ' active' : ''}">`
+      + `<div class="coc-dot"></div><span>${s}</span></div>`
+      + (i < STATUS_STEPS.length - 1 ? `<div class="coc-line${i < curIdx ? ' done' : ''}"></div>` : '')
+    ).join('');
+    const progressHtml = isCancelled
+        ? `<div style="text-align:center;padding:8px 0;color:#ef4444;font-weight:600;font-size:0.85rem;">❌ This order has been cancelled</div>`
+        : `<div class="coc-progress">${progressDots}</div>`;
+
+    const displayId = order.orderId || order.id || orderId;
+    const tsRaw = order.createdAt;
+    const tsMs = typeof tsRaw === 'string' ? Date.parse(tsRaw) : (tsRaw?.seconds ? tsRaw.seconds * 1000 : 0);
+    const date = tsMs ? new Date(tsMs).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+
+    const itemsHtml = (order.items || []).slice(0, 3).map(item =>
+        `<div class="coc-item"><span>${escapeRichText(item.name || item.productName || 'Product')}</span>`
+      + `<span class="coc-qty">×${item.qty || item.quantity || 1}${item.size ? ' · ' + item.size : ''}</span></div>`
+    ).join('') + ((order.items || []).length > 3
+        ? `<div class="coc-item-more">+${(order.items).length - 3} more item(s)</div>` : '');
+
+    const stClass = (order.status || 'processing').toLowerCase();
+    const trackingLine = order.trackingId
+        ? `<div class="coc-row"><span>Tracking</span><strong>${escapeRichText(order.trackingId)}</strong></div>` : '';
+
+    const html = `<div class="chat-order-card">`
+        + `<div class="coc-header"><div><div class="coc-id">Order #${escapeRichText(displayId)}</div>${date ? `<div class="coc-date">${date}</div>` : ''}</div>`
+        + `<span class="coc-badge coc-badge-${stClass}">${STATUS_EMOJI[order.status] || '🟡'} ${order.status || 'Processing'}</span></div>`
+        + progressHtml
+        + `<div class="coc-items">${itemsHtml}</div>`
+        + `<div class="coc-footer"><div class="coc-row"><span>Total</span><strong>₹${(Number(order.total) || 0).toLocaleString('en-IN')}</strong></div>`
+        + trackingLine
+        + `<div class="coc-row"><span>Payment</span><span>${escapeRichText(order.payment || 'COD')}</span></div></div></div>`;
+
+    appendCardMsg('bot', html, [
+        { label: '↩️ Return / Exchange', msg: 'I want to return or exchange a product' },
+        { label: '🎫 Raise Ticket', msg: 'raise ticket' },
+        { label: '📦 Track Another', msg: 'track my order' }
+    ]);
+}
+
+// ── Chat helper: look up a ticket by ID using the SECURITY DEFINER RPC ──
+async function _lookupTicketInChat(rawId) {
+    const ticketId = rawId.trim();
+    let ticket = null;
+    if (window.db?.rpc) {
+        try {
+            const data = await window.db.rpc('get_ticket_by_id', { p_ticket_id: ticketId });
+            ticket = Array.isArray(data) ? data[0] : data;
+        } catch { /* ignore RPC error */ }
+    }
+
+    if (!ticket || !ticket.ticketId) {
+        appendMsg('bot', `❓ Ticket <strong>${escapeRichText(ticketId)}</strong> not found.<br><br>Ticket IDs are in your confirmation email (format: <em>SSA-TKT-xxxxxxx</em>).<br>Please check and try again.`);
+        appendMsgWithQuickReplies('bot', '', [
+            { label: '🎫 Go to Ticket Page', msg: 'go to track ticket page' },
+            { label: '📧 Raise New Ticket', msg: 'send message' }
+        ]);
+        return;
+    }
+
+    const ST_COLOR = { Open: '#3b82f6', 'In Progress': '#f59e0b', Resolved: '#10b981', Closed: '#6b7280' };
+    const ST_EMOJI = { Open: '🔵', 'In Progress': '🟡', Resolved: '🟢', Closed: '⚫' };
+    const st = ticket.status || 'Open';
+    const tsMs = ticket.createdAt ? Date.parse(ticket.createdAt) : 0;
+    const date = tsMs ? new Date(tsMs).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+    const comments = Array.isArray(ticket.comments) ? ticket.comments : [];
+    const lastComment = comments.slice(-1)[0];
+    const clr = ST_COLOR[st] || '#6b7280';
+    const replyBlock = lastComment
+        ? `<div class="ctc-reply"><div class="ctc-reply-label">Latest Update</div><div class="ctc-reply-text">${escapeRichText(lastComment.text || lastComment.message || '')}</div></div>`
+        : '';
+
+    const html = `<div class="chat-ticket-card">`
+        + `<div class="ctc-header"><div><div class="ctc-id">Ticket #${escapeRichText(ticket.ticketId)}</div>${date ? `<div class="ctc-date">Raised: ${date}</div>` : ''}</div>`
+        + `<span class="ctc-badge" style="background:${clr}20;color:${clr};border:1px solid ${clr}40">${ST_EMOJI[st] || '🔵'} ${st}</span></div>`
+        + `<div class="ctc-subject">${escapeRichText(ticket.subject || 'Support Request')}</div>`
+        + replyBlock
+        + `<div class="ctc-footer"><i class="fas fa-clock"></i> Expected resolution: <strong>24–48 hours</strong></div></div>`;
+
+    appendCardMsg('bot', html, [
+        { label: '📧 Reply / Update', msg: 'send message' },
+        { label: '🔄 Check Another', msg: 'track ticket' }
+    ]);
+}
+
+// ── Chat helper: show the user's last 5 orders as a clickable list ──
+async function _showRecentOrdersInChat(user) {
+    if (!user?.email) {
+        appendMsg('bot', `Please <strong>sign in</strong> to view your order history.`);
+        appendMsgWithQuickReplies('bot', '', [{ label: '🔑 Sign In', msg: 'sign in now' }]);
+        return;
+    }
+
+    let orders = [];
+    if (window._supabase) {
+        try {
+            const { data } = await window._supabase.from('orders')
+                .select('orderId,id,status,total,items,createdAt,trackingId')
+                .eq('customerEmail', user.email)
+                .order('createdAt', { ascending: false })
+                .limit(5);
+            orders = data || [];
+        } catch { /* fall through to localStorage */ }
+    }
+    if (!orders.length) {
+        orders = JSON.parse(localStorage.getItem('ssa_orders_' + user.email) || '[]')
+            .sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0))
+            .slice(0, 5);
+    }
+
+    if (!orders.length) {
+        appendMsg('bot', `No orders found yet, <strong>${user.name?.split(' ')[0] || 'there'}</strong>! 🛍️`);
+        appendMsgWithQuickReplies('bot', '', [{ label: '🛍️ Shop Now', msg: 'take me to products' }]);
+        return;
+    }
+
+    const ST_EMOJI = { Processing: '🟡', Approved: '🟢', Packed: '📦', Shipped: '🚚', Delivered: '✅', Cancelled: '❌' };
+    const rows = orders.map(o => {
+        const oid = o.orderId || o.id || '';
+        const st = o.status || 'Processing';
+        const tsRaw = o.createdAt || o.date;
+        const tsMs = typeof tsRaw === 'string' ? Date.parse(tsRaw) : (tsRaw?.seconds ? tsRaw.seconds * 1000 : 0);
+        const date = tsMs ? new Date(tsMs).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '';
+        const total = `₹${(Number(o.total) || 0).toLocaleString('en-IN')}`;
+        return `<div class="cor-row" onclick="window.sendChatMessage('track order ${oid.replace(/'/g, '')}')" style="cursor:pointer;">`
+            + `<div class="cor-left"><div class="cor-id">#${escapeRichText(oid)}</div>${date ? `<div class="cor-date">${date}</div>` : ''}</div>`
+            + `<div class="cor-right"><div class="cor-status">${ST_EMOJI[st] || '🟡'} ${st}</div><div class="cor-total">${total}</div></div></div>`;
+    }).join('');
+
+    const html = `<div class="chat-orders-list">`
+        + `<div class="col-header">📦 Your Recent Orders</div>${rows}`
+        + `<div class="col-footer">Tap any order for full details</div></div>`;
+
+    appendCardMsg('bot', html, [
+        { label: '📋 My Account', msg: 'go to my account' },
+        { label: '🎫 Raise a Ticket', msg: 'raise ticket' }
+    ]);
 }
 
 function _handleLiveAgentRequest() {
