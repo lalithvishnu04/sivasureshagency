@@ -712,9 +712,20 @@ function _startCardCycle(card) {
 function _stopCardCycle() {
     if (_hoverCycleTimer) { clearInterval(_hoverCycleTimer); _hoverCycleTimer = null; }
     if (_hoverCycleCard) {
-        const imgs = window._cardHoverImgs && window._cardHoverImgs[_hoverCycleCard.dataset.id];
         const imgEl = _hoverCycleCard.querySelector('.shop-card-image img');
-        if (imgEl && imgs && imgs[0]) imgEl.src = imgs[0];
+        if (imgEl) {
+            // Revert to selected color's first image, or data-default-img, or hover imgs[0]
+            const activeBtn = _hoverCycleCard.querySelector('.color-swatch.active');
+            if (activeBtn) {
+                const _pid = Number(_hoverCycleCard.dataset.id);
+                const _p = productsData.find(p => p.id === _pid);
+                const _cv = _p?.colorVariants?.find(c => c.name === activeBtn.dataset.colorName);
+                if (_cv?.images?.[0]) { imgEl.src = _cv.images[0]; }
+            } else {
+                const _imgs = window._cardHoverImgs?.[_hoverCycleCard.dataset.id];
+                imgEl.src = imgEl.dataset.defaultImg || (_imgs?.[0] ?? imgEl.src);
+            }
+        }
         _hoverCycleCard.querySelectorAll('.card-img-dots i').forEach((d, i) => d.classList.toggle('on', i === 0));
         _hoverCycleCard = null;
     }
@@ -6304,14 +6315,23 @@ function selectCardColor(btn) {
     const label = swatches.querySelector('.color-name');
     const h4 = card?.querySelector('.shop-card-name');
     const img = card?.querySelector('.shop-card-image img');
+    const pid = card ? Number(card.dataset.id) : null;
+    const product = pid ? productsData.find(p => p.id === pid) : null;
 
     swatches.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
 
     if (wasActive) {
-        // Toggle OFF — deselect, revert title and image to defaults
+        // Toggle OFF — deselect, revert title, image, and hover cycle to defaults
         if (label) label.textContent = '';
         if (h4) h4.textContent = h4.dataset.baseName || h4.textContent.split('\u2013')[0].trim();
         if (img && img.dataset.defaultImg) img.src = img.dataset.defaultImg;
+        // Restore original all-colors hover images
+        if (pid && window._cardHoverImgsOrig?.[pid]) {
+            const origImgs = window._cardHoverImgsOrig[pid];
+            window._cardHoverImgs[pid] = origImgs;
+            delete window._cardHoverImgsOrig[pid];
+            _syncCardDots(card, origImgs);
+        }
     } else {
         // Toggle ON — activate this color
         btn.classList.add('active');
@@ -6321,14 +6341,27 @@ function selectCardColor(btn) {
             h4.dataset.baseName = h4.dataset.baseName || base;
             h4.textContent = base + ' \u2013 ' + btn.dataset.colorName;
         }
-        if (card) {
-            const pid = Number(card.dataset.id);
-            const product = productsData.find(p => p.id === pid);
-            const cv = product?.colorVariants?.find(c => c.name === btn.dataset.colorName);
-            if (cv?.images?.[0] && img) img.src = cv.images[0];
+        const cv = product?.colorVariants?.find(c => c.name === btn.dataset.colorName);
+        const colorImgs = (cv?.images || []).filter(Boolean);
+        if (colorImgs[0] && img) img.src = colorImgs[0];
+        // Narrow hover cycle to this color's images only
+        if (pid && window._cardHoverImgs) {
+            if (!window._cardHoverImgsOrig) window._cardHoverImgsOrig = {};
+            if (!window._cardHoverImgsOrig[pid]) window._cardHoverImgsOrig[pid] = window._cardHoverImgs[pid];
+            const hoverImgs = colorImgs.length ? colorImgs : window._cardHoverImgsOrig[pid];
+            window._cardHoverImgs[pid] = hoverImgs;
+            _syncCardDots(card, hoverImgs);
         }
     }
     if (card) updateCardStockUI(card);
+}
+
+// Sync dot indicators and has-hover-cycle class to a new image list
+function _syncCardDots(card, imgs) {
+    const dotsEl = card?.querySelector('.card-img-dots');
+    const imgDiv = card?.querySelector('.shop-card-image');
+    if (dotsEl) dotsEl.innerHTML = imgs.length > 1 ? imgs.map((_, i) => `<i class="${i === 0 ? 'on' : ''}"></i>`).join('') : '';
+    if (imgDiv) imgDiv.classList.toggle('has-hover-cycle', imgs.length > 1);
 }
 
 function selectDetailColor(btn, pid) {
