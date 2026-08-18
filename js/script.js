@@ -2066,7 +2066,7 @@ function buildProductCard(p) {
         ? `<div class="shop-card-quick"><button class="btn btn-notify-me btn-sm" onclick="event.stopPropagation();openNotifyMe(${p.id})"><i class="fas fa-bell"></i> Notify</button></div>`
         : `<div class="shop-card-quick"><button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); addToCart(${p.id})"><i class="fas fa-cart-plus"></i> Add</button></div>`;
     const stockBarHtml = isLow
-        ? `<div class="stock-bar-wrap"><div class="stock-bar-fill" style="width:${Math.min(100,Math.round((p.stock||5)/20*100))}%"></div><span class="stock-bar-label">Only ${p.stock||5} left</span></div>`
+        ? `<div class="stock-bar-wrap"><div class="stock-bar-track"><div class="stock-bar-fill" style="width:${Math.min(100,Math.round((p.stock||5)/20*100))}%"></div></div><span class="stock-bar-label">Only ${p.stock||5} left</span></div>`
         : '';
     const deliveryHtml = `<div class="card-delivery-est"><i class="fas fa-truck"></i> Ships in 3–5 days</div>`;
     return `<div class="shop-card${p.badge || isOut || isLow ? ' has-badge' : ''} reveal active${isOut ? ' out-of-stock-card' : isLow ? ' low-stock-card' : ''}" data-category="${p.category}" data-id="${p.id}">

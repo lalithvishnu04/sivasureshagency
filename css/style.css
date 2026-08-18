@@ -3978,11 +3978,11 @@ section.section-alt { background: var(--bg-off); }
 /* ─── Stock Bar ─────────────────────────────────────────── */
 .stock-bar-wrap {
     display: flex; align-items: center; gap: 8px;
-    margin: 4px 0 2px; height: 6px; position: relative;
+    margin: 4px 0 2px;
 }
-.stock-bar-wrap {
-    background: #f1f5f9; border-radius: 99px; overflow: hidden;
-    height: 5px; flex: 1;
+.stock-bar-track {
+    flex: 1; background: #f1f5f9; border-radius: 99px; overflow: hidden;
+    height: 5px;
 }
 .stock-bar-fill {
     height: 100%; background: linear-gradient(90deg, #f59e0b, #ef4444);
