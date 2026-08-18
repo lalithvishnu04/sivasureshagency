@@ -7247,19 +7247,49 @@ function openNotifyMe(productId) {
     setTimeout(() => modal.classList.add('show'), 50);
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 }
-function _submitNotifyMe(productId) {
+async function _submitNotifyMe(productId) {
     const emailEl = document.getElementById('notifyEmail');
     if (!emailEl) return;
     const email = emailEl.value.trim();
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRe.test(email)) { showToast('Please enter a valid email address.'); return; }
-    // Store locally + would send to backend in production
+
+    const btn = document.querySelector('#notifyMeModal .btn-gradient');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+
+    const product = productsData.find(p => p.id === productId);
+    const productName = product ? product.name : ('Product #' + productId);
+
+    // Save to localStorage as backup
     try {
         const notifies = JSON.parse(localStorage.getItem('ssa_notifies') || '[]');
-        notifies.push({ productId, email, ts: Date.now() });
+        notifies.push({ productId, productName, email, ts: Date.now() });
         localStorage.setItem('ssa_notifies', JSON.stringify(notifies));
     } catch(e) {}
-    document.getElementById('notifyMeModal').remove();
+
+    // Save to Supabase notify_requests collection
+    try {
+        if (window.db) {
+            await window.db.collection('notify_requests').add({
+                email, productId, productName,
+                createdAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date(),
+                notified: false
+            });
+        }
+        // Notify admin via SSA_COMM (fire-and-forget)
+        if (window.SSA_COMM && typeof window.SSA_COMM.sendContactFormEmail === 'function') {
+            window.SSA_COMM.sendContactFormEmail({
+                ticketId: 'NT-' + Date.now().toString(36).toUpperCase(),
+                name: email.split('@')[0], email, phone: '',
+                subject: 'Back-in-Stock Notification Request',
+                message: 'Customer ' + email + ' wants to be notified when "' + productName + '" is back in stock.',
+                customerId: ''
+            }).catch(() => {});
+        }
+    } catch(e) { /* silently fail — localStorage copy is the backup */ }
+
+    const modal = document.getElementById('notifyMeModal');
+    if (modal) modal.remove();
     showToast('✅ We\'ll notify you when it\'s back in stock!');
 }
 window.openNotifyMe = openNotifyMe;
@@ -7405,32 +7435,127 @@ function _initPdSwipe(pid, images) {
 window._initPdSwipe = _initPdSwipe;
 
 // ─── Newsletter Subscribe ─────────────────────────────────────────
-function subscribeNewsletter(formEl) {
+async function subscribeNewsletter(formEl) {
     const emailEl = formEl ? formEl.querySelector('input[type="email"]') : document.getElementById('newsletterEmail');
     if (!emailEl) return;
     const email = emailEl.value.trim();
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRe.test(email)) { showToast('Please enter a valid email address.'); return; }
-    emailEl.value = '';
-    showToast('🎉 Thanks for subscribing! Welcome to the SSA family.');
+
+    const btn = formEl ? formEl.querySelector('button[type="submit"]') : null;
+    const origBtnHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
     try {
+        // Save to localStorage as backup
         const subs = JSON.parse(localStorage.getItem('ssa_newsletter_subs') || '[]');
         subs.push({ email, ts: Date.now() });
         localStorage.setItem('ssa_newsletter_subs', JSON.stringify(subs));
-    } catch(e) {}
+
+        // Save to Supabase newsletter_subscribers collection
+        if (window.db) {
+            await window.db.collection('newsletter_subscribers').add({
+                email,
+                subscribedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date(),
+                source: 'website-footer'
+            });
+        }
+
+        // Send welcome notification via SSA_COMM (fire-and-forget)
+        if (window.SSA_COMM && typeof window.SSA_COMM.sendContactFormEmail === 'function') {
+            window.SSA_COMM.sendContactFormEmail({
+                ticketId: 'NL-' + Date.now().toString(36).toUpperCase(),
+                name: email.split('@')[0],
+                email, phone: '',
+                subject: 'Newsletter Subscription',
+                message: 'New newsletter subscriber: ' + email,
+                customerId: ''
+            }).catch(() => {});
+        }
+
+        emailEl.value = '';
+        showToast('🎉 Thanks for subscribing! Welcome to the SSA family.');
+    } catch(e) {
+        // Still show success even if DB save fails
+        emailEl.value = '';
+        showToast('🎉 Thanks for subscribing! Welcome to the SSA family.');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = origBtnHtml; }
+    }
 }
 window.subscribeNewsletter = subscribeNewsletter;
 
 // ─── Bulk Quote Form ──────────────────────────────────────────────
-function submitBulkQuote(e) {
+async function submitBulkQuote(e) {
     e.preventDefault();
     const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
     const data = Object.fromEntries(new FormData(form));
-    if (!data.name || !data.phone || !data.requirement) { showToast('Please fill all required fields.'); return; }
-    const msg = encodeURIComponent(`Bulk Quote Request\nName: ${data.name}\nPhone: ${data.phone}\nOrganisation: ${data.org||'-'}\nQty: ${data.qty||'-'}\nRequirement: ${data.requirement}`);
-    window.open(`https://wa.me/919366640060?text=${msg}`, '_blank', 'noopener');
-    form.reset();
-    showToast('✅ Redirecting to WhatsApp with your quote request!');
+
+    if (!data.name || !data.phone || !data.email || !data.requirement) {
+        showToast('Please fill all required fields.');
+        return;
+    }
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRe.test(data.email)) { showToast('Please enter a valid email address.'); return; }
+
+    const origBtnHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…'; }
+
+    try {
+        const ticketId = 'QT-' + Date.now().toString(36).toUpperCase();
+        const subject = 'Bulk Quote Request';
+        const message = 'Organisation: ' + (data.org||'-') + '\nQty: ' + (data.qty||'-') + '\nRequirement: ' + data.requirement;
+
+        // Save to Supabase messages collection
+        if (window.db) {
+            await window.db.collection('messages').add({
+                ticketId,
+                name: data.name,
+                email: data.email,
+                phone: data.phone,
+                subject,
+                message,
+                customerId: '',
+                status: 'Open',
+                createdAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date(),
+                updatedAt: window.fsServerTimestamp ? window.fsServerTimestamp() : new Date(),
+                read: false,
+                source: 'bulk-quote-form'
+            });
+        }
+
+        // Send admin notification via SSA_COMM
+        if (window.SSA_COMM && typeof window.SSA_COMM.sendContactFormEmail === 'function') {
+            await window.SSA_COMM.sendContactFormEmail({
+                ticketId, name: data.name, email: data.email,
+                phone: data.phone, subject, message, customerId: ''
+            });
+        }
+        // Send customer confirmation email
+        if (window.SSA_COMM && typeof window.SSA_COMM.sendTicketStatusUpdate === 'function') {
+            window.SSA_COMM.sendTicketStatusUpdate({
+                ticketId, customerEmail: data.email, customerName: data.name,
+                newStatus: 'Open', isNew: true,
+                adminNote: 'Thank you for your bulk quote request. Our team will review your requirements and respond within 24 hours.'
+            }).catch(() => {});
+        }
+
+        // Show success panel
+        const successEl = document.getElementById('bqfSuccess');
+        const ticketEl = document.getElementById('bqfTicketId');
+        if (successEl && ticketEl) {
+            ticketEl.textContent = ticketId;
+            form.style.display = 'none';
+            successEl.style.display = 'block';
+        } else {
+            showToast('✅ Quote request sent! We\'ll respond within 24 hours.');
+        }
+        form.reset();
+    } catch(err) {
+        if (btn) { btn.disabled = false; btn.innerHTML = origBtnHtml; }
+        showToast('Error: ' + (err.message || 'Please try again.'));
+    }
 }
 window.submitBulkQuote = submitBulkQuote;
 
