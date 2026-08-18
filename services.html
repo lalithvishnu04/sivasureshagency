@@ -17,7 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="stylesheet" href="css/style.css?v=99">
+    <link rel="stylesheet" href="css/style.css?v=100">
     <link rel="stylesheet" href="css/animations.css?v=9">
     <link rel="icon" type="image/jpeg" href="images/SSA Logo.png">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -166,62 +166,37 @@
         </div>
     </section>
 
-    <!-- Process Section V3 — Horizontal Accordion -->
-    <section class="process-section section-pad" style="background:var(--bg-off);">
+    <!-- How It Works — compact 4-step grid -->
+    <section class="section-pad" style="background:var(--bg-off);">
         <div class="container">
             <div class="section-header">
                 <span class="section-tag">How It Works</span>
                 <h2 class="section-title">From Click to <span class="gradient-text">Doorstep</span></h2>
             </div>
-            <div class="pv3-wrap" id="pv3Wrap">
-                <div class="pv3-step pv3-active" data-idx="0" onclick="pv3GoTo(0)">
-                    <div class="pv3-hd">
-                        <span class="pv3-num">01</span>
-                        <div class="pv3-icon"><i class="fas fa-search"></i></div>
-                        <span class="pv3-title-sm">Browse</span>
-                    </div>
-                    <div class="pv3-body">
-                        <h4>Browse &amp; Select</h4>
-                        <p>Explore hospital linen, scrubs, uniforms &amp; hotel textiles. Filter by category, size and quantity to find exactly what you need.</p>
-                        <a href="categories.html" class="btn pv3-cta"><i class="fas fa-arrow-right"></i> Start Browsing</a>
-                    </div>
-                    <div class="pv3-prog-bar"><div class="pv3-prog-fill"></div></div>
+            <div class="hiw-steps">
+                <div class="hiw-step">
+                    <span class="hiw-num">01</span>
+                    <div class="hiw-icon"><i class="fas fa-search"></i></div>
+                    <h4>Browse &amp; Select</h4>
+                    <p>Explore linen, scrubs, uniforms &amp; hotel textiles. Filter by category, size and quantity.</p>
                 </div>
-                <div class="pv3-step" data-idx="1" onclick="pv3GoTo(1)">
-                    <div class="pv3-hd">
-                        <span class="pv3-num">02</span>
-                        <div class="pv3-icon"><i class="fas fa-pen-nib"></i></div>
-                        <span class="pv3-title-sm">Customize</span>
-                    </div>
-                    <div class="pv3-body">
-                        <h4>Customize &amp; Order</h4>
-                        <p>Choose sizes, quantities and add custom embroidery or logo. Place your order securely online with real-time order confirmation.</p>
-                    </div>
-                    <div class="pv3-prog-bar"><div class="pv3-prog-fill"></div></div>
+                <div class="hiw-step">
+                    <span class="hiw-num">02</span>
+                    <div class="hiw-icon"><i class="fas fa-pen-nib"></i></div>
+                    <h4>Customize &amp; Order</h4>
+                    <p>Pick sizes, add custom embroidery or logo and place your order securely online.</p>
                 </div>
-                <div class="pv3-step" data-idx="2" onclick="pv3GoTo(2)">
-                    <div class="pv3-hd">
-                        <span class="pv3-num">03</span>
-                        <div class="pv3-icon"><i class="fas fa-shield-alt"></i></div>
-                        <span class="pv3-title-sm">Quality</span>
-                    </div>
-                    <div class="pv3-body">
-                        <h4>Quality Inspection</h4>
-                        <p>Every item undergoes a strict multi-point quality check before packing. We guarantee defect-free products on every order.</p>
-                    </div>
-                    <div class="pv3-prog-bar"><div class="pv3-prog-fill"></div></div>
+                <div class="hiw-step">
+                    <span class="hiw-num">03</span>
+                    <div class="hiw-icon"><i class="fas fa-shield-alt"></i></div>
+                    <h4>Quality Check</h4>
+                    <p>Every item passes a strict multi-point inspection before packing — zero defects guaranteed.</p>
                 </div>
-                <div class="pv3-step" data-idx="3" onclick="pv3GoTo(3)">
-                    <div class="pv3-hd">
-                        <span class="pv3-num">04</span>
-                        <div class="pv3-icon"><i class="fas fa-truck"></i></div>
-                        <span class="pv3-title-sm">Delivery</span>
-                    </div>
-                    <div class="pv3-body">
-                        <h4>Fast Delivery</h4>
-                        <p>Receive your order at your doorstep within 3&ndash;5 business days. Pan-India shipping with real-time tracking updates.</p>
-                    </div>
-                    <div class="pv3-prog-bar"><div class="pv3-prog-fill"></div></div>
+                <div class="hiw-step">
+                    <span class="hiw-num">04</span>
+                    <div class="hiw-icon"><i class="fas fa-truck"></i></div>
+                    <h4>Fast Delivery</h4>
+                    <p>Doorstep delivery in 3&ndash;5 business days. Pan-India shipping with real-time tracking.</p>
                 </div>
             </div>
         </div>
@@ -295,49 +270,7 @@
         </div>
     </section>
 
-    <script>
-    (function(){
-        var pv3Timer, pv3Current = 0, pv3Paused = false;
-        window.pv3GoTo = function(idx) {
-            var steps = document.querySelectorAll('.pv3-step');
-            if (!steps.length) return;
-            steps.forEach(function(s, i) {
-                s.classList.toggle('pv3-active', i === idx);
-                s.classList.toggle('pv3-done', i < idx);
-                var fill = s.querySelector('.pv3-prog-fill');
-                if (fill) { fill.style.animation = 'none'; void fill.offsetWidth; }
-            });
-            var activeFill = steps[idx] && steps[idx].querySelector('.pv3-prog-fill');
-            if (activeFill) { void activeFill.offsetWidth; activeFill.style.animation = ''; }
-            pv3Current = idx;
-        };
-        function pv3Advance() {
-            if (pv3Paused) return;
-            clearTimeout(pv3Timer);
-            pv3Timer = setTimeout(function() {
-                var total = document.querySelectorAll('.pv3-step').length;
-                window.pv3GoTo((pv3Current + 1) % total);
-                pv3Advance();
-            }, 4000);
-        }
-        document.addEventListener('DOMContentLoaded', function() {
-            var wrap = document.getElementById('pv3Wrap');
-            if (!wrap) return;
-            wrap.addEventListener('mouseenter', function() { pv3Paused = true; clearTimeout(pv3Timer); });
-            wrap.addEventListener('mouseleave', function() { pv3Paused = false; window.pv3GoTo(pv3Current); pv3Advance(); });
-            // Touch: swipe to advance on mobile
-            var _tx = 0;
-            wrap.addEventListener('touchstart', function(e) { _tx = e.changedTouches[0].clientX; }, { passive: true });
-            wrap.addEventListener('touchend', function(e) {
-                var dx = e.changedTouches[0].clientX - _tx;
-                var total = document.querySelectorAll('.pv3-step').length;
-                if (Math.abs(dx) > 40) window.pv3GoTo(dx < 0 ? (pv3Current + 1) % total : (pv3Current - 1 + total) % total);
-            }, { passive: true });
-            window.pv3GoTo(0);
-            pv3Advance();
-        });
-    })();
-    </script>
+
 
     <!-- CTA -->
     <section class="cta-banner">

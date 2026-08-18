@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css?v=99">
+    <link rel="stylesheet" href="css/style.css?v=100">
     <link rel="stylesheet" href="css/animations.css?v=9">
     <link rel="icon" type="image/png" href="images/SSA Logo.png">
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/sivasureshagency/sw.js',{scope:'/sivasureshagency/'}).then(r=>{r.addEventListener('updatefound',()=>{var w=r.installing;w.addEventListener('statechange',()=>{if(w.state==='activated')console.log('[SW] Updated to latest version');});});}).catch(e=>console.warn('[SW]',e));}</script></head>
@@ -195,13 +195,18 @@
         </div>
     </section>
 
-    <!-- Map � PVT Towers, Erode -->
-    <section class="map-section-v2" style="position:relative;">
+    <!-- Map — PVT Towers, Erode -->
+    <section class="map-section-v2">
         <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3911.9609309692487!2d77.69944127358154!3d11.33756434859584!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba96f2145555557%3A0x73cc517fc053d79c!2sSiva%20Suresh%20Agency!5e0!3m2!1sen!2sin!4v1787081723248!5m2!1sen!2sin" width="100%" height="280" style="border:0;display:block;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Siva Suresh Agency — PVT Towers, 37/10 Selvam Nagar, Erode"></iframe>
-        <div class="map-overlay-info">
-            <h4><i class="fas fa-map-marker-alt" style="color:var(--primary);margin-right:6px;"></i> Siva Suresh Agency</h4>
-            <p>PVT Towers, 37/10, Selvam Nagar,<br>Erode &ndash; 638 011, Tamil Nadu</p>
-            <a href="https://maps.app.goo.gl/rxxz8UBm4zqvccHN9" target="_blank" rel="noopener"><i class="fas fa-directions"></i> Get Directions</a>
+        <div class="map-info-bar">
+            <div class="map-info-addr">
+                <i class="fas fa-map-marker-alt"></i>
+                <div>
+                    <strong>Siva Suresh Agency</strong>
+                    <span>PVT Towers, 37/10, Selvam Nagar, Erode &ndash; 638 011, Tamil Nadu</span>
+                </div>
+            </div>
+            <a href="https://maps.app.goo.gl/rxxz8UBm4zqvccHN9" target="_blank" rel="noopener" class="btn btn-gradient btn-sm"><i class="fas fa-directions"></i> Get Directions</a>
         </div>
     </section>
 
