@@ -130,6 +130,12 @@ function escapeRichText(str) {
         .replace(/'/g, '&#39;');
 }
 
+// One-way SHA-256 hash for localStorage password storage (fallback auth only)
+async function _hashPwd(pwd) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pwd));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 function applyInlineRichText(str) {
     let s = escapeRichText(str);
     s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -3012,17 +3018,21 @@ function handleForgotPasswordReset() { handleForgotSendOtp(); } // backward comp
 function _upsertLocalUserProfile(profile) {
     const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
     const idx = users.findIndex(u => u.email === profile.email);
+    const existing = users[idx] || {};
     const row = {
         firstName: profile.firstName || '',
         lastName: profile.lastName || '',
         email: profile.email,
         phone: profile.phone || '',
-        password: profile.password || users[idx]?.password || '',
-        createdAt: users[idx]?.createdAt || new Date().toISOString()
+        // Preserve hash only — never store or copy plaintext password
+        passwordHash: existing.passwordHash || '',
+        createdAt: existing.createdAt || new Date().toISOString()
     };
+    // Remove any legacy plaintext password field that may have existed
+    delete row.password;
     if (idx === -1) users.push(row);
-    else users[idx] = { ...users[idx], ...row };
-    localStorage.setItem('ssa_users', JSON.stringify(users));
+    else users[idx] = { ...existing, ...row, password: undefined };
+    localStorage.setItem('ssa_users', JSON.stringify(users.map(u => { const c = { ...u }; delete c.password; return c; })));
 }
 
 async function _resolveEmailFromCustomerId(customerIdInput) {
@@ -3141,10 +3151,16 @@ async function handleLogin() {
     // Fallback path: local profile login (email or customer ID only)
     const usersAll = JSON.parse(localStorage.getItem('ssa_users') || '[]');
     const normalizedInput = loginInput.trim().toUpperCase();
+    const inputHash = await _hashPwd(password);
     const user = usersAll.find(u => (
         u.email === email ||
         (u.customerId && String(u.customerId).trim().toUpperCase() === normalizedInput)
-    ) && u.password === password);
+    ) && (u.passwordHash === inputHash || u.password === password)); // u.password fallback for legacy accounts
+    // Migrate legacy plaintext password to hash on successful login
+    if (user && user.password && !user.passwordHash) {
+        user.passwordHash = inputHash; delete user.password;
+        localStorage.setItem('ssa_users', JSON.stringify(usersAll));
+    }
     if (user) {
         const cid = user.customerId || _generateCustomerId(user.email);
         if (!user.customerId) { user.customerId = cid; localStorage.setItem('ssa_users', JSON.stringify(usersAll)); }
@@ -3176,7 +3192,7 @@ async function handleRegister() {
     const password = document.getElementById('regPassword').value;
     const confirm = document.getElementById('regConfirmPassword').value;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { document.getElementById('regEmailError').textContent = 'Invalid email'; document.getElementById('regEmailError').style.display = 'block'; return; }
-    if (password.length < 6) { document.getElementById('regPasswordError').textContent = 'Min 6 chars'; document.getElementById('regPasswordError').style.display = 'block'; return; }
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password)) { document.getElementById('regPasswordError').textContent = 'Min 8 chars with uppercase, lowercase and number'; document.getElementById('regPasswordError').style.display = 'block'; return; }
     if (password !== confirm) { document.getElementById('regConfirmPasswordError').textContent = 'Mismatch'; document.getElementById('regConfirmPasswordError').style.display = 'block'; return; }
     const users = JSON.parse(localStorage.getItem('ssa_users') || '[]');
     if (users.find(u => u.email === email)) { document.getElementById('regEmailError').textContent = 'Already exists'; document.getElementById('regEmailError').style.display = 'block'; return; }
@@ -3191,7 +3207,7 @@ async function handleRegister() {
         }
     }
 
-    users.push({ firstName, lastName, email, phone, password, createdAt: new Date().toISOString() });
+    users.push({ firstName, lastName, email, phone, passwordHash: await _hashPwd(password), createdAt: new Date().toISOString() });
     localStorage.setItem('ssa_users', JSON.stringify(users));
 
     // Generate unique Customer ID (SSA-CUST-XXXXX)
@@ -4962,17 +4978,17 @@ async function _openRazorpayCheckout(order, shipping) {
                         response.razorpay_signature
                     );
                     if (vr.verified === false) {
-                        showToast('Payment verification failed. Contact support: ' + response.razorpay_payment_id);
-                        console.error('[rzp] Signature mismatch');
+                        _hidePaymentOverlay();
+                        showToast('Payment verification failed. Contact support with ID: ' + response.razorpay_payment_id);
+                        console.error('[rzp] Signature mismatch — order NOT placed');
                         return;
                     }
                 } catch (e) {
-                    // Only block on explicit signature mismatch; ignore endpoint errors
-                    if (/signature/i.test(e.message)) {
-                        showToast('Payment verification failed. Contact support: ' + response.razorpay_payment_id);
-                        return;
-                    }
-                    console.warn('[rzp] Verify unavailable:', e.message);
+                    // Block on ANY verification error when a Razorpay order_id was issued
+                    _hidePaymentOverlay();
+                    showToast('Payment verification unavailable. Please contact support with ID: ' + response.razorpay_payment_id + ' — order not placed automatically.');
+                    console.error('[rzp] Verify failed:', e.message);
+                    return;
                 }
             }
             order.paymentStatus = 'Paid';
