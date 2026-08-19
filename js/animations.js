@@ -812,6 +812,56 @@
 
 
     /* ──────────────────────────────────────────────────────────
+       11. SCROLL REVEAL
+       Uses IntersectionObserver to add .ssr-done when elements
+       enter the viewport. JS applies .ssr + variant classes to
+       key sections; CSS handles the actual transitions.
+    ────────────────────────────────────────────────────────── */
+    function initScrollReveal() {
+        const d = ['ssr-d1','ssr-d2','ssr-d3','ssr-d4','ssr-d5','ssr-d6'];
+
+        function markReveal() {
+            $$('.section-header:not(.ssr)').forEach(el => el.classList.add('ssr','ssr-up'));
+
+            $$('.hiw-step:not(.ssr)').forEach((el, i) => el.classList.add('ssr','ssr-scale', d[i % 6]));
+
+            $$('.shop-card:not(.ssr)').forEach((el, i) => el.classList.add('ssr','ssr-up', d[i % 6]));
+            $$('.category-tile:not(.ssr)').forEach((el, i) => el.classList.add('ssr','ssr-up', d[i % 6]));
+
+            $$('.bento-card:not(.ssr)').forEach((el, i) => el.classList.add('ssr','ssr-up', d[i % 6]));
+
+            $$('.tcard:not(.ssr)').forEach((el, i) => el.classList.add('ssr','ssr-up', d[i % 6]));
+
+            $$('.trust-strip-item:not(.ssr)').forEach((el, i) => el.classList.add('ssr','ssr-up', d[i % 6]));
+
+            $$('.bulk-quote-copy:not(.ssr)').forEach(el => el.classList.add('ssr','ssr-left'));
+            $$('.bulk-quote-form:not(.ssr)').forEach(el => el.classList.add('ssr','ssr-right'));
+
+            $$('.map-info-bar:not(.ssr)').forEach(el => el.classList.add('ssr','ssr-up'));
+        }
+
+        const obs = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('ssr-done');
+                    obs.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+
+        function observeAll() {
+            $$('.ssr:not(.ssr-done)').forEach(el => obs.observe(el));
+        }
+
+        markReveal();
+        observeAll();
+
+        const mutObs = new MutationObserver(() => { markReveal(); observeAll(); });
+        mutObs.observe(document.body, { childList: true, subtree: true });
+    }
+
+
+    /* ──────────────────────────────────────────────────────────
        INIT — run all modules
     ────────────────────────────────────────────────────────── */
     ready(function() {
@@ -828,6 +878,7 @@
         initWishlistAnim();
         initSmoothAnchor();
         initStatCounters();
+        initScrollReveal();
     });
 
 })();

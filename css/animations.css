@@ -1865,3 +1865,63 @@ a:focus-visible {
     .hero-scroll-indicator { display: none; }
     .section-title::after { width: 55% !important; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   26. SCROLL REVEAL — elements animate in as they enter viewport
+   ═══════════════════════════════════════════════════════════════ */
+.ssr {
+    opacity: 0;
+    transition: opacity 0.55s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+}
+.ssr.ssr-up    { transform: translateY(28px); }
+.ssr.ssr-left  { transform: translateX(-32px); }
+.ssr.ssr-right { transform: translateX(32px); }
+.ssr.ssr-scale { transform: scale(0.90); }
+.ssr.ssr-done  { opacity: 1 !important; transform: none !important; }
+
+/* Stagger delays — applied per child index in JS */
+.ssr.ssr-d1 { transition-delay: 0.06s; }
+.ssr.ssr-d2 { transition-delay: 0.12s; }
+.ssr.ssr-d3 { transition-delay: 0.18s; }
+.ssr.ssr-d4 { transition-delay: 0.24s; }
+.ssr.ssr-d5 { transition-delay: 0.30s; }
+.ssr.ssr-d6 { transition-delay: 0.36s; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ssr { opacity: 1 !important; transform: none !important; transition: none !important; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   27. MOBILE TOUCH IMPROVEMENTS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Remove browser tap flash on all interactive elements */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Tactile press-down on touch devices */
+@media (hover: none) and (pointer: coarse) {
+    .shop-card:active,
+    .category-tile:active {
+        transform: scale(0.97) !important;
+        transition: transform 0.1s ease !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+    }
+    .hiw-step:active {
+        transform: scale(0.97) !important;
+        transition: transform 0.1s ease !important;
+    }
+    .btn:active {
+        transform: scale(0.95) !important;
+        transition: transform 0.08s ease !important;
+    }
+    .nav-icon-btn:active,
+    .bottom-nav-item:active {
+        transform: scale(0.88) !important;
+        transition: transform 0.08s ease !important;
+    }
+    .trust-strip-item:active { opacity: 0.7; }
+}
+
