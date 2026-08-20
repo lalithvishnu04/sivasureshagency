@@ -50,5 +50,30 @@ Customer forgot-password now sends a secure reset email (via Supabase Auth) from
 
 ### 5. Deploy
 
-Commit and push to `main`. GitHub Pages serves the static files.
+The site is hosted on **Cloudflare Pages** (auto-deployed from GitHub).
+
+#### Deployment workflow
+
+Every `git push` to `main` automatically triggers a new Cloudflare Pages build and deployment. No manual steps needed in Cloudflare.
+
+```powershell
+# 1. Stage your changes
+git add .
+
+# 2. Commit with a descriptive message
+git commit -m "your change description"
+
+# 3. Push to GitHub — Cloudflare Pages auto-deploys
+git push
+```
+
+After pushing, you can watch the live deployment progress at:
+https://dash.cloudflare.com/f6f982fbc3ebcc34def58b783436d912/pages/view/sivasureshagency
+
+#### Live URLs
+
+| URL | Purpose |
+|-----|---------|
+| https://sivasureshagency.pages.dev | Frontend (public site) |
+| https://sivasureshagency.pages.dev/admin.html | Admin UI |
 
