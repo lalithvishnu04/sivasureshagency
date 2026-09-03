@@ -774,7 +774,10 @@
         document.addEventListener('click', e => {
             const a = e.target.closest('a[href^="#"]');
             if (!a) return;
-            const target = document.querySelector(a.getAttribute('href'));
+            const href = a.getAttribute('href');
+            if (!href || href === '#') return; // placeholder links (social icons etc.) — nothing to scroll to
+            let target;
+            try { target = document.querySelector(href); } catch (err) { return; } // ignore invalid selectors
             if (!target) return;
             e.preventDefault();
             target.scrollIntoView({ behavior: 'smooth', block: 'start' });

@@ -34,7 +34,7 @@
   --sb-active-to:   #0f766e;
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-html{scroll-behavior:smooth;font-size:87.5%;} /* 14px root — compact professional scale */
+html{scroll-behavior:smooth;font-size:87.5%;scrollbar-width:thin;scrollbar-color:var(--border) transparent;} /* 14px root — compact professional scale */
 body{
   font-family:"Inter",sans-serif;
   background:var(--bg);
@@ -3291,6 +3291,16 @@ img{max-width:100%;display:block;}
 .btn-primary:hover, .btn-save:hover, .action-btn.primary:hover {
   transform: translateY(-1px) !important;
   box-shadow: 0 6px 22px rgba(13,148,136,0.36) !important;
+}
+.btn-primary:active, .btn-save:active, .action-btn.primary:active {
+  transform: scale(0.97) !important;
+  transition-duration: 0.1s !important;
+}
+.nav-item:active, .qa-btn:active, .filter-btn:active, .topbar-btn:active {
+  transform: scale(0.96);
+}
+.stat-card:active {
+  transform: translateY(-1px) scale(0.99);
 }
 
 /* ── Focus ring ─────────────────────────────────────────────── */

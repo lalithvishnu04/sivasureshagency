@@ -448,12 +448,31 @@ async function loadDashboard() {
     } catch (err) { console.error('Dashboard error:', err); }
 }
 
+// Animated count-up for dashboard KPI numbers (mirrors the customer-site stat counters).
+function _animateCounter(el, target, prefix = '') {
+    if (!el) return;
+    target = Number(target) || 0;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        el.textContent = prefix + target.toLocaleString('en-IN');
+        return;
+    }
+    const duration = 800;
+    const start = performance.now();
+    function tick(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const ease = 1 - Math.pow(1 - t, 3);
+        el.textContent = prefix + Math.round(target * ease).toLocaleString('en-IN');
+        if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+}
+
 function _renderDashboard(totalOrders, pending, revenue, customers, unreadMsgs, recentOrders, stockAlerts) {
-    document.getElementById('statTotalOrders').textContent = totalOrders;
-    document.getElementById('statPending').textContent     = pending;
-    document.getElementById('statRevenue').textContent     = '\u20b9' + revenue.toLocaleString();
-    document.getElementById('statCustomers').textContent   = customers;
-    document.getElementById('statMessages').textContent    = unreadMsgs;
+    _animateCounter(document.getElementById('statTotalOrders'), totalOrders);
+    _animateCounter(document.getElementById('statPending'), pending);
+    _animateCounter(document.getElementById('statRevenue'), revenue, '\u20b9');
+    _animateCounter(document.getElementById('statCustomers'), customers);
+    _animateCounter(document.getElementById('statMessages'), unreadMsgs);
     const badge = document.getElementById('msgBadge');
     if (badge) { badge.textContent = unreadMsgs; badge.style.display = unreadMsgs > 0 ? 'inline' : 'none'; }
 
@@ -506,11 +525,10 @@ function _updateOrderStats() {
     const pending = allOrders.filter(o => ['processing','approved','packed','shipped'].includes((o.status||'').toLowerCase())).length;
     const delivered = allOrders.filter(o => (o.status||'').toLowerCase() === 'delivered').length;
     const revenue = allOrders.filter(o => (o.status||'').toLowerCase() !== 'cancelled').reduce((s, o) => s + (o.total || 0), 0);
-    const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-    el('statTotalOrderCount', total);
-    el('statPendingCount', pending);
-    el('statDeliveredCount', delivered);
-    el('statOrderRevenue', '₹' + revenue.toLocaleString('en-IN'));
+    _animateCounter(document.getElementById('statTotalOrderCount'), total);
+    _animateCounter(document.getElementById('statPendingCount'), pending);
+    _animateCounter(document.getElementById('statDeliveredCount'), delivered);
+    _animateCounter(document.getElementById('statOrderRevenue'), revenue, '\u20b9');
 }
 
 function _buildSingleOrderRowHTML(o) {
@@ -1874,7 +1892,7 @@ function printOrderInvoice(docId) {
     <title>Tax Invoice — ${o.invoiceId || o.orderId || docId}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root{--navy:#0a1628;--blue:#0e4a86;--accent:#1e6fd9;--gold:#f59e0b;--teal:#0891b2;--green:#16a34a;--muted:#64748b;--border:#e2e8f0;--bg:#f8fafc;}
         *{box-sizing:border-box;margin:0;padding:0;}

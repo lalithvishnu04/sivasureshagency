@@ -4630,7 +4630,7 @@ function buildInvoiceHtml(order) {
     <title>Tax Invoice — ${order.invoiceId || order.id}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root{--navy:#0a1628;--blue:#0e4a86;--accent:#1e6fd9;--gold:#f59e0b;--teal:#0891b2;--green:#16a34a;--muted:#64748b;--border:#e2e8f0;--bg:#f8fafc;}
         *{box-sizing:border-box;margin:0;padding:0;}
