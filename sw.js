@@ -1,8 +1,8 @@
 ﻿// ============================================================
-//  Siva Suresh Agency -- Service Worker  v115
+//  Siva Suresh Agency -- Service Worker  v116
 //  Auto cache-busting: bump CACHE_VERSION with each deploy
 // ============================================================
-const CACHE_VERSION = 'v143';
+const CACHE_VERSION = 'v144';
 const CACHE_NAME    = `ssa-${CACHE_VERSION}`;
 
 // Separate long-lived API cache -- survives SW version bumps so users
