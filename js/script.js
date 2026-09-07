@@ -696,16 +696,22 @@ window.renderSignatureNav = renderSignatureNav;
 let _hoverCycleTimer = null;
 let _hoverCycleCard = null;
 function _startCardCycle(card) {
-    const imgs = window._cardHoverImgs && window._cardHoverImgs[card.dataset.id];
+    const pid = card.dataset.id;
+    const imgs = window._cardHoverImgs && window._cardHoverImgs[pid];
     if (!imgs || imgs.length < 2) return;
     const imgEl = card.querySelector('.shop-card-image img');
     if (!imgEl) return;
-    const dots = card.querySelectorAll('.card-img-dots i');
     let idx = 0;
     _hoverCycleCard = card;
     _hoverCycleTimer = setInterval(() => {
-        idx = (idx + 1) % imgs.length;
-        imgEl.src = imgs[idx];
+        // Re-read the current list each tick (not captured once at start) so that
+        // selecting a color swatch mid-hover narrows the cycle immediately instead
+        // of continuing to cycle the stale all-colors list.
+        const curImgs = (window._cardHoverImgs && window._cardHoverImgs[pid]) || imgs;
+        if (!curImgs || curImgs.length < 2) return;
+        idx = (idx + 1) % curImgs.length;
+        imgEl.src = curImgs[idx];
+        const dots = card.querySelectorAll('.card-img-dots i');
         dots.forEach((d, i) => d.classList.toggle('on', i === idx));
     }, 850);
 }
