@@ -1848,7 +1848,7 @@ function printOrderInvoice(docId) {
     const o = allOrders.find(x => x.docId === docId);
     if (!o) { showAdminToast('Order not found', 'error'); return; }
 
-    const logoUrl = new URL('images/SSA Logo.png', window.location.href).href;
+    const logoUrl = new URL('images/SSA Logo Updated.png', window.location.href).href;
     const invoiceDate = o.createdAt ? new Date(o.createdAt.seconds * 1000) : new Date();
     const rawStatus = String(o.status || '').toLowerCase();
     const invoiceStatus = rawStatus.includes('cancel')

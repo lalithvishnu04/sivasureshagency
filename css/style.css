@@ -1674,6 +1674,10 @@ body.modal-open { overflow: hidden; touch-action: none; }
         border-radius: 10px;
     }
 
+    .logo-icon::after {
+        border-radius: 10px;
+    }
+
     .logo-text {
         font-size: 0.96rem;
     }

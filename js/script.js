@@ -1652,7 +1652,7 @@ function initCommon() {
             }
             results.innerHTML = matches.slice(0, 8).map(p =>
                 `<a href="categories.html?cat=${encodeURIComponent(p.category)}&q=${encodeURIComponent(p.name)}" class="search-result-item" onclick="document.getElementById('searchOverlay').classList.remove('active')">` +
-                `<img src="${p.image}" alt="${p.name}" onerror="this.src='images/SSA Logo.png'" loading="lazy">` +
+                `<img src="${p.image}" alt="${p.name}" onerror="this.src='images/SSA Logo Updated.png'" loading="lazy">` +
                 `<div><strong>${p.name}</strong><div style="color:var(--primary);font-weight:600;">₹${p.price}</div></div></a>`
             ).join('');
         });
@@ -2775,7 +2775,7 @@ function openLoginModal() {
 <div class="modal auth-modal auth-split">
   <div class="auth-panel-left">
     <div class="auth-logo">
-      <img src="images/SSA Logo.png" alt="SSA Logo" width="44">
+      <img src="images/SSA Logo Updated.png" alt="SSA Logo" width="44">
       <div class="auth-logo-text">
         <span class="auth-logo-name">Siva Suresh</span>
         <span class="auth-logo-sub">Agency</span>
@@ -4591,7 +4591,7 @@ function _bestShippingForInvoice(order) {
 
 function buildInvoiceHtml(order) {
         const shipping = _bestShippingForInvoice(order);
-        const logoUrl = new URL('images/SSA Logo.png', window.location.href).href;
+        const logoUrl = new URL('images/SSA Logo Updated.png', window.location.href).href;
         const invoiceDate = new Date(order.date || Date.now());
     const rawStatus = String(order.status || '').toLowerCase();
     const invoiceStatus = rawStatus.includes('cancel')
@@ -5034,7 +5034,7 @@ async function _openRazorpayCheckout(order, shipping) {
         name: rzpCfg.businessName || 'Siva Suresh Agency',
         description: rzpCfg.description || 'Hospital Linen & Medical Uniforms',
         receipt: order.invoiceId || order.id,
-        image: window.location.origin + '/sivasureshagency/' + (rzpCfg.logo || 'images/SSA Logo.png'),
+        image: window.location.origin + '/sivasureshagency/' + (rzpCfg.logo || 'images/SSA Logo Updated.png'),
         ...(rzpOrderId && { order_id: rzpOrderId }),
         prefill: {
             name: (shipping.firstname + ' ' + shipping.lastname).trim(),

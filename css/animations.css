@@ -15,6 +15,7 @@
 /* ── Reduce-motion safety ─────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
     .ssa-anim-logo, .ssa-anim-logo::after,
+    .logo-icon::before, .logo-icon::after,
     .sig-btn span, .sig-btn:hover span,
     .upload-zone-anim .upload-icon-anim,
     .share-radial li, .share-radial.open li,
@@ -28,10 +29,13 @@
 
 
 /* ═══════════════════════════════════════════════════════════════
-   1. LOGO ANIMATION — looping shimmer pulse (inspired by style58.css)
-      The Netflix intro uses complex brush strokes. We adapt the
-      "paint reveal + glowing shimmer" idea into a professional
-      CSS-only loop for the SSA logo mark.
+   1. LOGO ANIMATION — ambient halo + foil shine (inspired by style58.css)
+      A slow rotating brand-colour halo breathes behind the mark, and a
+      metallic "foil" shine sweeps across it. The shine is animated purely
+      via background-position inside the logo's own rounded-rect box (its
+      border-radius clips the gradient natively), so it can never bleed
+      outside the logo artwork itself — unlike the old skewed bar which
+      floated in absolute px/percent offsets and spilled past the icon.
    ═══════════════════════════════════════════════════════════════ */
 .logo-icon {
     position: relative;
@@ -39,7 +43,27 @@
 }
 
 .logo-icon img {
+    position: relative;
+    z-index: 2;
     transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+/* Slow rotating brand-colour halo behind the mark — meant to bleed outward */
+.logo-icon::before {
+    content: '';
+    position: absolute;
+    inset: -16%;
+    z-index: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, #0d9488, #5eead4, #0f172a, #14b8a6, #0d9488);
+    filter: blur(7px);
+    opacity: 0.2;
+    animation: logo-halo-spin 6s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes logo-halo-spin {
+    to { transform: rotate(360deg); }
 }
 
 /* Gentle breathing pulse on the logo icon */
@@ -48,35 +72,37 @@
 }
 
 @keyframes logo-breathe {
-    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0px rgba(13,148,136,0)); }
-    50%       { transform: scale(1.04); filter: drop-shadow(0 0 10px rgba(13,148,136,0.55)); }
+    /* translateY(2px) compensates for the logo artwork's mark sitting slightly
+       above the square canvas centre, so it lines up with the adjacent text */
+    0%, 100% { transform: translateY(2px) scale(1); filter: drop-shadow(0 0 0px rgba(13,148,136,0)); }
+    50%       { transform: translateY(2px) scale(1.04); filter: drop-shadow(0 0 10px rgba(13,148,136,0.55)); }
 }
 
-/* Sheen sweep: a bright line crosses the logo every 4s */
+/* Foil shine sweep — clipped to the logo's own rounded corners (border-radius
+   on the pseudo-element itself), so it overlays the logo artwork only */
 .logo-icon::after {
     content: '';
     position: absolute;
-    top: -10%;
-    left: -60%;
-    width: 40%;
-    height: 120%;
+    inset: 0;
+    z-index: 3;
+    border-radius: 8px;
     background: linear-gradient(
-        100deg,
-        transparent 0%,
-        rgba(255,255,255,0.72) 50%,
-        transparent 100%
+        115deg,
+        transparent 38%,
+        rgba(255,255,255,0.92) 49%,
+        rgba(20,184,166,0.7) 53%,
+        transparent 64%
     );
-    transform: skewX(-18deg);
-    animation: logo-sheen 4s ease-in-out infinite;
+    background-size: 300% 300%;
+    background-position: 130% 0%;
+    mix-blend-mode: overlay;
+    animation: logo-shine-sweep 4.5s ease-in-out infinite;
     pointer-events: none;
-    border-radius: 50%;
-    z-index: 10;
 }
 
-@keyframes logo-sheen {
-    0%, 70%, 100% { left: -60%; opacity: 0; }
-    10%           { opacity: 1; }
-    40%           { left: 140%; opacity: 0; }
+@keyframes logo-shine-sweep {
+    0%, 55%, 100% { background-position: 130% 0%; }
+    28%           { background-position: -30% 0%; }
 }
 
 /* Logo text shimmer on hover */
