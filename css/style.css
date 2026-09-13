@@ -24,7 +24,7 @@
     --bg-off:        #f8fafc;
     --bg-teal:       #f0fdfa;
     --bg-dark:       #0f172a;
-    --header-bg:     #1a1d24;
+    --header-bg:     #101c28;
     --border:        #e2e8f0;
     --border-mid:    #cbd5e1;
     --radius-sm:  8px;
@@ -104,7 +104,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border-mid) transparent; }
 a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 4px; }
 
 /* ── 5. Top Bar ───────────────────────────────────────────────── */
-.top-bar { background: linear-gradient(120deg, #0f3b36, #0a2622); color: rgba(255,255,255,0.8); padding: 8px 0; font-size: 0.77rem; font-weight: 500; max-height: 60px; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease; opacity: 1; }
+.top-bar { background: linear-gradient(120deg, #0b111f, #070a11); color: rgba(255,255,255,0.8); padding: 8px 0; font-size: 0.77rem; font-weight: 500; max-height: 60px; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease; opacity: 1; }
 .top-bar-content { display: flex; justify-content: space-between; align-items: center; }
 .top-info { display: flex; gap: 18px; flex-wrap: wrap; }
 .top-info span { display: flex; align-items: center; gap: 6px; }
@@ -119,8 +119,8 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outli
    chatbot, WhatsApp z-8000/9000) so nav-links text isn't painted over */
 #header.nav-active { z-index: 99999; }
 #header.scrolled .top-bar { max-height: 0; opacity: 0; padding: 0; }
-#header.scrolled .navbar { background: rgba(26,29,36,0.97); backdrop-filter: blur(20px); box-shadow: 0 1px 0 rgba(255,255,255,0.06), var(--shadow-md); }
-.navbar { background: linear-gradient(120deg, #1c1f27, #14161c); padding: 13px 0; border-bottom: 1px solid rgba(255,255,255,0.06); transition: var(--transition); }
+#header.scrolled .navbar { background: rgba(16,28,40,0.97); backdrop-filter: blur(20px); box-shadow: 0 1px 0 rgba(255,255,255,0.06), var(--shadow-md); }
+.navbar { background: linear-gradient(115deg, #14283f 0%, #0e332f 55%, #0a1a20 100%); padding: 13px 0; border-bottom: 1px solid rgba(94,234,212,0.1); transition: var(--transition); }
 .navbar .container { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .logo { display: flex; align-items: center; gap: 10px; }
 .logo-icon img { width: 46px; height: 46px; border-radius: 8px; object-fit: contain; }
@@ -136,7 +136,7 @@ a.nav-cliniflex.active { background: rgba(255,255,255,0.07) !important; }
 a.nav-cliniflex i.fa-award { font-size: 0.82em; color: #f59e0b; animation: cf-badge-flash 2s ease-in-out infinite; }
 @keyframes cf-badge-flash { 0%,100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(245,158,11,0)); color: #f59e0b; } 50% { transform: scale(1.2); filter: drop-shadow(0 0 7px rgba(245,158,11,0.75)); color: #fbbf24; } }
 /* Signature shimmer on the CliniFlex brand name (nav only) */
-.nav-cliniflex .scrub-brand-text { background: linear-gradient(90deg, #0d9488, #14b8a6, #5eead4, #14b8a6, #0d9488); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: cf-shimmer 3s linear infinite; }
+.nav-cliniflex .scrub-brand-text { background: linear-gradient(90deg, #5eead4, #ffffff, #99f6e4, #ffffff, #5eead4); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: cf-shimmer 3s linear infinite; }
 @keyframes cf-shimmer { to { background-position: 200% center; } }
 .nav-cliniflex-dropdown { position: relative; }
 .cliniflex-dropdown { position: absolute; top: calc(100% + 4px); left: 0; background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(13,148,136,0.28), 0 3px 10px rgba(15,23,42,0.08); border: 1px solid rgba(13,148,136,0.22); padding: 12px; min-width: 340px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.16,1,0.3,1), visibility 0.25s ease; z-index: 200; pointer-events: none; overflow: hidden; }
@@ -1647,7 +1647,7 @@ body.modal-open { overflow: hidden; touch-action: none; }
            position:fixed children (nav-links drawer), causing the drawer to
            be positioned/rendered inside the blurred compositing layer and
            appear blurry on Android Chrome and iOS Safari. */
-        background: rgba(26,29,36,0.97);
+        background: rgba(16,28,40,0.97);
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
         border-radius: 18px;
@@ -2918,7 +2918,7 @@ section.section-alt { background: var(--bg-off); }
 
 /* ── R3. Glass Top Bar ────────────────────────────────────────── */
 .top-bar {
-    background: linear-gradient(120deg, rgba(15,59,54,0.97), rgba(10,38,34,0.97)) !important;
+    background: linear-gradient(120deg, rgba(11,17,31,0.97), rgba(7,10,17,0.97)) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
     border-bottom: 1px solid rgba(20,184,166,0.18) !important;
@@ -2977,7 +2977,7 @@ section.section-alt { background: var(--bg-off); }
     transition: all 0.3s ease;
 }
 #header.scrolled .navbar {
-    background: rgba(26,29,36,0.97) !important;
+    background: rgba(16,28,40,0.97) !important;
     backdrop-filter: blur(20px) !important;
     box-shadow: 0 2px 20px rgba(0,0,0,0.24) !important;
     border-bottom: 1px solid rgba(94,234,212,0.14) !important;
