@@ -122,7 +122,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outli
 .navbar { background: #fff; padding: 13px 0; border-bottom: 1px solid var(--border); transition: var(--transition); }
 .navbar .container { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .logo { display: flex; align-items: center; gap: 10px; }
-.logo-icon img { border-radius: 8px; object-fit: contain; }
+.logo-icon img { width: 46px; height: 46px; border-radius: 8px; object-fit: contain; }
 .logo-text-wrap { display: flex; flex-direction: column; }
 .logo-text { font-weight: 800; font-size: 1.1rem; color: var(--navy); letter-spacing: -0.03em; line-height: 1.1; }
 .logo-sub  { font-size: 0.63rem; color: var(--primary); letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; }
@@ -1669,8 +1669,8 @@ body.modal-open { overflow: hidden; touch-action: none; }
     }
 
     .logo-icon img {
-        width: 38px;
-        height: 42px;
+        width: 40px;
+        height: 40px;
         border-radius: 10px;
     }
 
